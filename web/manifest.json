@@ -1,0 +1,42 @@
+{
+  "name": "Familia Andrada - Protección Familiar",
+  "short_name": "Familia Andrada",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#070B14",
+  "theme_color": "#070B14",
+  "description": "Aplicación móvil de protección familiar con mapa en tiempo real, detección de fraudes, alertas SOS y motor de seguridad AI.",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["utilities", "lifestyle", "safety"],
+  "shortcuts": [
+    {
+      "name": "Botón SOS",
+      "short_name": "SOS",
+      "description": "Enviar alerta SOS de emergencia",
+      "url": "/?action=sos",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Acompáñame",
+      "short_name": "SafeWalk",
+      "description": "Iniciar trayecto supervisado",
+      "url": "/?action=safewalk",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
