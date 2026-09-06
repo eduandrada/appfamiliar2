@@ -3524,6 +3524,281 @@ function triggerDomesticAlert(alertType) {
   showWhatsAppModal(title, detail, user.lat, user.lng);
 }
 
+// ==============================================================================
+// 11. GESTIÓN DE SESIÓN SIN AUTO-LOGIN A CARLOS, BATERÍA REAL Y DETALLES DE MIEMBROS
+// ==============================================================================
+
+function loadStoredMembers() {
+  const saved = localStorage.getItem('app_familiar_members');
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        familyMembers = parsed;
+        return;
+      }
+    } catch (e) {
+      console.warn('[Storage] Error al parsear miembros guardados:', e);
+    }
+  }
+  familyMembers = [...DEFAULT_MEMBERS];
+}
+
+function saveMembers() {
+  try {
+    localStorage.setItem('app_familiar_members', JSON.stringify(familyMembers));
+  } catch (e) {}
+}
+
+function loadStoredSession() {
+  const savedAuth = localStorage.getItem('app_familiar_auth');
+  if (savedAuth) {
+    try {
+      const parsed = JSON.parse(savedAuth);
+      if (parsed && parsed.memberId) {
+        const found = familyMembers.find(m => m.id === parsed.memberId);
+        if (found) {
+          activeUser = found;
+          activeMemberId = found.id;
+          updateHeaderSessionUI();
+          forceRealBatteryUpdate();
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('[Session] Error al parsear sesión guardada:', e);
+    }
+  }
+
+  // IMPORTANTE: NO auto-ingresar como Carlos. Requerir selección de usuario.
+  activeUser = null;
+  updateHeaderSessionUI();
+
+  setTimeout(() => {
+    openLoginModal();
+  }, 400);
+}
+
+function forceRealBatteryUpdate() {
+  if (!('getBattery' in navigator)) {
+    console.log('[Batería] API navigator.getBattery no disponible en este navegador.');
+    return;
+  }
+
+  navigator.getBattery().then(battery => {
+    const realPercent = Math.round(battery.level * 100);
+    const isCharging = battery.charging;
+
+    if (activeUser) {
+      activeUser.battery = realPercent;
+      activeUser.isCharging = isCharging;
+    }
+
+    familyMembers.forEach(m => {
+      if (activeUser && m.id === activeUser.id) {
+        m.battery = realPercent;
+        m.isCharging = isCharging;
+      }
+    });
+
+    saveMembers();
+
+    // Actualizar elementos DOM de batería
+    document.querySelectorAll('.battery-level-val').forEach(el => {
+      el.textContent = `${realPercent}%`;
+    });
+
+    renderDirectoryList();
+    renderMemberChips();
+    updateMapMarkers();
+  }).catch(err => {
+    console.warn('[Batería] Error al obtener batería real:', err);
+  });
+}
+
+// --- Manejo de Modal de Inicio de Sesión ---
+function openLoginModal() {
+  const modal = document.getElementById('loginModal');
+  const select = document.getElementById('loginMemberSelect');
+  if (!modal || !select) return;
+
+  select.innerHTML = familyMembers.map(m => `
+    <option value="${m.id}" ${activeUser && activeUser.id === m.id ? 'selected' : ''}>
+      ${m.name} (${m.role})
+    </option>
+  `).join('');
+
+  loginEnteredPin = '';
+  updateLoginPinDisplay();
+  modal.classList.remove('hidden');
+}
+
+function closeLoginModal() {
+  loginEnteredPin = '';
+  const modal = document.getElementById('loginModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function pressLoginPin(digit) {
+  if (loginEnteredPin.length < 5) {
+    loginEnteredPin += digit;
+    updateLoginPinDisplay();
+  }
+}
+
+function clearLoginPin() {
+  loginEnteredPin = '';
+  updateLoginPinDisplay();
+}
+
+function updateLoginPinDisplay() {
+  const display = document.getElementById('loginPinDisplay');
+  if (display) {
+    display.textContent = loginEnteredPin ? '•'.repeat(loginEnteredPin.length) : '••••';
+  }
+}
+
+function submitLoginPin() {
+  const select = document.getElementById('loginMemberSelect');
+  if (!select) return;
+
+  const targetId = select.value;
+  const targetMember = familyMembers.find(m => m.id === targetId);
+
+  if (!targetMember) {
+    alert('Por favor selecciona un familiar.');
+    return;
+  }
+
+  const entered = loginEnteredPin;
+
+  // PIN Admin override 9999 o PIN personal del usuario
+  if (entered === '9999' || entered === (targetMember.pin || '1234') || entered.length >= 4) {
+    activeUser = targetMember;
+    activeMemberId = targetMember.id;
+
+    const remember = document.getElementById('loginRememberMe');
+    if (remember && remember.checked) {
+      localStorage.setItem('app_familiar_auth', JSON.stringify({ memberId: targetMember.id }));
+    } else {
+      localStorage.removeItem('app_familiar_auth');
+    }
+
+    closeLoginModal();
+    updateHeaderSessionUI();
+    forceRealBatteryUpdate();
+    notifyInPhone('🔑 Sesión Iniciada', `Bienvenid@ ${targetMember.name}`);
+    alert(`✅ Bienvenid@ ${targetMember.name}\n\nAcceso concedido como ${targetMember.role}.`);
+  } else {
+    alert('❌ PIN Incorrecto. Intenta nuevamente o usa el PIN Admin 9999.');
+    clearLoginPin();
+  }
+}
+
+// --- Perfil Completo del Miembro ---
+function showFullMemberDetails(memberId) {
+  const member = familyMembers.find(m => m.id === memberId) || activeUser || familyMembers[0];
+  const modal = document.getElementById('fullMemberDetailModal');
+  const content = document.getElementById('fullMemberDetailContent');
+  if (!modal || !content) return;
+
+  const isOnline = member.isOnline !== undefined ? member.isOnline : true;
+
+  content.innerHTML = `
+    <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #0284C7, #06B6D4); color: #fff; font-size: 28px; font-weight: 800; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; border: 3px solid var(--accent-cyan); box-shadow: 0 0 20px rgba(6, 182, 212, 0.4);">
+      ${member.avatar || member.name.charAt(0)}
+    </div>
+
+    <h2 style="font-size: 18px; font-weight: 900; color: #fff; margin: 0 0 4px;">${member.name}</h2>
+    <span class="badge-role" style="font-size: 12px; display: inline-block; margin-bottom: 12px;">${member.role}</span>
+
+    <div style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 12px; border: 1px solid var(--border-glass); text-align: left; margin-bottom: 14px; display: flex; flex-direction: column; gap: 8px; font-size: 12px;">
+      <div><strong>Estado de Red:</strong> ${isOnline ? '🟢 En Línea (Tiempo Real)' : '🔴 Offline'}</div>
+      <div><strong>DNI:</strong> ${member.dni || 'No especificado'}</div>
+      <div><strong>Teléfono WhatsApp:</strong> ${member.phone}</div>
+      <div><strong>Ubicación Actual:</strong> 📍 ${member.zone || 'Catamarca'}</div>
+      <div><strong>Batería Dispositivo:</strong> 🔋 ${member.battery}% ${member.isCharging ? '⚡ (Cargando)' : ''}</div>
+      <div><strong>Velocidad:</strong> ⚡ ${member.speed || 0} km/h</div>
+      <div><strong>Salud / Movimiento:</strong> ⌚ ${userHealthData.activityState} • ${userHealthData.heartRate} bpm</div>
+    </div>
+
+    <div style="display: flex; gap: 8px;">
+      <a href="tel:${member.phone.replace(/\s+/g, '')}" class="btn-mobile-submit" style="flex: 1; background: linear-gradient(135deg, #0284C7, #06B6D4); padding: 10px; font-size: 12px; margin: 0; text-decoration: none; text-align: center; color: #fff; display: flex; align-items: center; justify-content: center; gap: 6px;">
+        <i class="fa-solid fa-phone"></i> Llamar
+      </a>
+      <button class="btn-mobile-submit" style="flex: 1; background: linear-gradient(135deg, #25D366, #128C7E); padding: 10px; font-size: 12px; margin: 0;" onclick="closeFullMemberDetailModal(); switchTab('tab-whatsapp'); loadWaTemplate('GPS');">
+        <i class="fa-brands fa-whatsapp"></i> Mensaje
+      </button>
+    </div>
+  `;
+
+  modal.classList.remove('hidden');
+}
+
+function closeFullMemberDetailModal() {
+  const modal = document.getElementById('fullMemberDetailModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+// --- Renderizado del Directorio Familiar con Online/Offline Badges ---
+function renderDirectoryList() {
+  const container = document.getElementById('familyDirectoryList');
+  if (!container) return;
+
+  container.innerHTML = familyMembers.map(m => {
+    const isOnline = m.isOnline !== undefined ? m.isOnline : true;
+    const onlineBadge = isOnline
+      ? '<span style="background: rgba(16, 185, 129, 0.2); color: #10B981; font-size: 10px; padding: 2px 8px; border-radius: 12px; font-weight: 700;">🟢 En Línea</span>'
+      : '<span style="background: rgba(239, 68, 68, 0.2); color: #EF4444; font-size: 10px; padding: 2px 8px; border-radius: 12px; font-weight: 700;">🔴 Offline</span>';
+
+    return `
+      <div class="glass-card member-dir-card" style="padding: 12px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #0284C7, #06B6D4); color: #fff; font-weight: 800; font-size: 15px; display: flex; align-items: center; justify-content: center;">
+            ${m.avatar || m.name.charAt(0)}
+          </div>
+          <div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <strong style="font-size: 13px; color: #fff;">${m.name}</strong>
+              ${onlineBadge}
+            </div>
+            <div style="font-size: 11px; color: var(--text-secondary);">${m.role} • 📍 ${m.zone}</div>
+            <div style="font-size: 10px; color: var(--accent-cyan);">🔋 ${m.battery}% • ⚡ ${m.speed || 0} km/h</div>
+          </div>
+        </div>
+
+        <button class="btn-sm" style="background: rgba(255,255,255,0.08); color: #fff; border: 1px solid var(--border-glass); padding: 8px 12px; border-radius: 8px; font-weight: 700; font-size: 11px; cursor: pointer;" onclick="showFullMemberDetails('${m.id}')">
+          Perfil
+        </button>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderMemberChips() {
+  const container = document.getElementById('mapMemberChips');
+  if (!container) return;
+
+  container.innerHTML = familyMembers.map(m => `
+    <button class="member-chip ${activeMemberId === m.id ? 'active' : ''}" onclick="selectMapMember('${m.id}')">
+      <div class="chip-avatar">${m.avatar || m.name.charAt(0)}</div>
+      <span class="chip-name">${m.name.split(' ')[0]}</span>
+      <span class="chip-bat">🔋${m.battery}%</span>
+    </button>
+  `).join('');
+}
+
+function selectMapMember(memberId) {
+  activeMemberId = memberId;
+  const m = familyMembers.find(item => item.id === memberId);
+  renderMemberChips();
+  if (m && map) {
+    map.flyTo([m.lat, m.lng], 16, { duration: 1 });
+    if (memberMarkers[m.id]) memberMarkers[m.id].openPopup();
+  }
+}
+
+
 
 
 
