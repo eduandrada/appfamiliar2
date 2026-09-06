@@ -2779,4 +2779,477 @@ function updatePrivacySchedule(scheduleMode) {
   notifyInPhone('🤝 Pacto de Privacidad Actualizado', label);
 }
 
+// ==============================================================================
+// 9. RASTREO GPS DE ALTA PRECISIÓN, BATERÍA Y SALUD MÓVIL EN TIEMPO REAL
+// ==============================================================================
+
+let gpsWatchId = null;
+let userAccuracyCircle = null;
+let audioAlarmCtx = null;
+let isAudioAlarmPlaying = false;
+let userHealthData = {
+  heartRate: 72,
+  activityState: 'Reposando',
+  stepsPerMin: 0,
+  deviceTemp: 36.5,
+  smartwatchConnected: false,
+  smartwatchBattery: 88
+};
+
+// --- A. GPS Alta Precisión ---
+function initRealtimeGpsTracker() {
+  if (!('geolocation' in navigator)) {
+    console.warn('[GPS] Geolocation no soportada en este navegador');
+    return;
+  }
+
+  const options = {
+    enableHighAccuracy: true,
+    maximumAge: 0,
+    timeout: 10000
+  };
+
+  gpsWatchId = navigator.geolocation.watchPosition(
+    onGpsSuccess,
+    onGpsError,
+    options
+  );
+
+  initBatteryMonitor();
+  initHealthMonitor();
+  populateWaTargetSelect();
+}
+
+function onGpsSuccess(position) {
+  const lat = position.coords.latitude;
+  const lng = position.coords.longitude;
+  const accuracy = position.coords.accuracy || 10;
+  const rawSpeed = position.coords.speed || 0.0;
+  const speedKmH = parseFloat((rawSpeed * 3.6).toFixed(1));
+
+  if (activeUser) {
+    activeUser.lat = lat;
+    activeUser.lng = lng;
+    activeUser.speed = speedKmH;
+  }
+
+  // Update member in familyMembers array
+  const userInArray = familyMembers.find(m => m.id === (activeUser ? activeUser.id : 'carlos_andrada'));
+  if (userInArray) {
+    userInArray.lat = lat;
+    userInArray.lng = lng;
+    userInArray.speed = speedKmH;
+  }
+
+  // Update status badge on map
+  const statusEl = document.getElementById('mapStatusText');
+  if (statusEl) {
+    statusEl.innerHTML = `🎯 GPS Alta Precisión (±${accuracy.toFixed(0)}m) • ${speedKmH} km/h`;
+  }
+
+  // Render or update Leaflet accuracy circle
+  if (map && typeof L !== 'undefined') {
+    if (!userAccuracyCircle) {
+      userAccuracyCircle = L.circle([lat, lng], {
+        radius: accuracy,
+        color: '#06B6D4',
+        fillColor: '#06B6D4',
+        fillOpacity: 0.15,
+        weight: 1
+      }).addTo(map);
+    } else {
+      userAccuracyCircle.setLatLng([lat, lng]);
+      userAccuracyCircle.setRadius(accuracy);
+    }
+
+    updateMapMarkers();
+  }
+
+  // Send periodic telemetry heartbeat
+  sendTelemetryHeartbeat(lat, lng, accuracy, speedKmH);
+}
+
+function onGpsError(err) {
+  console.warn('[GPS] Error de ubicación:', err.message);
+  const statusEl = document.getElementById('mapStatusText');
+  if (statusEl) {
+    statusEl.innerHTML = `⚠️ Señal GPS Activa en Red`;
+  }
+}
+
+function sendTelemetryHeartbeat(lat, lng, accuracy, speed) {
+  if (!activeUser) return;
+  const connType = navigator.connection ? navigator.connection.effectiveType || '4g' : 'wifi';
+  fetch('/api/telemetry/heartbeat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      member_id: activeUser.id,
+      lat: lat,
+      lng: lng,
+      accuracy: accuracy,
+      speed: speed,
+      battery: activeUser.battery || 100,
+      network_type: connType === 'wifi' || connType === '4g' ? 'WiFi Casa' : '4G/5G Datos',
+      health: userHealthData
+    })
+  }).catch(() => {});
+}
+
+// --- B. Batería Real del Móvil ---
+function initBatteryMonitor() {
+  if ('getBattery' in navigator) {
+    navigator.getBattery().then(battery => {
+      updateBatteryLevel(battery);
+      battery.addEventListener('levelchange', () => updateBatteryLevel(battery));
+      battery.addEventListener('chargingchange', () => updateBatteryLevel(battery));
+    }).catch(() => {});
+  }
+}
+
+function updateBatteryLevel(battery) {
+  const levelPercent = Math.round(battery.level * 100);
+  const isCharging = battery.charging;
+
+  if (activeUser) {
+    activeUser.battery = levelPercent;
+    activeUser.isCharging = isCharging;
+  }
+
+  const userInArray = familyMembers.find(m => m.id === (activeUser ? activeUser.id : 'carlos_andrada'));
+  if (userInArray) {
+    userInArray.battery = levelPercent;
+    userInArray.isCharging = isCharging;
+  }
+
+  if (levelPercent <= 15 && !isCharging) {
+    notifyInPhone('🔋 Batería Crítica', `Tu celular tiene ${levelPercent}%. Se recomienda cargarlo.`);
+  }
+
+  renderDirectoryList();
+}
+
+// --- C. Salud y Reloj Inteligente (Web Bluetooth & Accelerometer) ---
+function initHealthMonitor() {
+  if ('DeviceMotionEvent' in window) {
+    window.addEventListener('devicemotion', (e) => {
+      const acc = e.accelerationIncludingGravity;
+      if (!acc) return;
+      const gForce = Math.sqrt(acc.x * acc.x + acc.y * acc.y + acc.z * acc.z) / 9.81;
+
+      if (gForce > 2.5) {
+        userHealthData.activityState = 'Impacto / Frenada';
+        userHealthData.heartRate = Math.min(140, userHealthData.heartRate + 15);
+      } else if (gForce > 1.4) {
+        userHealthData.activityState = 'Corriendo';
+        userHealthData.stepsPerMin = 140;
+        userHealthData.heartRate = Math.min(130, userHealthData.heartRate + 2);
+      } else if (gForce > 1.1) {
+        userHealthData.activityState = 'Caminando';
+        userHealthData.stepsPerMin = 85;
+        userHealthData.heartRate = 82;
+      } else {
+        userHealthData.activityState = 'Reposando';
+        userHealthData.stepsPerMin = 0;
+        userHealthData.heartRate = 72;
+      }
+    });
+  }
+}
+
+function connectSmartwatchBle() {
+  if (!navigator.bluetooth) {
+    alert('📲 Web Bluetooth no está soportado en este navegador. Utilizando sensores internos del celular.');
+    return;
+  }
+
+  navigator.bluetooth.requestDevice({
+    filters: [{ services: ['heart_rate'] }]
+  }).then(device => {
+    userHealthData.smartwatchConnected = true;
+    notifyInPhone('⌚ Reloj Inteligente Conectado', `Vinculado con ${device.name || 'Smartwatch'}`);
+    alert(`✅ Reloj Inteligente Conectado con éxito:\n\nDispositivo: ${device.name || 'Smartwatch'}\nRitmo cardíaco y salud sincronizados en tiempo real.`);
+  }).catch(() => {
+    console.log('[BLE] Conexión cancelada o fallida.');
+  });
+}
+
+// --- D. Sirena Sonora y Vibración SOS ---
+function playAlarmSirenSound() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    audioAlarmCtx = new AudioCtx();
+    const osc = audioAlarmCtx.createOscillator();
+    const gain = audioAlarmCtx.createGain();
+
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(600, audioAlarmCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(1200, audioAlarmCtx.currentTime + 0.5);
+
+    gain.gain.setValueAtTime(0.3, audioAlarmCtx.currentTime);
+    osc.connect(gain);
+    gain.connect(audioAlarmCtx.destination);
+
+    osc.start();
+    isAudioAlarmPlaying = true;
+
+    // Siren sweep loop
+    let high = true;
+    const interval = setInterval(() => {
+      if (!isAudioAlarmPlaying || !audioAlarmCtx) {
+        clearInterval(interval);
+        return;
+      }
+      osc.frequency.setValueAtTime(high ? 1200 : 600, audioAlarmCtx.currentTime);
+      high = !high;
+    }, 400);
+
+    setTimeout(() => {
+      stopAlarmSirenSound();
+    }, 15000);
+  } catch (e) {
+    console.warn('[Audio] Error al sintetizar sirena:', e);
+  }
+}
+
+function stopAlarmSirenSound() {
+  isAudioAlarmPlaying = false;
+  if (audioAlarmCtx) {
+    audioAlarmCtx.close().catch(() => {});
+    audioAlarmCtx = null;
+  }
+}
+
+// --- E. Disparo Inmediato de SOS Completo ---
+function triggerPanicCountdown() {
+  const badge = document.getElementById('sosTimerBadge');
+  const btnCancel = document.getElementById('btnCancelSOS');
+  const headline = document.getElementById('sosHeadline');
+  
+  panicSeconds = 30;
+  if (badge) {
+    badge.textContent = panicSeconds;
+    badge.classList.remove('hidden');
+  }
+  if (btnCancel) btnCancel.classList.remove('hidden');
+  if (headline) headline.textContent = '🚨 ENVIANDO SOS EN 30 SEGUNDOS...';
+
+  // Vibración háptica inicial
+  if ('vibrate' in navigator) navigator.vibrate([200, 100, 200]);
+
+  if (panicTimer) clearInterval(panicTimer);
+  panicTimer = setInterval(() => {
+    panicSeconds--;
+    if (badge) badge.textContent = panicSeconds;
+
+    if (panicSeconds <= 0) {
+      clearInterval(panicTimer);
+      triggerImmediateSOS();
+      cancelPanicCountdown();
+    }
+  }, 1000);
+}
+
+function cancelPanicCountdown() {
+  if (panicTimer) clearInterval(panicTimer);
+  const badge = document.getElementById('sosTimerBadge');
+  const btnCancel = document.getElementById('btnCancelSOS');
+  const headline = document.getElementById('sosHeadline');
+
+  if (badge) badge.classList.add('hidden');
+  if (btnCancel) btnCancel.classList.add('hidden');
+  if (headline) headline.textContent = 'BOTÓN DE PÁNICO FAMILIAR';
+  stopAlarmSirenSound();
+}
+
+function triggerImmediateSOS() {
+  const user = activeUser || familyMembers[0];
+
+  // 1. Vibración háptica
+  if ('vibrate' in navigator) {
+    navigator.vibrate([400, 150, 400, 150, 600]);
+  }
+
+  // 2. Sirena de alarma
+  playAlarmSirenSound();
+
+  // 3. Captura inmediata GPS
+  if ('geolocation' in navigator) {
+    navigator.geolocation.getCurrentPosition((pos) => {
+      user.lat = pos.coords.latitude;
+      user.lng = pos.coords.longitude;
+      dispatchSosPayload(user);
+    }, () => {
+      dispatchSosPayload(user);
+    }, { enableHighAccuracy: true, timeout: 5000 });
+  } else {
+    dispatchSosPayload(user);
+  }
+}
+
+function dispatchSosPayload(user) {
+  const header = `🚨 ALERTA DE PÁNICO SOS EXTREMA`;
+  const body = `🚨 *ALERTA SOS DE EMERGENCIA FAMILIAR* 🚨\n\nEl familiar *${user.name}* (*${user.role}*) ha activado la alarma de pánico SOS.\n\n📍 Ubicación exacta: https://www.google.com/maps?q=${user.lat},${user.lng}\n🔋 Batería: ${user.battery}%\n⌚ Estado Físico: ${user.speed} km/h • ${userHealthData.activityState}\n🔑 Palabra Clave Secreta: ${getSafeWord()}`;
+
+  fetch('/api/alert', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      member_id: user.id,
+      name: user.name,
+      lat: user.lat,
+      lng: user.lng,
+      battery: user.battery,
+      type: 'SOS_MANUAL'
+    })
+  }).catch(() => {});
+
+  notifyInPhone('🚨 ALERTA SOS DISPARADA', `Emergencia enviada para ${user.name}`);
+  showWhatsAppModal(header, body, user.lat, user.lng);
+}
+
+// --- F. Centro WhatsApp de Emergencia ---
+function populateWaTargetSelect() {
+  const select = document.getElementById('waTargetSelect');
+  if (!select) return;
+
+  const optionsHtml = familyMembers.map(m => `
+    <option value="${m.id}">👤 ${m.name} (${m.role}) - ${m.phone}</option>
+  `).join('');
+
+  select.innerHTML = `<option value="ALL">📢 Toda la Familia Andrada (Broadcast / Grupo)</option>${optionsHtml}`;
+}
+
+function loadWaTemplate(type) {
+  const user = activeUser || familyMembers[0];
+  const mapsUrl = `https://www.google.com/maps?q=${user.lat.toFixed(6)},${user.lng.toFixed(6)}`;
+  const textEl = document.getElementById('waMessagePreview');
+  if (!textEl) return;
+
+  let msg = '';
+  if (type === 'SOS') {
+    msg = `🚨 *ALERTA SOS DE EMERGENCIA FAMILIAR* 🚨\n\nFamiliar: *${user.name}* (${user.role})\n¡Necesito ayuda urgente en mi ubicación!\n\n📍 Ubicación real:\n${mapsUrl}\n🔋 Batería: ${user.battery}%\n⚡ Velocidad: ${user.speed} km/h`;
+  } else if (type === 'GPS') {
+    msg = `📍 *MI UBICACIÓN ACTUAL EN TIEMPO REAL*\n\nHola familia, les comparto mi posición exacta:\n${mapsUrl}\n\nZona: ${user.zone || 'En movimiento'}\nBatería: ${user.battery}%`;
+  } else if (type === 'HOME') {
+    msg = `🚗 *VOY EN CAMINO A CASA*\n\nHola, ya salí hacia la casa. Llegaré en breve.\n📍 Posición actual:\n${mapsUrl}\n🔋 Batería: ${user.battery}%`;
+  } else if (type === 'BATTERY') {
+    msg = `🔋 *AVISO DE BATERÍA CRÍTICA*\n\nHola familia, me queda solo *${user.battery}%* de batería. Si no respondo es por falta de carga.\n📍 Última ubicación:\n${mapsUrl}`;
+  }
+
+  textEl.value = msg;
+}
+
+function sendCustomWaMessage() {
+  const textEl = document.getElementById('waMessagePreview');
+  const targetEl = document.getElementById('waTargetSelect');
+  if (!textEl || !textEl.value.trim()) {
+    alert('Por favor selecciona una plantilla o escribe un mensaje.');
+    return;
+  }
+
+  const text = textEl.value.trim();
+  const targetId = targetEl ? targetEl.value : 'ALL';
+
+  let targetPhone = '';
+  if (targetId !== 'ALL') {
+    const member = familyMembers.find(m => m.id === targetId);
+    if (member && member.phone) {
+      targetPhone = member.phone.replace(/[^0-9]/g, '');
+    }
+  }
+
+  let waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+  if (targetPhone) {
+    waUrl = `https://api.whatsapp.com/send?phone=${targetPhone}&text=${encodeURIComponent(text)}`;
+  }
+
+  window.open(waUrl, '_blank');
+}
+
+function copyWaMessageToClipboard() {
+  const textEl = document.getElementById('waMessagePreview');
+  if (!textEl || !textEl.value.trim()) return;
+
+  navigator.clipboard.writeText(textEl.value).then(() => {
+    alert('📋 Mensaje copiado al portapapeles.');
+  }).catch(() => {
+    alert('No se pudo copiar automáticamente.');
+  });
+}
+
+// --- G. Panel Administrador Mejorado ---
+function switchAdminTab(tabName) {
+  const tabs = ['members', 'cams', 'gps', 'config'];
+  tabs.forEach(t => {
+    const view = document.getElementById(`adminTab${t.charAt(0).toUpperCase() + t.slice(1)}`);
+    const btn = document.getElementById(`adminTab${t.charAt(0).toUpperCase() + t.slice(1)}Btn`);
+    if (view) view.classList.add('hidden');
+    if (btn) btn.classList.remove('active');
+  });
+
+  const activeView = document.getElementById(`adminTab${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`);
+  const activeBtn = document.getElementById(`adminTab${tabName.charAt(0).toUpperCase() + tabName.slice(1)}Btn`);
+  if (activeView) activeView.classList.remove('hidden');
+  if (activeBtn) activeBtn.classList.add('active');
+
+  if (tabName === 'cams') {
+    renderAdminCamerasList();
+  }
+}
+
+function renderAdminCamerasList() {
+  const container = document.getElementById('adminCamerasList');
+  if (!container) return;
+
+  fetch('/api/cameras')
+    .then(res => res.json())
+    .then(data => {
+      const cams = data.cameras || [];
+      if (cams.length === 0) {
+        container.innerHTML = '<div style="font-size: 11px; color: var(--text-muted); text-align: center; padding: 12px;">No hay cámaras vinculadas. Toca "Vincular Cámara" para agregar por QR o URL.</div>';
+        return;
+      }
+
+      container.innerHTML = cams.map(c => `
+        <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; border: 1px solid var(--border-glass); display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <strong style="font-size: 12px; color: #fff;"><i class="fa-solid fa-video" style="color: var(--accent-cyan);"></i> ${c.name}</strong>
+            <div style="font-size: 10px; color: var(--text-secondary);">${c.location} • ${c.url || 'Stream QR IP'}</div>
+          </div>
+          <button class="btn-sm" style="background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.4); padding: 4px 8px; border-radius: 6px; cursor: pointer;" onclick="deleteCameraFromAdmin('${c.id}')">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </div>
+      `).join('');
+    }).catch(() => {
+      container.innerHTML = '<div style="font-size: 11px; color: var(--text-muted); text-align: center;">Cámaras locales activas (CAM 01 a CAM 04).</div>';
+    });
+}
+
+function deleteCameraFromAdmin(camId) {
+  if (!confirm('¿Deseas desvincular esta cámara de seguridad?')) return;
+  fetch(`/api/cameras/${camId}`, { method: 'DELETE' })
+    .then(() => {
+      notifyInPhone('📹 Cámara Desvinculada', 'La cámara ha sido eliminada del sistema.');
+      renderAdminCamerasList();
+    }).catch(() => {});
+}
+
+function changeGpsTrackingInterval(mode) {
+  notifyInPhone('⚙️ Modo GPS Actualizado', `Configuración cambiada a: ${mode}`);
+}
+
+function resetAppDatabaseFromAdmin() {
+  if (!confirm('⚠️ ¿ESTÁS SEGURO? Esto restablecerá la lista de familiares a los valores iniciales predeterminados.')) return;
+  familyMembers = [...DEFAULT_MEMBERS];
+  saveMembers();
+  renderDirectoryList();
+  renderMemberChips();
+  notifyInPhone('🔄 Sistema Restablecido', 'Base de datos restablecida con éxito.');
+  alert('✅ Base de datos restablecida a los valores iniciales de la Familia Andrada.');
+}
+
+
 

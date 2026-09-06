@@ -954,28 +954,158 @@
         </form>
       </div>
 
+      <!-- TAB 7: WHATSAPP CENTRO DE COMUNICACIÓN Y ALERTAS -->
+      <section id="tab-whatsapp" class="tab-pane">
+        <div class="pane-scrollable">
+          <div class="section-banner" style="background: linear-gradient(135deg, #075E54, #128C7E); color: #fff;">
+            <div class="banner-icon"><i class="fa-brands fa-whatsapp" style="font-size: 28px;"></i></div>
+            <div>
+              <h2 style="font-size: 16px; font-weight: 800; margin: 0;">Centro WhatsApp de Emergencia</h2>
+              <p style="font-size: 11px; opacity: 0.9; margin: 2px 0 0;">Envío directo y prolijo de alertas con ubicación en tiempo real.</p>
+            </div>
+          </div>
+
+          <!-- Tarjeta de Plantilla y Generador Prolijo -->
+          <div class="glass-card" style="padding: 14px; margin-bottom: 12px;">
+            <div style="font-size: 13px; font-weight: 800; color: #fff; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+              <i class="fa-brands fa-whatsapp" style="color: #25D366;"></i> Seleccionar Destinatario Familiar:
+            </div>
+            
+            <div class="form-group" style="margin-bottom: 12px;">
+              <select id="waTargetSelect" class="mobile-select" style="padding: 10px; font-size: 13px;">
+                <option value="ALL">📢 Toda la Familia Andrada (Broadcast / Grupo)</option>
+                <!-- Opciones dinámicas de familiares -->
+              </select>
+            </div>
+
+            <div style="font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 8px;">
+              Elige la plantilla de mensaje predeterminada:
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+              <button type="button" class="btn-sm" style="background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.4); padding: 10px; border-radius: 8px; font-weight: 700; text-align: left; display: flex; align-items: center; gap: 6px;" onclick="loadWaTemplate('SOS')">
+                <i class="fa-solid fa-triangle-exclamation"></i> 🚨 Alerta SOS
+              </button>
+              <button type="button" class="btn-sm" style="background: rgba(56, 189, 248, 0.2); color: #38BDF8; border: 1px solid rgba(56, 189, 248, 0.4); padding: 10px; border-radius: 8px; font-weight: 700; text-align: left; display: flex; align-items: center; gap: 6px;" onclick="loadWaTemplate('GPS')">
+                <i class="fa-solid fa-location-dot"></i> 📍 Mi Ubicación
+              </button>
+              <button type="button" class="btn-sm" style="background: rgba(16, 185, 129, 0.2); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.4); padding: 10px; border-radius: 8px; font-weight: 700; text-align: left; display: flex; align-items: center; gap: 6px;" onclick="loadWaTemplate('HOME')">
+                <i class="fa-solid fa-car"></i> 🚗 Voy a Casa
+              </button>
+              <button type="button" class="btn-sm" style="background: rgba(245, 158, 11, 0.2); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.4); padding: 10px; border-radius: 8px; font-weight: 700; text-align: left; display: flex; align-items: center; gap: 6px;" onclick="loadWaTemplate('BATTERY')">
+                <i class="fa-solid fa-battery-quarter"></i> 🔋 Batería Baja
+              </button>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 12px;">
+              <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Previsualización del Mensaje:</label>
+              <textarea id="waMessagePreview" class="mobile-input" style="height: 110px; font-size: 12px; font-family: monospace; line-height: 1.4; resize: none; padding: 10px;" placeholder="Escribe o genera un mensaje..."></textarea>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <button class="btn-mobile-submit" style="background: linear-gradient(135deg, #25D366, #128C7E); font-size: 14px; margin: 0; padding: 12px;" onclick="sendCustomWaMessage()">
+                <i class="fa-brands fa-whatsapp" style="font-size: 18px;"></i> Abrir WhatsApp y Enviar Ahora
+              </button>
+              <button class="btn-secondary" style="width: 100%; padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-glass); background: rgba(255,255,255,0.06); color: var(--text-primary); font-weight: 700; cursor: pointer;" onclick="copyWaMessageToClipboard()">
+                <i class="fa-solid fa-copy"></i> Copiar Mensaje al Portapapeles
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- Vista de Gestión (solo visible autenticado como admin) -->
       <div id="adminDashboardView" class="hidden">
         <div class="admin-badge-logged">
-          <span><i class="fa-solid fa-circle-check"></i> Sesión Administrador Activa</span>
+          <span><i class="fa-solid fa-circle-check"></i> Sesión Administrador Activa (PIN 9999)</span>
           <button class="btn-mini-logout" onclick="logoutAdmin()">Salir Admin</button>
         </div>
-        <div class="admin-safeword-config">
-          <label style="font-size: 12px; font-weight: 700; color: #fff; margin-bottom: 6px; display: block;">
-            <i class="fa-solid fa-key" style="color: var(--accent-amber);"></i> Palabra Clave Secreta Familiar:
-          </label>
-          <div style="display: flex; gap: 8px; margin-bottom: 16px;">
-            <input type="text" id="adminSafeWordInput" class="mobile-input" style="text-transform: uppercase;" value="HALCÓN AZUL">
-            <button type="button" class="btn-sm" style="background: var(--accent-amber); color: #000; font-weight: 800; border: none; padding: 0 12px;" onclick="saveSafeWordFromAdmin()">Guardar</button>
+
+        <!-- Pestañas de Navegación de Administración -->
+        <div style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 12px;">
+          <button class="btn-sm active" id="adminTabMembersBtn" style="padding: 8px 12px; background: rgba(56, 189, 248, 0.2); color: var(--accent-cyan); border: 1px solid var(--accent-cyan); border-radius: 8px; font-weight: 700; white-space: nowrap;" onclick="switchAdminTab('members')">
+            <i class="fa-solid fa-users"></i> Miembros
+          </button>
+          <button class="btn-sm" id="adminTabCamsBtn" style="padding: 8px 12px; background: rgba(255,255,255,0.08); color: #fff; border: 1px solid var(--border-glass); border-radius: 8px; font-weight: 700; white-space: nowrap;" onclick="switchAdminTab('cams')">
+            <i class="fa-solid fa-video"></i> Cámaras
+          </button>
+          <button class="btn-sm" id="adminTabGpsBtn" style="padding: 8px 12px; background: rgba(255,255,255,0.08); color: #fff; border: 1px solid var(--border-glass); border-radius: 8px; font-weight: 700; white-space: nowrap;" onclick="switchAdminTab('gps')">
+            <i class="fa-solid fa-location-crosshairs"></i> GPS & Geocercas
+          </button>
+          <button class="btn-sm" id="adminTabConfigBtn" style="padding: 8px 12px; background: rgba(255,255,255,0.08); color: #fff; border: 1px solid var(--border-glass); border-radius: 8px; font-weight: 700; white-space: nowrap;" onclick="switchAdminTab('config')">
+            <i class="fa-solid fa-gears"></i> Ajustes Sistema
+          </button>
+        </div>
+
+        <!-- Admin Tab 1: Miembros -->
+        <div id="adminTabMembers">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span class="sheet-sub" style="margin:0;">Gestiona miembros familiares y sincronización cloud:</span>
+            <button class="btn-sm" style="background: linear-gradient(135deg, #10B981, #059669); color: #fff; border: none; font-weight: 700; padding: 6px 12px; border-radius: 6px; cursor: pointer;" onclick="openRegisterModal()">
+              <i class="fa-solid fa-plus"></i> Añadir Familiar
+            </button>
+          </div>
+          <div class="admin-members-table" id="adminMembersTable">
+            <!-- Renderizado dinámico en app.js -->
           </div>
         </div>
 
-        <!-- Fondo de Pantalla Personalizado Admin -->
-        <div style="background: rgba(255, 255, 255, 0.04); border-radius: 12px; padding: 12px; margin-bottom: 16px; border: 1px solid var(--border-glass);">
-          <div style="font-size: 12px; font-weight: 700; color: #fff; margin-bottom: 8px;">
-            <i class="fa-solid fa-image" style="color: var(--accent-purple);"></i> Fondo de Interfaz Personalizado:
+        <!-- Admin Tab 2: Cámaras IP & QR -->
+        <div id="adminTabCams" class="hidden">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="font-size: 12px; font-weight: 700; color: #fff;"><i class="fa-solid fa-video" style="color: var(--accent-cyan);"></i> Cámaras Vinculadas:</span>
+            <button class="btn-sm" style="background: linear-gradient(135deg, #0284C7, #06B6D4); color: #fff; border: none; font-weight: 700; padding: 6px 12px; border-radius: 6px; cursor: pointer;" onclick="openAddCameraModal()">
+              <i class="fa-solid fa-qrcode"></i> Vincular Cámara (QR/URL)
+            </button>
           </div>
-          <div style="display: flex; flex-direction: column; gap: 8px;">
+          <div id="adminCamerasList" style="display: flex; flex-direction: column; gap: 8px;">
+            <!-- Renderizado dinámico en app.js -->
+          </div>
+        </div>
+
+        <!-- Admin Tab 3: GPS & Geocercas -->
+        <div id="adminTabGps" class="hidden">
+          <div style="background: rgba(255, 255, 255, 0.04); border-radius: 12px; padding: 12px; margin-bottom: 12px; border: 1px solid var(--border-glass);">
+            <div style="font-size: 12px; font-weight: 700; color: #fff; margin-bottom: 8px;">
+              <i class="fa-solid fa-gauge-high" style="color: var(--accent-cyan);"></i> Modo de Rastreo GPS:
+            </div>
+            <div class="form-group" style="margin-bottom: 8px;">
+              <select id="adminGpsModeSelect" class="mobile-select" onchange="changeGpsTrackingInterval(this.value)">
+                <option value="HIGH_PRECISION">🎯 Alta Precisión Real (Continuous GPS watchPosition)</option>
+                <option value="BALANCED">🔋 Balanceado (Actualización cada 10 segundos)</option>
+                <option value="POWER_SAVE">🍃 Ahorro de Batería (Actualización cada 30 segundos)</option>
+              </select>
+            </div>
+            <div style="font-size: 11px; color: var(--text-secondary);">
+              El mapa actualizará la posición física real en tiempo real con radio de exactitud de la antena GPS.
+            </div>
+          </div>
+        </div>
+
+        <!-- Admin Tab 4: Ajustes del Sistema -->
+        <div id="adminTabConfig" class="hidden">
+          <div class="admin-safeword-config">
+            <label style="font-size: 12px; font-weight: 700; color: #fff; margin-bottom: 6px; display: block;">
+              <i class="fa-solid fa-key" style="color: var(--accent-amber);"></i> Palabra Clave Secreta Familiar:
+            </label>
+            <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+              <input type="text" id="adminSafeWordInput" class="mobile-input" style="text-transform: uppercase;" value="HALCÓN AZUL">
+              <button type="button" class="btn-sm" style="background: var(--accent-amber); color: #000; font-weight: 800; border: none; padding: 0 12px;" onclick="saveSafeWordFromAdmin()">Guardar</button>
+            </div>
+          </div>
+
+          <div style="background: rgba(255, 255, 255, 0.04); border-radius: 12px; padding: 12px; margin-bottom: 12px; border: 1px solid var(--border-glass);">
+            <div style="font-size: 12px; font-weight: 700; color: #fff; margin-bottom: 6px;">
+              <i class="fa-solid fa-pen-to-square" style="color: var(--accent-emerald);"></i> Editar Plantilla Mensaje SOS:
+            </div>
+            <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+              <input type="text" id="adminSosTemplateInput" class="mobile-input" style="font-size: 12px;" placeholder="Mensaje SOS predeterminado" value="🚨 ALERTA SOS MANUAL DE EMERGENCIA FAMILIAR">
+              <button type="button" class="btn-sm" style="background: var(--accent-emerald); color: #fff; font-weight: 700; border: none; padding: 0 12px;" onclick="saveSosTemplateFromAdmin()">Guardar</button>
+            </div>
+
+            <div style="font-size: 12px; font-weight: 700; color: #fff; margin-bottom: 8px;">
+              <i class="fa-solid fa-image" style="color: var(--accent-purple);"></i> Fondo de Interfaz Personalizado:
+            </div>
             <input type="file" id="adminBgFileInput" accept="image/*" style="display: none;" onchange="handleAdminBgFileUpload(event)">
             <div style="display: flex; gap: 8px;">
               <button type="button" class="btn-sm" style="flex:1; background: var(--accent-purple); color: #fff; border: none; font-weight: 700; padding: 8px; border-radius: 8px; cursor: pointer;" onclick="document.getElementById('adminBgFileInput').click()">
@@ -986,34 +1116,19 @@
               </button>
             </div>
           </div>
-        </div>
 
-        <!-- PWA & Plantillas Admin -->
-        <div style="background: rgba(255, 255, 255, 0.04); border-radius: 12px; padding: 12px; margin-bottom: 16px; border: 1px solid var(--border-glass);">
-          <div style="font-size: 12px; font-weight: 700; color: #fff; margin-bottom: 8px;">
-            <i class="fa-solid fa-mobile-screen" style="color: #38BDF8;"></i> Aplicación Web Instalable (PWA):
-          </div>
-          <button id="btnInstallPwa" class="btn-mobile-submit" style="background: linear-gradient(135deg, #0284C7, #38BDF8); color: #fff; margin-bottom: 12px; font-size: 13px;" onclick="triggerPwaInstall()">
-            <i class="fa-solid fa-download"></i> Instalar App PWA en Celular / PC
-          </button>
-
-          <div style="font-size: 12px; font-weight: 700; color: #fff; margin-bottom: 6px;">
-            <i class="fa-solid fa-pen-to-square" style="color: var(--accent-emerald);"></i> Editar Plantilla Mensaje SOS:
-          </div>
-          <div style="display: flex; gap: 8px;">
-            <input type="text" id="adminSosTemplateInput" class="mobile-input" style="font-size: 12px;" placeholder="Mensaje SOS predeterminado" value="🚨 ALERTA SOS MANUAL DE EMERGENCIA FAMILIAR">
-            <button type="button" class="btn-sm" style="background: var(--accent-emerald); color: #fff; font-weight: 700; border: none; padding: 0 12px;" onclick="saveSosTemplateFromAdmin()">Guardar</button>
+          <div style="background: rgba(239, 68, 68, 0.1); border-radius: 12px; padding: 12px; border: 1px solid rgba(239, 68, 68, 0.3);">
+            <div style="font-size: 12px; font-weight: 800; color: #EF4444; margin-bottom: 6px;">
+              <i class="fa-solid fa-triangle-exclamation"></i> Zona Peligrosa (Mantenimiento):
+            </div>
+            <button class="btn-sm" style="width: 100%; background: rgba(239, 68, 68, 0.25); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.5); font-weight: 700; padding: 8px; border-radius: 8px; cursor: pointer;" onclick="resetAppDatabaseFromAdmin()">
+              <i class="fa-solid fa-rotate-left"></i> Restablecer Datos de la App y Cargar Predeterminados
+            </button>
           </div>
         </div>
-
-        <p class="sheet-sub">Gestiona y corrige errores de registro de familiares:</p>
-        
-        <div class="admin-members-table" id="adminMembersTable">
-          <!-- Renderizado dinámico en app.js -->
-        </div>
-
-        <button class="btn-add-member-admin" onclick="openRegisterModal()"><i class="fa-solid fa-plus"></i> Agregar Nuevo Familiar</button>
       </div>
+    </div>
+  </div>
     </div>
   </div>
 
