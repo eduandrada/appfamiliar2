@@ -1254,6 +1254,79 @@
     </div>
   </div>
 
+  <!-- MODAL DE AÑADIR CÁMARA DE SEGURIDAD (QR & URL REMOTA) -->
+  <div id="addCameraModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="addCamTitle">
+    <div class="modal-card glass-card" style="max-width: 440px; width: 92%;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 id="addCamTitle" style="font-size: 16px; font-weight: 800; color: var(--accent-cyan); display: flex; align-items: center; gap: 8px;">
+          <i class="fa-solid fa-qrcode"></i> Vinculación de Cámara IP / QR
+        </h3>
+        <button class="btn-sheet-close" onclick="closeAddCameraModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div style="display: flex; gap: 8px; margin-bottom: 14px;">
+        <button class="btn-sm active" id="tabCamQrBtn" style="flex: 1; padding: 8px; background: rgba(56, 189, 248, 0.2); color: var(--accent-cyan); border: 1px solid var(--accent-cyan); border-radius: 8px; font-weight: 700;" onclick="switchCamTab('qr')">
+          <i class="fa-solid fa-qrcode"></i> Escanear QR
+        </button>
+        <button class="btn-sm" id="tabCamUrlBtn" style="flex: 1; padding: 8px; background: rgba(255, 255, 255, 0.08); color: #fff; border: 1px solid var(--border-glass); border-radius: 8px; font-weight: 700;" onclick="switchCamTab('url')">
+          <i class="fa-solid fa-link"></i> URL Remota / IP
+        </button>
+      </div>
+
+      <!-- Vista Escaneo QR -->
+      <div id="camQrScanView" style="text-align: center; padding: 12px 0;">
+        <div style="width: 210px; height: 210px; margin: 0 auto 12px; border: 2px stroke var(--accent-cyan); border-radius: 16px; position: relative; overflow: hidden; background: #000; display: flex; align-items: center; justify-content: center;">
+          <div style="position: absolute; top:0; left:0; width:100%; height:4px; background: #06B6D4; box-shadow: 0 0 15px #06B6D4; animation: scanLine 2s infinite ease-in-out;"></div>
+          <i class="fa-solid fa-camera-retro" style="font-size: 54px; color: rgba(255,255,255,0.3);"></i>
+        </div>
+        <p style="font-size: 11px; color: var(--text-secondary); margin-bottom: 12px;">Apunta con la cámara al código QR grabado en la base o empaque de tu cámara IP.</p>
+        <button class="btn-mobile-submit" style="background: linear-gradient(135deg, #0284C7, #06B6D4); font-size: 13px; padding: 10px;" onclick="simulateQrCameraScan()">
+          <i class="fa-solid fa-bolt"></i> Simular Lectura QR Automática
+        </button>
+      </div>
+
+      <!-- Vista Formulario URL IP Remota -->
+      <div id="camUrlView" class="hidden">
+        <form onsubmit="handleRemoteCameraSubmit(event)">
+          <div class="form-group">
+            <label>Nombre de la Cámara:</label>
+            <input type="text" id="camNameInput" class="mobile-input" placeholder="Ej: Cámara Garaje / Frente" required>
+          </div>
+
+          <div class="form-group">
+            <label>Ubicación / Zona del Hogar:</label>
+            <input type="text" id="camLocationInput" class="mobile-input" placeholder="Ej: Garaje Exterior" required>
+          </div>
+
+          <div class="form-group">
+            <label>URL de Stream Remota / RTSP / WebRTC:</label>
+            <input type="url" id="camUrlInput" class="mobile-input" placeholder="https://mi-camara.ddns.net:8443/video" required>
+          </div>
+
+          <button type="submit" class="btn-mobile-submit" style="background: linear-gradient(135deg, #10B981, #059669); font-size: 13px; padding: 10px;">
+            <i class="fa-solid fa-circle-check"></i> Vincular Cámara Remota
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE PERFIL COMPLETO Y DETALLADO DE MIEMBRO -->
+  <div id="fullMemberDetailModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="memberDetailTitle">
+    <div class="modal-card glass-card" style="max-width: 440px; width: 92%;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+        <h3 id="memberDetailTitle" style="font-size: 16px; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 8px;">
+          <i class="fa-solid fa-user-shield" style="color: var(--accent-cyan);"></i> Perfil Detallado de Familiar
+        </h3>
+        <button class="btn-sheet-close" onclick="closeFullMemberDetailModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div id="fullMemberDetailContent" style="text-align: center;">
+        <!-- Contenido dinámico renderizado por JS -->
+      </div>
+    </div>
+  </div>
+
   <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <!-- Scripts de la Aplicación -->

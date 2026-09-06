@@ -15,9 +15,9 @@ except ImportError:
     from python_engine.rules import SafetyRuleEngine, SAFE_ZONES_ANDRADA
 
 app = FastAPI(
-    title="Familia Andrada - Motor de Seguridad Inteligente",
-    description="Microservicio en Python para evaluación de reglas espaciales, eventos críticos y servidor Web UI.",
-    version="2026.1.0"
+    title="Familia Andrada - Motor de Seguridad Inteligente 2026",
+    description="Microservicio en Python para evaluación de reglas espaciales, cámaras QR y servidor Web UI.",
+    version="2026.2.0"
 )
 
 app.add_middleware(
@@ -112,15 +112,40 @@ DEFAULT_MEMBERS = [
     }
 ]
 
+DEFAULT_CAMERAS = [
+    {
+        "id": "cam_01",
+        "name": "Cámara Entrada Principal",
+        "location": "Entrada / Porche",
+        "stream_url": "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80",
+        "qr_code": "CAM_QR_ENTRADA_ANDRADA_2026",
+        "is_online": True,
+        "type": "IP_FULL_HD"
+    },
+    {
+        "id": "cam_02",
+        "name": "Cámara Patio / Jardín",
+        "location": "Patio Trasero",
+        "stream_url": "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80",
+        "qr_code": "CAM_QR_PATIO_ANDRADA_2026",
+        "is_online": True,
+        "type": "IP_NIGHT_VISION"
+    }
+]
+
 def load_data_store() -> dict:
     if os.path.exists(DATA_FILE):
         try:
             with open(DATA_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+                data = json.load(f)
+                if "cameras" not in data:
+                    data["cameras"] = DEFAULT_CAMERAS
+                return data
         except Exception:
             pass
     return {
         "members": DEFAULT_MEMBERS,
+        "cameras": DEFAULT_CAMERAS,
         "check_ins": [],
         "alerts": [],
         "audit_logs": []
@@ -135,6 +160,132 @@ def save_data_store(data: dict):
 
 DATA_STORE = load_data_store()
 
+@app.get("/manifest.json")
+def get_manifest():
+    manifest_file = os.path.join(WEB_DIR, "manifest.json")
+    if os.path.exists(manifest_file):
+        return FileResponse(manifest_file, media_type="application/manifest+json")
+    return {"error": "manifest.json not found"}
+
+@app.get("/sw.js")
+def get_service_worker():
+    sw_file = os.path.join(WEB_DIR, "sw.js")
+    if os.path.exists(sw_file):
+        return FileResponse(sw_file, media_type="application/javascript")
+    return {"error": "sw.js not found"}
+
+@app.get("/api/health")
+@app.get("/api/info")
+def system_info():
+    return {
+        "title": "Familia Andrada",
+        "subtitle": "Protección Familiar",
+        "system": "Motor de Reglas y Edge AI en Python",
+        "status": "ONLINE",
+        "version": "2026.2.0",
+        "features": ["Single Access Gate", "QR Camera Remoting", "Realtime GPS", "PWA Ready", "Cloud Multi-User Sync"]
+    }
+
+@app.get("/api/safe-zones")
+def get_safe_zones():
+    return {"safe_zones": SAFE_ZONES_ANDRADA}
+
+@app.get("/api/members")
+def get_members():
+    return {"members": DATA_STORE.get("members", DEFAULT_MEMBERS)}
+
+# CRUD DE MIEMBROS EN EL BACKEND (RESUELVE EL BUG DE RE-APARICIÓN)
+class MemberUpdateInput(BaseModel):
+    name: str
+    dni: str
+    phone: str
+    pin: Optional[str] = None
+    role: Optional[str] = None
+    zone: Optional[str] = None
+
+@app.put("/api/members/{member_id}")
+def update_member(member_id: str, data: MemberUpdateInput):
+    members = DATA_STORE.get("members", [])
+    found = False
+    for m in members:
+        if m["id"] == member_id:
+            m["name"] = data.name
+            m["dni"] = data.dni
+            m["phone"] = data.phone
+            if data.pin:
+                m["pin"] = data.pin
+            if data.role:
+                m["role"] = data.role
+            if data.zone:
+                m["zone"] = data.zone
+            found = True
+            break
+    if found:
+        save_data_store(DATA_STORE)
+        return {"status": "SUCCESS", "message": f"Miembro {member_id} actualizado", "members": members}
+    raise HTTPException(status_code=404, detail="Miembro no encontrado")
+
+@app.delete("/api/members/{member_id}")
+def delete_member(member_id: str):
+    members = DATA_STORE.get("members", [])
+    if len(members) <= 1:
+        raise HTTPException(status_code=400, detail="No se puede eliminar el único miembro del círculo")
+    
+    new_members = [m for m in members if m["id"] != member_id]
+    if len(new_members) < len(members):
+        DATA_STORE["members"] = new_members
+        save_data_store(DATA_STORE)
+        return {"status": "SUCCESS", "message": f"Miembro {member_id} eliminado permanentemente", "members": new_members}
+    raise HTTPException(status_code=404, detail="Miembro no encontrado")
+
+# CÁMARAS DE SEGURIDAD (QR & REMOTO)
+class AddCameraInput(BaseModel):
+    name: str
+    location: str
+    qr_code: Optional[str] = None
+    stream_url: Optional[str] = None
+
+@app.get("/api/cameras")
+def get_cameras():
+    return {"cameras": DATA_STORE.get("cameras", DEFAULT_CAMERAS)}
+
+@app.post("/api/cameras")
+def add_camera(data: AddCameraInput):
+    cameras = DATA_STORE.get("cameras", [])
+    new_cam = {
+        "id": f"cam_{int(datetime.now().timestamp())}",
+        "name": data.name,
+        "location": data.location,
+        "qr_code": data.qr_code or f"CAM_QR_{int(datetime.now().timestamp())}",
+        "stream_url": data.stream_url or "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80",
+        "is_online": True,
+        "added_at": datetime.now().isoformat()
+    }
+    cameras.append(new_cam)
+    DATA_STORE["cameras"] = cameras
+    save_data_store(DATA_STORE)
+    return {"status": "SUCCESS", "camera": new_cam, "cameras": cameras}
+
+@app.delete("/api/cameras/{cam_id}")
+def delete_camera(cam_id: str):
+    cameras = DATA_STORE.get("cameras", [])
+    new_cams = [c for c in cameras if c["id"] != cam_id]
+    DATA_STORE["cameras"] = new_cams
+    save_data_store(DATA_STORE)
+    return {"status": "SUCCESS", "cameras": new_cams}
+
+@app.get("/api/sync")
+def get_cloud_sync():
+    return {
+        "status": "ONLINE",
+        "timestamp": datetime.now().isoformat(),
+        "members": DATA_STORE.get("members", []),
+        "cameras": DATA_STORE.get("cameras", []),
+        "check_ins": DATA_STORE.get("check_ins", [])[-15:],
+        "alerts": DATA_STORE.get("alerts", [])[-10:],
+        "audit_logs": DATA_STORE.get("audit_logs", [])[-15:]
+    }
+
 class LoginInput(BaseModel):
     member_id: str
     pin: str
@@ -143,7 +294,7 @@ class LoginInput(BaseModel):
 def login_member(data: LoginInput):
     members = DATA_STORE.get("members", DEFAULT_MEMBERS)
     
-    # PIN de Administrador Maestro 9999 siempre otorga acceso total de Admin
+    # PIN Maestro de Administrador 9999 otorga acceso total de Admin incondicional
     if data.pin == "9999":
         admin_user = next((m for m in members if m["id"] == "carlos_andrada" or "Padre" in m.get("role","")), members[0])
         return {
@@ -166,6 +317,66 @@ def login_member(data: LoginInput):
                 return JSONResponse(status_code=401, content={"status": "ERROR", "message": "PIN Incorrecto"})
                 
     return JSONResponse(status_code=404, content={"status": "ERROR", "message": "Usuario no encontrado"})
+
+class RegisterMemberInput(BaseModel):
+    name: str
+    dni: str
+    phone: str
+    pin: str
+    role: Optional[str] = "Familiar"
+
+@app.post("/api/register")
+def register_member(data: RegisterMemberInput):
+    members = DATA_STORE.get("members", [])
+    initials = "".join([n[0] for n in data.name.split() if n]).upper()[:2] or "FA"
+    new_member = {
+        "id": f"member_{int(datetime.now().timestamp()*1000)}",
+        "name": data.name,
+        "dni": data.dni,
+        "phone": data.phone,
+        "pin": data.pin,
+        "role": data.role or "Familiar",
+        "lat": -34.603722,
+        "lng": -58.381592,
+        "battery": 100,
+        "speed": 0.0,
+        "zone": "Casa Andrada",
+        "avatar": initials,
+        "network_type": "WIFI_HOME",
+        "network_label": "🟢 WiFi Casa",
+        "last_seen": datetime.now().isoformat()
+    }
+    members.append(new_member)
+    DATA_STORE["members"] = members
+    save_data_store(DATA_STORE)
+    return {"status": "SUCCESS", "member": new_member, "members": members}
+
+class LocationUpdateInput(BaseModel):
+    member_id: str
+    lat: float
+    lng: float
+    battery: Optional[int] = 100
+    speed: Optional[float] = 0.0
+    zone: Optional[str] = "Ubicación en Vivo"
+
+@app.post("/api/location")
+def update_member_location(data: LocationUpdateInput):
+    members = DATA_STORE.get("members", [])
+    updated = False
+    for m in members:
+        if m["id"] == data.member_id:
+            m["lat"] = data.lat
+            m["lng"] = data.lng
+            m["battery"] = data.battery
+            m["speed"] = data.speed
+            m["zone"] = data.zone
+            m["last_seen"] = datetime.now().isoformat()
+            updated = True
+            break
+    if updated:
+        save_data_store(DATA_STORE)
+        return {"status": "UPDATED", "member_id": data.member_id}
+    return {"status": "NOT_FOUND"}
 
 class HeartbeatInput(BaseModel):
     member_id: str
@@ -208,107 +419,6 @@ def receive_heartbeat(data: HeartbeatInput):
     if updated_member:
         save_data_store(DATA_STORE)
         return {"status": "ACK", "member": updated_member}
-    return {"status": "NOT_FOUND"}
-
-@app.get("/manifest.json")
-def get_manifest():
-    manifest_file = os.path.join(WEB_DIR, "manifest.json")
-    if os.path.exists(manifest_file):
-        return FileResponse(manifest_file, media_type="application/manifest+json")
-    return {"error": "manifest.json not found"}
-
-@app.get("/sw.js")
-def get_service_worker():
-    sw_file = os.path.join(WEB_DIR, "sw.js")
-    if os.path.exists(sw_file):
-        return FileResponse(sw_file, media_type="application/javascript")
-    return {"error": "sw.js not found"}
-
-@app.get("/api/health")
-@app.get("/api/info")
-def system_info():
-    return {
-        "title": "Familia Andrada",
-        "subtitle": "Protección Familiar",
-        "system": "Motor de Reglas y Edge AI en Python",
-        "status": "ONLINE",
-        "version": "2026.1.0",
-        "features": ["PWA Ready", "Cloud Multi-User Persistence", "Gait Snatch Detection", "Voice Stress Analysis", "Direct-to-Cell Satellite Ping", "BLE Mesh Tracking"]
-    }
-
-@app.get("/api/safe-zones")
-def get_safe_zones():
-    return {"safe_zones": SAFE_ZONES_ANDRADA}
-
-@app.get("/api/members")
-def get_members():
-    return {"members": DATA_STORE.get("members", DEFAULT_MEMBERS)}
-
-@app.get("/api/sync")
-def get_cloud_sync():
-    return {
-        "status": "ONLINE",
-        "timestamp": datetime.now().isoformat(),
-        "members": DATA_STORE.get("members", []),
-        "check_ins": DATA_STORE.get("check_ins", [])[-15:],
-        "alerts": DATA_STORE.get("alerts", [])[-10:],
-        "audit_logs": DATA_STORE.get("audit_logs", [])[-15:]
-    }
-
-class RegisterMemberInput(BaseModel):
-    name: str
-    dni: str
-    phone: str
-    pin: str
-    role: Optional[str] = "Familiar"
-
-@app.post("/api/register")
-def register_member(data: RegisterMemberInput):
-    members = DATA_STORE.get("members", [])
-    initials = "".join([n[0] for n in data.name.split() if n]).upper()[:2] or "FA"
-    new_member = {
-        "id": f"member_{int(datetime.now().timestamp()*1000)}",
-        "name": data.name,
-        "dni": data.dni,
-        "phone": data.phone,
-        "pin": data.pin,
-        "role": data.role or "Familiar",
-        "lat": -34.603722,
-        "lng": -58.381592,
-        "battery": 100,
-        "speed": 0.0,
-        "zone": "Casa Andrada",
-        "avatar": initials
-    }
-    members.append(new_member)
-    DATA_STORE["members"] = members
-    save_data_store(DATA_STORE)
-    return {"status": "SUCCESS", "member": new_member, "members": members}
-
-class LocationUpdateInput(BaseModel):
-    member_id: str
-    lat: float
-    lng: float
-    battery: Optional[int] = 100
-    speed: Optional[float] = 0.0
-    zone: Optional[str] = "Ubicación en Vivo"
-
-@app.post("/api/location")
-def update_member_location(data: LocationUpdateInput):
-    members = DATA_STORE.get("members", [])
-    updated = False
-    for m in members:
-        if m["id"] == data.member_id:
-            m["lat"] = data.lat
-            m["lng"] = data.lng
-            m["battery"] = data.battery
-            m["speed"] = data.speed
-            m["zone"] = data.zone
-            updated = True
-            break
-    if updated:
-        save_data_store(DATA_STORE)
-        return {"status": "UPDATED", "member_id": data.member_id}
     return {"status": "NOT_FOUND"}
 
 class CheckInInput(BaseModel):

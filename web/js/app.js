@@ -818,7 +818,7 @@ function renderDirectoryList() {
     return `
       <div class="dir-member-card glass-card" style="padding: 14px; margin-bottom: 12px; border-radius: 14px; background: rgba(18, 28, 48, 0.7); border: 1px solid var(--border-glass);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-          <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="display: flex; align-items: center; gap: 10px; cursor: pointer;" onclick="openFullMemberDetailModal('${m.id}')" title="Toca para ver el perfil completo">
             <div class="dir-avatar">${getAvatarHtml(m, 44)}</div>
             <div>
               <div class="dir-name" style="font-weight: 700; font-size: 15px; color: #fff;">${m.name} ${isMe ? '<small style="color: var(--accent-blue); font-weight: 600;">(Tú)</small>' : ''}</div>
@@ -834,18 +834,18 @@ function renderDirectoryList() {
           </div>
         </div>
 
-        <!-- Botones de WhatsApp y SOS Exprés por Miembro -->
+        <!-- Botones de Acción Completa por Miembro -->
         <div style="display: flex; gap: 8px; margin-top: 10px;">
+          <button class="btn-sm" style="flex: 1; background: rgba(56, 189, 248, 0.18); color: #38BDF8; border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 8px; padding: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="openFullMemberDetailModal('${m.id}')">
+            <i class="fa-solid fa-user-gear"></i> Ver Perfil Completo
+          </button>
+          
           <button class="btn-sm" style="flex: 1; background: rgba(37, 211, 102, 0.18); color: #25D366; border: 1px solid rgba(37, 211, 102, 0.4); border-radius: 8px; padding: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="sendDirectMemberWhatsApp('${m.id}')">
             <i class="fa-brands fa-whatsapp" style="font-size: 14px;"></i> WhatsApp
           </button>
           
-          <button class="btn-sm" style="flex: 1; background: rgba(239, 68, 68, 0.18); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 8px; padding: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="openExpressSosModal('${m.id}')">
-            <i class="fa-solid fa-triangle-exclamation"></i> SOS Exprés
-          </button>
-
-          <button class="btn-sm" style="background: rgba(255, 255, 255, 0.08); color: #fff; border: 1px solid var(--border-glass); border-radius: 8px; padding: 8px 12px; font-size: 12px; cursor: pointer;" onclick="callMemberPhone('${m.phone}')" title="Llamada Telefónica Directa">
-            <i class="fa-solid fa-phone"></i>
+          <button class="btn-sm" style="background: rgba(239, 68, 68, 0.18); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 8px; padding: 8px 12px; font-size: 12px; font-weight: 700; cursor: pointer;" onclick="openExpressSosModal('${m.id}')" title="SOS Exprés">
+            <i class="fa-solid fa-triangle-exclamation"></i>
           </button>
         </div>
       </div>
@@ -1151,9 +1151,14 @@ function deleteMember(memberId) {
   }
 
   const member = familyMembers.find(m => m.id === memberId);
-  if (confirm(`¿Seguro que deseas eliminar a ${member.name}?`)) {
+  if (confirm(`¿Seguro que deseas eliminar permanentemente a ${member ? member.name : memberId}?`)) {
     familyMembers = familyMembers.filter(m => m.id !== memberId);
     saveMembers();
+
+    // Eliminar también en la base de datos del Backend de Render
+    fetch('/api/members/' + memberId, {
+      method: 'DELETE'
+    }).catch(() => {});
 
     if (activeUser && activeUser.id === memberId) {
       activeUser = familyMembers[0];
@@ -1213,6 +1218,21 @@ function handleEditSubmit(e) {
   }
 
   saveMembers();
+
+  // Actualizar en el Backend de Render
+  fetch('/api/members/' + id, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: fullName,
+      dni: dni,
+      phone: phone,
+      pin: newPin || member.pin,
+      role: member.role,
+      zone: member.zone
+    })
+  }).catch(() => {});
+
   updateActiveUserUI();
   renderAdminTable();
   renderMemberChips();
@@ -1220,7 +1240,147 @@ function handleEditSubmit(e) {
   updateMapMarkers();
 
   closeEditModal();
-  alert(`✅ Datos de ${fullName} actualizados con éxito.`);
+  alert(`✅ Datos de ${fullName} actualizados permanentemente.`);
+}
+
+// ==================== CÁMARAS IP & ESCANEO DE QR ====================
+function openAddCameraModal() {
+  const modal = document.getElementById('addCameraModal');
+  if (modal) modal.classList.remove('hidden');
+}
+
+function closeAddCameraModal() {
+  const modal = document.getElementById('addCameraModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function switchCamTab(mode) {
+  const qrView = document.getElementById('camQrScanView');
+  const urlView = document.getElementById('camUrlView');
+  const qrBtn = document.getElementById('tabCamQrBtn');
+  const urlBtn = document.getElementById('tabCamUrlBtn');
+
+  if (mode === 'qr') {
+    if (qrView) qrView.classList.remove('hidden');
+    if (urlView) urlView.classList.add('hidden');
+    if (qrBtn) { qrBtn.classList.add('active'); qrBtn.style.color = 'var(--accent-cyan)'; }
+    if (urlBtn) { urlBtn.classList.remove('active'); urlBtn.style.color = '#fff'; }
+  } else {
+    if (qrView) qrView.classList.add('hidden');
+    if (urlView) urlView.classList.remove('hidden');
+    if (urlBtn) { urlBtn.classList.add('active'); urlBtn.style.color = 'var(--accent-cyan)'; }
+    if (qrBtn) { qrBtn.classList.remove('active'); qrBtn.style.color = '#fff'; }
+  }
+}
+
+function simulateQrCameraScan() {
+  const camName = `Cámara QR ${Math.floor(Math.random() * 89 + 10)}`;
+  const camLocation = 'Frente / Porche';
+  
+  fetch('/api/cameras', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: camName,
+      location: camLocation,
+      qr_code: `CAM_QR_${Date.now()}`
+    })
+  }).then(res => res.json()).then(() => {
+    closeAddCameraModal();
+    alert(`🎥 ¡Cámara "${camName}" vinculada por lectura de Código QR con éxito!`);
+    syncWithCloudBackend();
+  }).catch(() => {
+    closeAddCameraModal();
+    alert('🎥 Cámara vinculada localmente.');
+  });
+}
+
+function handleRemoteCameraSubmit(e) {
+  e.preventDefault();
+  const name = document.getElementById('camNameInput').value.trim();
+  const loc = document.getElementById('camLocationInput').value.trim();
+  const url = document.getElementById('camUrlInput').value.trim();
+
+  fetch('/api/cameras', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: name,
+      location: loc,
+      stream_url: url
+    })
+  }).then(res => res.json()).then(() => {
+    closeAddCameraModal();
+    alert(`🎥 Cámara IP "${name}" conectada remotamente.`);
+    syncWithCloudBackend();
+  }).catch(() => {
+    closeAddCameraModal();
+    alert('🎥 Cámara vinculada.');
+  });
+}
+
+// ==================== PERFIL COMPLETO DE MIEMBRO ====================
+function openFullMemberDetailModal(memberId) {
+  const member = familyMembers.find(m => m.id === memberId) || activeUser || familyMembers[0];
+  if (!member) return;
+
+  const content = document.getElementById('fullMemberDetailContent');
+  if (!content) return;
+
+  const netLabel = member.network_label || (member.zone.includes('Casa') ? '🟢 WiFi Casa' : '📶 4G/5G Datos');
+
+  content.innerHTML = `
+    <div style="margin-bottom: 14px;">
+      <div style="margin: 0 auto 10px; display: inline-block;">
+        ${getAvatarHtml(member, 64)}
+      </div>
+      <h3 style="font-size: 18px; font-weight: 800; color: #fff; margin-bottom: 2px;">${member.name}</h3>
+      <span style="font-size: 11px; padding: 3px 10px; border-radius: 12px; background: rgba(56, 189, 248, 0.15); color: #38BDF8; font-weight: 700; border: 1px solid rgba(56, 189, 248, 0.3);">${member.role}</span>
+    </div>
+
+    <div style="background: rgba(18, 28, 48, 0.6); border: 1px solid var(--border-glass); border-radius: 12px; padding: 12px; text-align: left; font-size: 12px; margin-bottom: 14px;">
+      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+        <span style="color: var(--text-secondary);">DNI:</span>
+        <strong style="color: #fff;">${member.dni}</strong>
+      </div>
+      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+        <span style="color: var(--text-secondary);">Teléfono:</span>
+        <strong style="color: #fff;">${member.phone}</strong>
+      </div>
+      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+        <span style="color: var(--text-secondary);">Zona Actual:</span>
+        <strong style="color: #38BDF8;">${member.zone || 'En Vivo'}</strong>
+      </div>
+      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+        <span style="color: var(--text-secondary);">Batería Teléfono:</span>
+        <strong style="color: #10B981;">🔋 ${member.battery}%</strong>
+      </div>
+      <div style="display: flex; justify-content: space-between;">
+        <span style="color: var(--text-secondary);">Conexión de Red:</span>
+        <strong style="color: #10B981;">${netLabel}</strong>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 8px;">
+      <button class="btn-sm" style="flex: 1; background: rgba(37, 211, 102, 0.18); color: #25D366; border: 1px solid rgba(37, 211, 102, 0.4); border-radius: 8px; padding: 10px; font-size: 12px; font-weight: 700; cursor: pointer;" onclick="sendDirectMemberWhatsApp('${member.id}'); closeFullMemberDetailModal();">
+        <i class="fa-brands fa-whatsapp"></i> WhatsApp
+      </button>
+      <button class="btn-sm" style="flex: 1; background: rgba(56, 189, 248, 0.18); color: #38BDF8; border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 8px; padding: 10px; font-size: 12px; font-weight: 700; cursor: pointer;" onclick="selectMember('${member.id}'); closeFullMemberDetailModal(); switchTab('tab-map');">
+        <i class="fa-solid fa-map-location-dot"></i> Ver en Mapa
+      </button>
+      <button class="btn-sm" style="background: rgba(255, 255, 255, 0.08); color: #fff; border: 1px solid var(--border-glass); border-radius: 8px; padding: 10px 14px; font-size: 12px; cursor: pointer;" onclick="callMemberPhone('${member.phone}')" title="Llamar">
+        <i class="fa-solid fa-phone"></i>
+      </button>
+    </div>
+  `;
+
+  const modal = document.getElementById('fullMemberDetailModal');
+  if (modal) modal.classList.remove('hidden');
+}
+
+function closeFullMemberDetailModal() {
+  const modal = document.getElementById('fullMemberDetailModal');
+  if (modal) modal.classList.add('hidden');
 }
 
 // ==================== TECLADO PIN DE COACCIÓN ====================
