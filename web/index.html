@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#070B14">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Familia Andrada - Protección Familiar</title>
+  <meta name="description" content="Aplicación móvil de protección familiar con mapa en tiempo real, detección de fraudes, alertas SOS y más.">
+  
+  <!-- Tipografía Google Fonts 2026: Plus Jakarta Sans, Outfit & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Leaflet Map CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  
+  <!-- Estilos Mobile-First CSS -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="dark-theme mobile-layout">
+
+  <!-- Falso Apagado (Ghost Mode Overlay) -->
+  <div id="fakeShutdownOverlay" class="fake-shutdown-screen hidden" aria-hidden="true">
+
+    <div class="fake-shutdown-hint" aria-live="polite">Modo Falso Apagado Activo (Toca 5 veces para desbloquear)</div>
+  </div>
+
+  <!-- Contenedor Principal Ajustado para Móvil (Mobile Shell) -->
+  <div class="mobile-app-shell">
+    
+    <!-- Header Superior Móvil -->
+    <header class="mobile-header" role="banner">
+      <div class="header-brand">
+        <div class="brand-avatar">
+          <i class="fa-solid fa-shield-heart"></i>
+        </div>
+        <div>
+          <h1 class="brand-name">Familia Andrada</h1>
+          <p class="brand-tagline">Protección Familiar</p>
+        </div>
+      </div>
+
+      <div class="header-controls">
+        <button id="btnThemeToggle" class="icon-touch-btn" title="Cambiar Modo Oscuro / Claro" aria-label="Cambiar tema" onclick="toggleThemeMode()">
+          <i class="fa-solid fa-moon" id="themeIcon" aria-hidden="true"></i>
+        </button>
+        <button id="btnVoiceGuide" class="icon-touch-btn voice-btn" title="Explicar por Voz en Tiempo Real" aria-label="Guía de voz" onclick="toggleVoiceGuide()">
+          <i class="fa-solid fa-volume-high" aria-hidden="true"></i>
+        </button>
+        <button id="btnAiAssistant" class="icon-touch-btn ai-btn" title="Asistente Virtual con Inteligencia Artificial" aria-label="Asistente AI" onclick="openAiAssistantModal()">
+          <i class="fa-solid fa-robot" aria-hidden="true"></i>
+        </button>
+        <button id="userSessionPill" class="session-pill" aria-label="Iniciar sesión" onclick="openLoginModal()">
+          <i class="fa-solid fa-user-circle" aria-hidden="true"></i>
+          <span id="activeUserName">Ingresar</span>
+        </button>
+        <button id="btnBellNotify" class="icon-touch-btn" title="Activar Notificaciones al Celular" aria-label="Notificaciones" onclick="initPushNotifications()">
+          <i class="fa-solid fa-bell" aria-hidden="true"></i>
+        </button>
+      </div>
+    </header>
+<!-- AI Assistant Modal -->
+<div id="aiAssistantModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="aiAssistantTitle">
+  <div class="modal-content">
+    <header class="modal-header">
+      <h2 id="aiAssistantTitle">Asistente Virtual</h2>
+      <button class="close-btn" onclick="closeAiAssistantModal()" aria-label="Cerrar asistente">✖</button>
+    </header>
+    <div id="chatHistory" class="chat-history" aria-live="polite"></div>
+    <form id="chatForm" onsubmit="event.preventDefault(); sendMessage();">
+      <input type="text" id="chatInput" placeholder="Escribe tu pregunta..." autocomplete="off" required />
+      <button type="submit" class="send-btn"><i class="fa-solid fa-paper-plane"></i></button>
+    </form>
+  </div>
+</div>
+
+    <!-- Barra de Estado de Voz (Visible mientras habla) -->
+    <div id="voiceSpeechBar" class="voice-speech-bar hidden">
+      <div class="voice-wave-anim">
+        <span></span><span></span><span></span><span></span>
+      </div>
+      <span id="voiceSpeechText">Explicando pantalla en tiempo real...</span>
+      <button class="btn-voice-stop" onclick="stopVoiceGuide()"><i class="fa-solid fa-stop"></i> Detener</button>
+    </div>
+
+    <!-- Barra Superior de Telemetría: WiFi, IP, Distancia y Cronómetro -->
+    <div class="network-telemetry-bar">
+      <div class="net-item">
+        <i class="fa-solid fa-wifi"></i>
+        <span id="netWifiInfo"><strong id="netWifiName">WiFi Casa</strong> <small id="netIpAddress">IP: 190.18.24.112</small></span>
+      </div>
+      <div class="net-item">
+        <i class="fa-solid fa-location-crosshairs"></i>
+        <span id="netDistanceInfo"><strong id="netDistanceLabel">En Casa (0m)</strong></span>
+      </div>
+      <div class="net-item">
+        <i class="fa-solid fa-stopwatch"></i>
+        <span id="netTimeInfo"><strong id="netStopwatch">00h 00m 00s</strong></span>
+      </div>
+    </div>
+
+    <!-- Banner de Modo Prueba / Simulación vs Modo Real (Prevención de Falsas Alarmas) -->
+    <div id="drillModeBanner" class="drill-mode-banner">
+      <div class="drill-badge" id="drillBadgeText"><i class="fa-solid fa-graduation-cap"></i> MODO PRUEBA</div>
+      <span class="drill-text" id="drillStatusText">Pruebas seguras sin alertar a contactos</span>
+      <button class="btn-toggle-mode" onclick="toggleDrillMode()" title="Cambiar modo de operación">
+        <i class="fa-solid fa-shield-halved"></i> <span id="drillToggleLabel">Pasar a Modo Real</span>
+      </button>
+    </div>
+
+    <!-- Contenido Dinámico de Pestañas (Tabs) -->
+    <main class="tab-content-viewport">
+      
+      <!-- TAB 1: MAPA EN VIVO & CENTRO DE RESPUESTA -->
+      <section id="tab-map" class="tab-pane active">
+        <div class="pane-scrollable" style="padding-bottom: 30px;">
+          <!-- Selector flotante horizontal de miembros -->
+          <div class="member-chip-bar" id="mapMemberChips">
+            <!-- Renderizado dinámico en app.js -->
+          </div>
+
+          <!-- Contenedor del Mapa Leaflet -->
+          <div class="mobile-map-container" style="min-height: 260px; height: 260px; flex: none;">
+            <div id="familyMap" class="map-surface"></div>
+            
+            <div class="map-floating-status">
+              <div class="radar-dot"></div>
+              <span id="mapStatusText">Rastreo Activo en Tiempo Real</span>
+            </div>
+
+            <button class="btn-floating-center" onclick="centerMapOnFamily()" title="Centrar Mapa">
+              <i class="fa-solid fa-crosshairs"></i>
+            </button>
+          </div>
+
+          <!-- BARRA DE CHECK-INS RÁPIDOS (1-TOQUE) -->
+          <div class="glass-card quick-checkin-card" style="padding: 12px; margin-top: 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-size: 12px; font-weight: 700; color: #fff;"><i class="fa-solid fa-bell" style="color: var(--accent-blue);"></i> Check-ins Rápidos (1-Toque):</span>
+              <span id="speedometerBadge" class="badge-tag" style="background: rgba(16, 185, 129, 0.18); color: #10B981; font-size: 11px;">0 km/h</span>
+            </div>
+            <div class="quick-checkin-buttons" style="display: flex; gap: 8px;">
+              <button class="btn-checkin btn-checkin-green" onclick="sendQuickCheckIn('Llegué bien')">
+                <i class="fa-solid fa-circle-check"></i> Llegué bien
+              </button>
+              <button class="btn-checkin btn-checkin-amber" onclick="sendQuickCheckIn('Demorado/a')">
+                <i class="fa-solid fa-clock"></i> Demorado/a
+              </button>
+              <button class="btn-checkin btn-checkin-blue" onclick="sendQuickCheckIn('En camino')">
+                <i class="fa-solid fa-person-walking"></i> En camino
+              </button>
+            </div>
+          </div>
+
+          <!-- TARJETA ACOMPÁÑAME (SAFE WALK) CON TEMPORIZADOR Y PIN DE COACCIÓN -->
+          <div class="glass-card safe-walk-card" style="padding: 14px;">
+            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <h3 style="font-size: 14px; margin: 0;"><i class="fa-solid fa-person-walking-luggage" style="color: var(--accent-cyan);"></i> Acompáñame (Safe Walk)</h3>
+              <span class="badge-tag" id="safeWalkStatusBadge" style="background: rgba(56, 189, 248, 0.15); color: var(--accent-cyan); font-size: 11px;">Inactivo</span>
+            </div>
+            <p class="card-desc" style="font-size: 11px; margin-bottom: 10px;">Inicia un trayecto supervisado por la familia. Si no confirmas tu llegada a tiempo con tu PIN, se activará la alerta preventiva.</p>
+
+            <div id="safeWalkSetupForm">
+              <div class="form-group" style="margin-bottom: 8px;">
+                <input type="text" id="safeWalkDestination" class="mobile-input" placeholder="Ej: Facultad a Casa (20 min)" style="padding: 8px 12px; font-size: 12px;" />
+              </div>
+              <div style="display: flex; gap: 6px; margin-bottom: 10px;">
+                <button type="button" class="btn-walk-time active" onclick="selectSafeWalkDuration(15, this)">15 min</button>
+                <button type="button" class="btn-walk-time" onclick="selectSafeWalkDuration(30, this)">30 min</button>
+                <button type="button" class="btn-walk-time" onclick="selectSafeWalkDuration(45, this)">45 min</button>
+                <button type="button" class="btn-walk-time" onclick="selectSafeWalkDuration(60, this)">60 min</button>
+              </div>
+              <button class="btn-mobile-submit" style="background: linear-gradient(135deg, #0284C7, #06B6D4); padding: 10px; font-size: 13px; margin: 0;" onclick="startSafeWalkTimer()">
+                <i class="fa-solid fa-shield-cat"></i> Iniciar Trayecto Acompáñame
+              </button>
+            </div>
+
+            <!-- Timer activo -->
+            <div id="safeWalkActivePanel" class="hidden" style="text-align: center; padding: 8px 0;">
+              <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">TRAYECTO EN CURSO</div>
+              <div id="safeWalkTimerDisplay" style="font-size: 26px; font-weight: 900; color: var(--accent-cyan); font-family: var(--font-heading); margin-bottom: 8px;">15:00</div>
+              <div style="font-size: 12px; color: #fff; margin-bottom: 12px;" id="safeWalkDestinationLabel">Destino: Facultad a Casa</div>
+
+              <div style="display: flex; gap: 8px;">
+                <button class="btn-mobile-submit" style="background: linear-gradient(135deg, #10B981, #059669); flex: 1; padding: 10px; font-size: 12px; margin: 0;" onclick="openFinishSafeWalkModal()">
+                  <i class="fa-solid fa-check-circle"></i> Llegué a Salvo (Ingresar PIN)
+                </button>
+                <button class="btn-mobile-submit" style="background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.4); width: 110px; padding: 10px; font-size: 12px; margin: 0;" onclick="cancelSafeWalk()">
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- MODO FANTASMA & TELEMETRÍA Y ACCESO SOS DISCRETO -->
+          <div class="glass-card" style="padding: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+              <div>
+                <strong style="font-size: 12px; color: #fff;"><i class="fa-solid fa-user-secret" style="color: var(--accent-purple);"></i> Zona de Privacidad (Modo Fantasma)</strong>
+                <div style="font-size: 10px; color: var(--text-secondary);">Difumina ubicación exacta (+-500m) en ocio</div>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="toggleGhostMode" onchange="togglePrivacyGhostMode(this.checked)">
+                <span class="slider round"></span>
+              </label>
+            </div>
+
+            <div style="display: flex; gap: 8px; margin-top: 8px;">
+              <button class="btn-subaction" style="flex: 1; padding: 8px; background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.3);" onclick="triggerDiscreetSilentSOS()">
+                <i class="fa-solid fa-bell-slash" style="color: #EF4444;"></i>
+                <span style="font-size: 11px;">Pánico Silencioso</span>
+                <small style="font-size: 9px;">Sin Sonido ni Luz</small>
+              </button>
+
+              <button class="btn-subaction" style="flex: 1; padding: 8px; background: rgba(56,189,248,0.12); border-color: rgba(56,189,248,0.3);" onclick="generateSmsOfflineFallback()">
+                <i class="fa-solid fa-comment-sms" style="color: var(--accent-blue);"></i>
+                <span style="font-size: 11px;">SMS Contingencia</span>
+                <small style="font-size: 9px;">Sin Datos / Solo 2G</small>
+              </button>
+            </div>
+          </div>
+
+          <!-- PACTO DE PRIVACIDAD NO INVASIVO Y REGISTRO TRANSPARENTE DE CONSULTAS -->
+          <div class="glass-card privacy-pact-card" style="padding: 12px; margin-top: 4px;">
+            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <h3 style="font-size: 13px; margin: 0; color: #fff;">
+                <i class="fa-solid fa-handshake-angle" style="color: var(--accent-emerald);"></i> Pacto de Privacidad y Transparencia
+              </h3>
+              <span class="badge-tag" style="background: rgba(16, 185, 129, 0.2); color: #10B981; font-size: 10px;">Doble Vía</span>
+            </div>
+            <p class="card-desc" style="font-size: 11px; margin-bottom: 8px;">Ubicación mutua transparente entre padres e hijos. Se te notifica sutilmente cuando alguien consulta tu posición.</p>
+
+            <div class="form-group" style="margin-bottom: 8px;">
+              <label style="font-size: 11px; color: var(--text-secondary); font-weight: 700;">Franja Horaria de Compartición:</label>
+              <select id="privacyScheduleSelect" class="mobile-select" style="padding: 6px 10px; font-size: 11px;" onchange="updatePrivacySchedule(this.value)">
+                <option value="ALWAYS">🟢 Siempre Activo (24/7 Transparente)</option>
+                <option value="WEEKEND_NIGHTS">🌙 Solo Noches de Fin de Semana (Vie-Dom 21:00 a 06:00)</option>
+                <option value="OUT_OF_CITY">🚗 Solo Trayectos Fuera de la Ciudad</option>
+              </select>
+            </div>
+
+            <!-- Registro Transparente de Vistas (Audit Trail) -->
+            <div style="font-size: 11px; font-weight: 700; color: #fff; margin-bottom: 4px;">
+              <i class="fa-solid fa-eye" style="color: var(--accent-blue);"></i> Registro Transparente de Consultas:
+            </div>
+            <div id="locationAuditLogList" class="audit-log-container" style="max-height: 90px; overflow-y: auto; background: rgba(0,0,0,0.25); border-radius: 8px; padding: 6px; border: 1px solid var(--border-glass);">
+              <!-- Renderizado dinámico en app.js -->
+              <div style="font-size: 10px; color: var(--text-muted); text-align: center;">Sin consultas recientes.</div>
+            </div>
+          </div>
+
+          <!-- Disparadores rápidos de simulación -->
+          <div class="quick-simulation-drawer">
+            <span class="drawer-title"><i class="fa-solid fa-vial"></i> Simular Alerta Rápida:</span>
+            <div class="quick-sim-buttons">
+              <button class="sim-chip sim-warn" onclick="triggerSimulationEvent('CRITICAL_BATTERY')">
+                <i class="fa-solid fa-battery-quarter"></i> Batería 12%
+              </button>
+              <button class="sim-chip sim-danger" onclick="triggerSimulationEvent('IMPACT')">
+                <i class="fa-solid fa-car-burst"></i> Frenada / Impacto
+              </button>
+              <button class="sim-chip sim-orange" onclick="triggerSimulationEvent('SPEED_EXCESS')">
+                <i class="fa-solid fa-gauge-high"></i> Velocidad 135 km/h
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- TAB 2: ANTIFRAUDE Y SIMULACRO DE ESTAFAS -->
+      <section id="tab-antifraud" class="tab-pane">
+        <div class="pane-scrollable">
+          <div class="section-banner fraud-banner">
+            <div class="banner-icon"><i class="fa-solid fa-shield-virus"></i></div>
+            <div>
+              <h2>Escudo Antifraude y Estafas</h2>
+              <p>Verifica si un pedido de dinero, llamada o mensaje urgente es real o una trampa antes de transferir.</p>
+            </div>
+          </div>
+
+          <!-- Tarjeta de Verificación Instantánea de Pedidos de Dinero -->
+          <div class="glass-card fraud-verify-card">
+            <div class="card-header">
+              <h3><i class="fa-solid fa-magnifying-glass-dollar"></i> ¿Te piden plata o te llamaron?</h3>
+              <span class="badge-tag" style="background: rgba(239, 68, 68, 0.2); color: #EF4444;">Peligro</span>
+            </div>
+            <p class="card-desc">Selecciona quién supuestamente te pide dinero o está en peligro para comprobar su verdad:</p>
+
+            <div class="form-group">
+              <label>¿En nombre de quién te piden dinero?</label>
+              <select id="fraudTargetMember" class="mobile-select" onchange="updateFraudCheckDisplay()">
+                <!-- Opciones dinámicas de familiares -->
+              </select>
+            </div>
+
+            <!-- Panel de Comprobación de la Realidad -->
+            <div class="fraud-real-status-box" id="fraudRealStatusBox">
+              <div class="status-indicator-badge safe-badge">
+                <i class="fa-solid fa-circle-check"></i> <span id="fraudCheckState">FAMILIAR A SALVO</span>
+              </div>
+
+              <div class="fraud-data-row">
+                <i class="fa-solid fa-location-dot"></i>
+                <div>
+                  <strong>Ubicación Real:</strong>
+                  <span id="fraudCheckLocation">Colegio / Escuela (Zona Segura)</span>
+                </div>
+              </div>
+
+              <div class="fraud-data-row">
+                <i class="fa-solid fa-battery-half"></i>
+                <div>
+                  <strong>Batería y Velocidad:</strong>
+                  <span id="fraudCheckBattery">64% • 0.0 km/h (Teléfono activo)</span>
+                </div>
+              </div>
+
+              <div class="fraud-warning-callout">
+                <i class="fa-solid fa-hand"></i>
+                <span>Si te dicen que chocó, que le robaron el teléfono o que está secuestrado: <strong>¡ES TOTALMENTE FALSO!</strong></span>
+              </div>
+            </div>
+
+            <!-- Palabra Clave Secreta Familiar -->
+            <div class="safeword-box">
+              <div class="safeword-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <i class="fa-solid fa-key"></i>
+                  <span>Palabra Clave Secreta Familiar:</span>
+                </div>
+                <button type="button" class="btn-sm" style="background: rgba(255,255,255,0.12); color: #fff; border: 1px solid var(--border-glass); border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 600; cursor: pointer;" onclick="toggleSafeWordVisibility()">
+                  <i class="fa-solid fa-eye"></i> Ver/Ocultar
+                </button>
+              </div>
+              <div class="safeword-code" id="displaySafeWord">HALCÓN AZUL</div>
+              <small>Dile a quien te llama: <em>"¿Cuál es nuestra palabra clave?"</em>. Si no la sabe, corta de inmediato.</small>
+            </div>
+
+            <div class="fraud-actions-row">
+              <button class="btn-fraud-call" onclick="callTargetMember()"><i class="fa-solid fa-phone"></i> Llamar al Teléfono Oficial</button>
+              <button class="btn-fraud-alert" onclick="broadcastFraudAlert()"><i class="fa-solid fa-bell"></i> Alertar a Toda la Familia</button>
+            </div>
+          </div>
+
+          <!-- Simulador Interactivo de Estafas (Entrenamiento) -->
+          <div class="glass-card scam-drill-card">
+            <div class="card-header">
+              <h3><i class="fa-solid fa-graduation-cap"></i> Simulador de Estafas (Entrenamiento)</h3>
+              <span class="badge-tag" style="background: rgba(16, 185, 129, 0.2); color: #10B981;">Práctica</span>
+            </div>
+            <p class="card-desc">Practica con situaciones reales para que nadie en la familia caiga en engaños:</p>
+
+            <div class="drill-case-box" id="drillCaseBox">
+              <div class="drill-bubble">
+                <div class="drill-sender"><i class="fa-brands fa-whatsapp" style="color: #25D366;"></i> WhatsApp de Número Desconocido:</div>
+                <div class="drill-msg" id="drillMsgText">
+                  "Hola mamá, se me rompió la pantalla del celu y un amigo me prestó este número. Agendame y haceme un favor urgente: ¿le podés transferir $45.000 a la grúa que me quedé en la ruta? CBU: 00000031000..."
+                </div>
+              </div>
+
+              <div class="drill-options">
+                <button class="btn-drill-opt opt-bad" onclick="answerDrill(false)">
+                  <i class="fa-solid fa-money-bill-transfer"></i>
+                  <span>Transferir la plata rápido por si es verdad</span>
+                </button>
+                <button class="btn-drill-opt opt-good" onclick="answerDrill(true)">
+                  <i class="fa-solid fa-shield-check"></i>
+                  <span>No transferir: mirar la app, pedir palabra clave y llamar a su número</span>
+                </button>
+              </div>
+
+              <div id="drillFeedback" class="drill-feedback hidden"></div>
+            </div>
+
+            <div class="drill-pagination" style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 12px;">
+              <button class="btn-drill-nav" onclick="loadDrillCase(1)">Caso 1: Falso WhatsApp</button>
+              <button class="btn-drill-nav" onclick="loadDrillCase(2)">Caso 2: Falso Accidente</button>
+              <button class="btn-drill-nav" onclick="loadDrillCase(3)">Caso 3: Falso Secuestro</button>
+              <button class="btn-drill-nav" style="background: rgba(37, 211, 102, 0.2); color: #25D366; border-color: rgba(37, 211, 102, 0.4);" onclick="sendDrillCaseToWhatsApp()">
+                <i class="fa-brands fa-whatsapp"></i> Probar Simulacro en WhatsApp
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- TAB 3: SOLO EN CASA (MODO MAMÁ / HOGAR) -->
+      <section id="tab-alone" class="tab-pane">
+        <div class="pane-scrollable">
+          <div class="section-banner alone-banner">
+            <div class="banner-icon"><i class="fa-solid fa-house-user"></i></div>
+            <div>
+              <h2>Modo Quedo Solo en Casa</h2>
+              <p>Diseñado para que Mamá o cualquier familiar avise cuando queda solo en el hogar y tenga auxilio inmediato.</p>
+            </div>
+          </div>
+
+          <!-- Switch Gigante de Activación -->
+          <div class="alone-switch-card glass-card">
+            <div class="switch-header">
+              <div>
+                <h3 id="aloneStatusTitle">Modo Casa Desactivado</h3>
+                <p id="aloneStatusSub">Toca para avisar a toda la familia que estás en casa a solas.</p>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="toggleAloneInHome" onchange="toggleAloneMode(this.checked)">
+                <span class="slider round"></span>
+              </label>
+            </div>
+            
+            <div id="aloneActiveAlert" class="alone-active-box hidden">
+              <div class="alert-beacon"><i class="fa-solid fa-shield-halved"></i> Vigilancia Activa</div>
+              <p>Toda la Familia Andrada ha sido notificada en sus celulares de que estás sola en casa.</p>
+            </div>
+          </div>
+
+          <!-- Botones de Auxilio Doméstico Inmediato -->
+          <h3 class="group-title"><i class="fa-solid fa-hand-holding-hand"></i> Auxilio Rápido en Casa</h3>
+          <div class="domestic-alerts-grid">
+            <button class="domestic-btn btn-suspicious" onclick="triggerDomesticAlert('SUSPICIOUS_NOISE')">
+              <i class="fa-solid fa-eye"></i>
+              <span>Ruido Sospechoso</span>
+              <small>Afuera / Puerta</small>
+            </button>
+            <button class="domestic-btn btn-fire" onclick="triggerDomesticAlert('FIRE_ALERT')">
+              <i class="fa-solid fa-fire-extinguisher"></i>
+              <span>Incendio o Gas</span>
+              <small>Alerta Extrema</small>
+            </button>
+            <button class="domestic-btn btn-medical" onclick="triggerDomesticAlert('MEDICAL_HELP')">
+              <i class="fa-solid fa-kit-medical"></i>
+              <span>Urgencia Médica</span>
+              <small>Caída o Dolor</small>
+            </button>
+            <button class="domestic-btn btn-cams" onclick="switchTab('tab-cameras')">
+              <i class="fa-solid fa-video"></i>
+              <span>Ver Cámaras</span>
+              <small>Entrada y Patio</small>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: VENÍ A BUSCARME & CHAT EN VIVO -->
+      <section id="tab-pickup" class="tab-pane">
+        <div class="pane-scrollable">
+          <div class="section-banner pickup-banner">
+            <div class="banner-icon"><i class="fa-solid fa-car-side"></i></div>
+            <div>
+              <h2>Vení a Buscarme en la Calle</h2>
+              <p>¿Poca batería o necesitas un auto? Envía tu ubicación al familiar más cercano y conversa en vivo.</p>
+            </div>
+          </div>
+
+          <!-- Tarjeta de Solicitud de Rescate -->
+          <div class="glass-card pickup-action-card">
+            <button class="btn-big-pickup" onclick="triggerPickupRequest()">
+              <i class="fa-solid fa-location-arrow"></i>
+              <span>¡VENÍ A BUSCARME AQUÍ!</span>
+              <small>Envía coordenadas GPS + Batería actual</small>
+            </button>
+
+            <div id="nearestFamilyBanner" class="nearest-family-box">
+              <i class="fa-solid fa-person-walking-dashed-line-arrow-right"></i>
+              <span>Familiar más cercano: <strong id="nearestMemberName">Lucía Andrada (a 850m)</strong></span>
+            </div>
+          </div>
+
+          <!-- Ventana de Chat en Tiempo Real -->
+          <div class="glass-card chat-container">
+            <div class="chat-header">
+              <div class="chat-title">
+                <i class="fa-solid fa-comments"></i>
+                <span>Chat de Auxilio Familiar</span>
+              </div>
+              <span class="chat-online-badge"><span class="mini-dot"></span> En Vivo</span>
+            </div>
+
+            <div class="chat-messages" id="chatMessages">
+              <div class="chat-msg msg-system">
+                <span>Canal seguro activo para la Familia Andrada.</span>
+              </div>
+            </div>
+
+            <!-- Respuestas Rápidas de 1 toque -->
+            <div class="quick-replies-bar">
+              <button class="quick-reply-pill" onclick="sendQuickReply('🚗 ¡Voy en camino!')">🚗 Voy en camino</button>
+              <button class="quick-reply-pill" onclick="sendQuickReply('📍 Ya estoy cerca del lugar')">📍 Estoy cerca</button>
+              <button class="quick-reply-pill" onclick="sendQuickReply('🚕 Te pedí un Uber/Taxi')">🚕 Te pedí un auto</button>
+              <button class="quick-reply-pill" onclick="sendQuickReply('⏳ Esperame ahí, no te muevas')">⏳ Esperame ahí</button>
+            </div>
+
+            <!-- Campo de Texto para Chatear -->
+            <form class="chat-input-row" onsubmit="handleSendCustomMessage(event)">
+              <input type="text" id="customChatInput" placeholder="Escribe un mensaje urgente..." autocomplete="off">
+              <button type="submit" class="btn-chat-send"><i class="fa-solid fa-paper-plane"></i></button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: CÁMARAS DE SEGURIDAD -->
+      <section id="tab-cameras" class="tab-pane">
+        <div class="pane-scrollable">
+          <div class="section-banner cams-banner">
+            <div class="banner-icon"><i class="fa-solid fa-video"></i></div>
+            <div>
+              <h2>Cámaras de Seguridad</h2>
+              <p>Monitoreo del hogar en vivo ante cualquier urgencia o duda.</p>
+            </div>
+          </div>
+
+          <div class="cameras-grid">
+            <!-- Cámara 1: Entrada Principal -->
+            <div class="camera-card glass-card">
+              <div class="cam-header">
+                <span><i class="fa-solid fa-door-open"></i> CAM 01 - Entrada Principal</span>
+                <span class="cam-rec"><span class="rec-dot"></span> EN VIVO</span>
+              </div>
+              <div class="cam-viewport cam-feed-1">
+                <div class="cam-overlay-time" id="camTime1">--:--:--</div>
+                <div class="cam-crosshair"></div>
+              </div>
+            </div>
+
+            <!-- Cámara 2: Living / Comedor -->
+            <div class="camera-card glass-card">
+              <div class="cam-header">
+                <span><i class="fa-solid fa-couch"></i> CAM 02 - Living / Interior</span>
+                <span class="cam-rec"><span class="rec-dot"></span> EN VIVO</span>
+              </div>
+              <div class="cam-viewport cam-feed-2">
+                <div class="cam-overlay-time" id="camTime2">--:--:--</div>
+                <div class="cam-crosshair"></div>
+              </div>
+            </div>
+
+            <!-- Cámara 3: Patio Trasero -->
+            <div class="camera-card glass-card">
+              <div class="cam-header">
+                <span><i class="fa-solid fa-tree"></i> CAM 03 - Patio Trasero</span>
+                <span class="cam-rec"><span class="rec-dot"></span> EN VIVO</span>
+              </div>
+              <div class="cam-viewport cam-feed-3">
+                <div class="cam-overlay-time" id="camTime3">--:--:--</div>
+                <div class="cam-crosshair"></div>
+              </div>
+            </div>
+
+            <!-- Cámara 4: Frente / Calle -->
+            <div class="camera-card glass-card">
+              <div class="cam-header">
+                <span><i class="fa-solid fa-road"></i> CAM 04 - Frente / Vereda</span>
+                <span class="cam-rec"><span class="rec-dot"></span> EN VIVO</span>
+              </div>
+              <div class="cam-viewport cam-feed-4">
+                <div class="cam-overlay-time" id="camTime4">--:--:--</div>
+                <div class="cam-crosshair"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 5: BOTÓN SOS / PÁNICO -->
+      <section id="tab-sos" class="tab-pane">
+        <div class="pane-scrollable sos-center-pane">
+          <div class="sos-wrapper">
+            <div class="sos-pulse-ring"></div>
+            <button id="btnMainSOS" class="big-sos-button" onclick="triggerPanicCountdown()">
+              <i class="fa-solid fa-triangle-exclamation"></i>
+              <span class="sos-txt">SOS</span>
+              <span id="sosTimerBadge" class="sos-badge hidden">30</span>
+            </button>
+          </div>
+
+          <h2 id="sosHeadline">BOTÓN DE PÁNICO FAMILIAR</h2>
+          <p id="sosNotice">Presiona para iniciar cuenta regresiva de 30 segundos previa al despacho automático a WhatsApp.</p>
+
+          <button id="btnCancelSOS" class="btn-cancel-countdown hidden" onclick="cancelPanicCountdown()">
+            <i class="fa-solid fa-ban"></i> CANCELAR ALARMA SOS
+          </button>
+
+          <!-- Opciones Secundarias SOS -->
+          <div class="sos-subactions-grid">
+            <button class="btn-subaction" onclick="openDuressKeypad()">
+              <i class="fa-solid fa-user-ninja"></i>
+              <span>PIN de Coacción</span>
+              <small>Alarma Silenciosa (9999)</small>
+            </button>
+            <button class="btn-subaction" onclick="activateFakeShutdown()">
+              <i class="fa-solid fa-power-off"></i>
+              <span>Falso Apagado</span>
+              <small>Simular Pantalla Apagada</small>
+            </button>
+          </div>
+
+          <!-- Grabador 15s Caja Negra -->
+          <div class="glass-card sos-audio-card">
+            <div class="audio-card-head">
+              <span><i class="fa-solid fa-microphone-lines"></i> Caja Negra Exprés (15s)</span>
+              <span id="blackboxTimer" class="timer-tag">15.0s</span>
+            </div>
+            <canvas id="audioVisualizer" class="audio-canvas-mini" height="40"></canvas>
+            <button id="btnRecordAudio" class="btn-touch-record">
+              <i class="fa-solid fa-circle-dot"></i> Iniciar Grabación de Audio
+            </button>
+            <audio id="audioPlayback" controls class="audio-player hidden"></audio>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 6: FAMILIA & PANEL ADMINISTRADOR -->
+      <section id="tab-family" class="tab-pane">
+        <div class="pane-scrollable">
+          <!-- Tarjeta de Perfil del Usuario Activo -->
+          <div class="glass-card profile-card">
+            <div class="profile-info-row">
+              <div class="profile-big-avatar" id="profileAvatar">CA</div>
+              <div>
+                <h3 id="profileName">Carlos Andrada</h3>
+                <p id="profileDniTel">DNI: 34.567.890 • Tel: +54 9 11 2345-6789</p>
+                <span class="badge-role" id="profileRole">Padre (Protector)</span>
+              </div>
+            </div>
+            <div class="profile-buttons" style="display: flex; gap: 8px;">
+              <button class="btn-profile-action" style="flex: 1;" onclick="openMemberProfileModal()"><i class="fa-solid fa-user-pen"></i> Mi Perfil y PIN</button>
+              <button class="btn-profile-action" style="flex: 1;" onclick="openLoginModal()"><i class="fa-solid fa-arrows-rotate"></i> Cambiar Usuario</button>
+            </div>
+          </div>
+
+          <!-- Acceso Especial de Administrador -->
+          <div class="glass-card admin-callout-card">
+            <div class="admin-callout-header">
+              <div>
+                <h4><i class="fa-solid fa-user-shield"></i> Panel Administrador</h4>
+                <small>Usuario: <strong>admin</strong> | Clave: <strong>1234</strong></small>
+              </div>
+              <button class="btn-admin-login" onclick="openAdminModal()">
+                <i class="fa-solid fa-key"></i> Ingresar Admin
+              </button>
+            </div>
+            <p class="admin-callout-desc">Permite corregir errores de DNI, cambiar números de teléfono, resetear PINs olvidados o eliminar familiares.</p>
+          </div>
+
+          <!-- Directorio de Todos los Familiares -->
+          <h3 class="group-title"><i class="fa-solid fa-address-book"></i> Directorio de la Familia Andrada</h3>
+          <div class="family-directory-list" id="familyDirectoryList">
+            <!-- Renderizado dinámico en app.js -->
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 8: EDGE AI, BIOMETRÍA PASIVA Y SATÉLITE -->
+      <section id="tab-edgeai" class="tab-pane">
+        <div class="pane-scrollable">
+          <div class="section-banner edge-ai-banner">
+            <div class="banner-icon"><i class="fa-solid fa-brain"></i></div>
+            <div>
+              <h2>Edge AI & Conectividad Satelital</h2>
+              <p>Biometría pasiva de marcha contra arrebato en carrera, estrés por voz y enlace satelital Direct-to-Cell 2026.</p>
+            </div>
+          </div>
+
+          <!-- TARJETA 1: ANÁLISIS DE MARCHA Y DETECCIÓN DE ARREBATO (GAIT & SNATCH) -->
+          <div class="glass-card">
+            <div class="card-header">
+              <h3><i class="fa-solid fa-person-walking"></i> Biometría de Marcha y Arrebato</h3>
+              <span class="badge-tag" id="gaitStatusBadge" style="background: rgba(16, 185, 129, 0.2); color: #10B981;">Patrón Normal</span>
+            </div>
+            <p class="card-desc">El acelerómetro del celular monitorea la cadencia y agarre en tiempo real. Si te lo arrebatan corriendo, el teléfono se bloquea al instante.</p>
+            
+            <div class="gait-metric-grid">
+              <div class="gait-metric-card">
+                <div class="gait-metric-val" id="gaitCadenceVal">112</div>
+                <div class="gait-metric-lbl">Pasos/Min</div>
+              </div>
+              <div class="gait-metric-card">
+                <div class="gait-metric-val" id="gaitGForceVal">1.02G</div>
+                <div class="gait-metric-lbl">Fuerza G</div>
+              </div>
+              <div class="gait-metric-card">
+                <div class="gait-metric-val" id="gaitGripVal">Firme</div>
+                <div class="gait-metric-lbl">Agarre Mano</div>
+              </div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; font-size: 11px; margin-top: 8px; color: var(--text-secondary);">
+              <span>Índice de Riesgo de Arrebato:</span>
+              <strong id="gaitAnomalyPercent" style="color: #10B981;">4% (Seguro)</strong>
+            </div>
+            <div class="anomaly-risk-bar">
+              <div class="anomaly-risk-fill" id="gaitAnomalyFill" style="width: 4%;"></div>
+            </div>
+
+            <div style="margin-top: 12px;">
+              <button class="btn-mobile-submit" style="background: linear-gradient(135deg, #EF4444, #B91C1C); margin-bottom: 0;" onclick="simulateGaitSnatch()">
+                <i class="fa-solid fa-person-running"></i> Simular Arrebato en Carrera (Prueba de Bloqueo)
+              </button>
+            </div>
+          </div>
+
+          <!-- TARJETA 2: MONITOREO DE ESTRÉS POR VOZ PASIVO -->
+          <div class="glass-card">
+            <div class="card-header">
+              <h3><i class="fa-solid fa-microphone-lines"></i> Monitoreo de Estrés Vocal</h3>
+              <span class="badge-tag" id="voiceStressBadge" style="background: rgba(56, 189, 248, 0.2); color: #38BDF8;">Escucha Pasiva</span>
+            </div>
+            <p class="card-desc">El analizador espectral detecta microvariaciones y picos acústicos de angustia o coacción al interactuar por voz con el asistente.</p>
+            
+            <div class="voice-spectrum-box">
+              <canvas id="voiceStressCanvas" class="voice-canvas" width="300" height="60"></canvas>
+              <div class="voice-stress-indicator">
+                <span>Tensión Acústica: <strong id="voiceStressScoreText" style="color: #38BDF8;">12%</strong></span>
+                <span id="voiceStressKeywordText">Palabras: <em>Ninguna</em></span>
+              </div>
+            </div>
+
+            <button class="btn-secondary" style="width: 100%; padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-glass); background: rgba(255,255,255,0.06); color: var(--text-primary); font-weight: 700; cursor: pointer;" onclick="testVoiceStressSampling()">
+              <i class="fa-solid fa-wave-square"></i> Muestrear Micrófono y Evaluar Estrés
+            </button>
+          </div>
+
+          <!-- TARJETA 3: CONECTIVIDAD SATELITAL DIRECT-TO-CELL -->
+          <div class="glass-card satellite-link-card">
+            <div class="card-header">
+              <h3><i class="fa-solid fa-satellite"></i> Último Pulso Satelital (Direct-to-Cell)</h3>
+              <span class="badge-tag" style="background: rgba(6, 182, 212, 0.2); color: #06B6D4;">LEO 2026</span>
+            </div>
+            <p class="card-desc">Transmisión de socorro en paquete comprimido de 32 bytes vía satélite si quedas sin señal 4G/5G en ruta o descampado.</p>
+
+            <div class="satellite-orbit-anim">
+              <i class="fa-solid fa-tower-broadcast satellite-ground-station"></i>
+              <i class="fa-solid fa-satellite satellite-orbiter"></i>
+            </div>
+
+            <div style="font-size: 11px; background: rgba(0,0,0,0.35); padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); margin-bottom: 12px;">
+              <div>🛰️ <strong>Constelación:</strong> Starlink / Direct-to-Cell Simulado</div>
+              <div>📦 <strong>Payload Binario:</strong> <code id="satPayloadPreview" style="color: var(--accent-cyan);">0x414E44524144415F4750535F32303236</code></div>
+              <div>⏱️ <strong>Estado de Enlace:</strong> <span id="satLinkState" style="color: #10B981;">Disponible para Emergencias</span></div>
+            </div>
+
+            <button class="btn-satellite-pulse" onclick="triggerSatellitePing()">
+              <i class="fa-solid fa-satellite-dish"></i> Emitir Último Pulso Satelital de Socorro
+            </button>
+          </div>
+
+          <!-- TARJETA 4: RASTREO DESCENTRALIZADO BLE MESH -->
+          <div class="glass-card">
+            <div class="card-header">
+              <h3><i class="fa-solid fa-tower-broadcast"></i> Red Descentralizada BLE Mesh</h3>
+              <span class="badge-tag" style="background: rgba(139, 92, 246, 0.2); color: #8B5CF6;">Bluetooth Offline</span>
+            </div>
+            <p class="card-desc">Emisión y captura de balizas cifradas de ultra-bajo consumo. Localiza familiares cercanos incluso con el teléfono apagado o sin datos.</p>
+
+            <div class="ble-radar-box">
+              <div class="ble-radar-circle"></div>
+              <div class="ble-radar-sweep"></div>
+              <i class="fa-solid fa-location-crosshairs" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: var(--accent-blue);"></i>
+            </div>
+
+            <div id="bleMeshDevicesList">
+              <!-- Renderizado dinámico en app.js -->
+            </div>
+
+            <button class="btn-secondary" style="width: 100%; padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-glass); background: rgba(255,255,255,0.06); color: var(--text-primary); font-weight: 700; cursor: pointer; margin-top: 8px;" onclick="scanBleMeshDevices()">
+              <i class="fa-solid fa-arrows-rotate"></i> Escanear Balizas BLE en el Área
+            </button>
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Barra de Navegación Inferior Móvil (Bottom Navigation Bar) -->
+    <nav class="bottom-nav-bar" role="navigation" aria-label="Barra de navegación inferior">
+      <button class="nav-item active" onclick="switchTab('tab-map')">
+        <i class="fa-solid fa-map-location-dot"></i>
+        <span>Mapa</span>
+      </button>
+      <button class="nav-item" onclick="switchTab('tab-antifraud')">
+        <i class="fa-solid fa-shield-virus"></i>
+        <span>Antifraude</span>
+      </button>
+      <button class="nav-item" onclick="switchTab('tab-alone')">
+        <i class="fa-solid fa-house-chimney-user"></i>
+        <span>En Casa</span>
+      </button>
+      <button class="nav-item" onclick="switchTab('tab-pickup')">
+        <i class="fa-solid fa-car"></i>
+        <span>Buscame</span>
+      </button>
+      <button class="nav-item" id="navItemEdgeAi" onclick="switchTab('tab-edgeai')">
+        <i class="fa-solid fa-brain"></i>
+        <span>Edge AI</span>
+      </button>
+      <button class="nav-item" onclick="switchTab('tab-cameras')">
+        <i class="fa-solid fa-video"></i>
+        <span>Cámaras</span>
+      </button>
+      <!-- New WhatsApp Share Button -->
+      <button class="nav-item" id="btnWhatsAppShare" onclick="openWhatsAppShare()">
+        <i class="fa-brands fa-whatsapp"></i>
+        <span>WhatsApp</span>
+      </button>
+      <button class="nav-item nav-item-sos" onclick="switchTab('tab-sos')">
+        <div class="sos-bubble"><i class="fa-solid fa-triangle-exclamation"></i></div>
+        <span>SOS</span>
+      </button>
+      <button class="nav-item" onclick="switchTab('tab-family')">
+        <i class="fa-solid fa-users-gear"></i>
+        <span>Familia</span>
+      </button>
+    </nav>
+
+  </div>
+
+  <!-- ==================== MODALES MÓVILES ==================== -->
+
+  <!-- MODAL 1: INICIO DE SESIÓN CON NOMBRE + PIN -->
+  <div id="loginModal" class="modal-backdrop hidden">
+    <div class="bottom-sheet glass-card">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <h3><i class="fa-solid fa-lock"></i> Identificación Familiar</h3>
+        <button class="btn-sheet-close" onclick="closeLoginModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <p class="sheet-sub">Selecciona tu nombre e ingresa tu PIN personal de 4 a 5 números:</p>
+
+      <div class="form-group">
+        <label>Nombre del Familiar:</label>
+        <select id="loginMemberSelect" class="mobile-select">
+          <!-- Opciones dinámicas -->
+        </select>
+      </div>
+
+      <div class="pin-display-box" id="loginPinDisplay">••••</div>
+
+      <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin: 8px 0 14px;">
+        <input type="checkbox" id="loginRememberMe" checked style="width: 18px; height: 18px; accent-color: var(--accent-blue); cursor: pointer;">
+        <label for="loginRememberMe" style="font-size: 12px; color: var(--text-secondary); cursor: pointer; font-weight: 600;">Recordar sesión en este dispositivo</label>
+      </div>
+
+      <div class="keypad-mobile">
+        <button type="button" class="k-btn" onclick="pressLoginPin('1')">1</button>
+        <button type="button" class="k-btn" onclick="pressLoginPin('2')">2</button>
+        <button type="button" class="k-btn" onclick="pressLoginPin('3')">3</button>
+        <button type="button" class="k-btn" onclick="pressLoginPin('4')">4</button>
+        <button type="button" class="k-btn" onclick="pressLoginPin('5')">5</button>
+        <button type="button" class="k-btn" onclick="pressLoginPin('6')">6</button>
+        <button type="button" class="k-btn" onclick="pressLoginPin('7')">7</button>
+        <button type="button" class="k-btn" onclick="pressLoginPin('8')">8</button>
+        <button type="button" class="k-btn" onclick="pressLoginPin('9')">9</button>
+        <button type="button" class="k-btn k-clear" onclick="clearLoginPin()"><i class="fa-solid fa-delete-left"></i></button>
+        <button type="button" class="k-btn" onclick="pressLoginPin('0')">0</button>
+        <button type="button" class="k-btn k-enter" onclick="submitLoginPin()"><i class="fa-solid fa-check"></i></button>
+      </div>
+
+      <div class="sheet-footer-link">
+        <button type="button" class="btn-text-link" onclick="openRegisterModal()">¿Nuevo familiar? Regístrate aquí</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: REGISTRO DE NUEVO FAMILIAR -->
+  <div id="registerModal" class="modal-backdrop hidden">
+    <div class="bottom-sheet glass-card">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <h3><i class="fa-solid fa-user-plus"></i> Registro de Familiar</h3>
+        <button class="btn-sheet-close" onclick="closeRegisterModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <p class="sheet-sub">Ingresa los datos del familiar para incorporarlo al círculo de protección:</p>
+
+      <form id="registerFamilyForm" onsubmit="handleRegisterSubmit(event)">
+        <div class="form-group">
+          <label>Nombre y Apellido: *</label>
+          <input type="text" id="regFullName" class="mobile-input" placeholder="Ej: María Andrada" required>
+        </div>
+
+        <div class="form-group">
+          <label>Número de DNI: *</label>
+          <input type="text" id="regDni" class="mobile-input" placeholder="Ej: 38.123.456" required>
+        </div>
+
+        <div class="form-group">
+          <label>Número de Teléfono (WhatsApp): *</label>
+          <input type="tel" id="regPhone" class="mobile-input" placeholder="Ej: +54 9 11 5566-7788" required>
+        </div>
+
+        <div class="form-group">
+          <label>Rol Familiar:</label>
+          <select id="regRole" class="mobile-select">
+            <option value="Madre">Madre</option>
+            <option value="Padre">Padre</option>
+            <option value="Hijo/a">Hijo/a</option>
+            <option value="Abuelo/a">Abuelo/a</option>
+            <option value="Familiar de Confianza">Familiar de Confianza</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Crear PIN Personal (4 a 5 números): *</label>
+          <input type="password" id="regPin" class="mobile-input" placeholder="4 o 5 dígitos" maxlength="5" pattern="[0-9]{4,5}" inputmode="numeric" required>
+        </div>
+
+        <button type="submit" class="btn-mobile-submit">
+          <i class="fa-solid fa-circle-check"></i> Registrar y Conectar Familiar
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 3: PANEL ADMINISTRADOR (admin / 1234) -->
+  <div id="adminModal" class="modal-backdrop hidden">
+    <div class="bottom-sheet glass-card admin-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <h3><i class="fa-solid fa-gears"></i> Administración Familia Andrada</h3>
+        <button class="btn-sheet-close" onclick="closeAdminModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <!-- Login de Administrador -->
+      <div id="adminAuthView">
+        <p class="sheet-sub">Ingresa las credenciales de administración:</p>
+        <form onsubmit="handleAdminLogin(event)">
+          <div class="form-group">
+            <label>Usuario:</label>
+            <input type="text" id="adminUserInput" class="mobile-input" placeholder="admin" required>
+          </div>
+          <div class="form-group">
+            <label>Contraseña:</label>
+            <input type="password" id="adminPassInput" class="mobile-input" placeholder="1234" required>
+          </div>
+          <button type="submit" class="btn-mobile-submit"><i class="fa-solid fa-unlock"></i> Ingresar como Admin</button>
+        </form>
+      </div>
+
+      <!-- Vista de Gestión (solo visible autenticado como admin) -->
+      <div id="adminDashboardView" class="hidden">
+        <div class="admin-badge-logged">
+          <span><i class="fa-solid fa-circle-check"></i> Sesión Administrador Activa</span>
+          <button class="btn-mini-logout" onclick="logoutAdmin()">Salir Admin</button>
+        </div>
+        <div class="admin-safeword-config">
+          <label style="font-size: 12px; font-weight: 700; color: #fff; margin-bottom: 6px; display: block;">
+            <i class="fa-solid fa-key" style="color: var(--accent-amber);"></i> Palabra Clave Secreta Familiar:
+          </label>
+          <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+            <input type="text" id="adminSafeWordInput" class="mobile-input" style="text-transform: uppercase;" value="HALCÓN AZUL">
+            <button type="button" class="btn-sm" style="background: var(--accent-amber); color: #000; font-weight: 800; border: none; padding: 0 12px;" onclick="saveSafeWordFromAdmin()">Guardar</button>
+          </div>
+        </div>
+
+        <!-- Fondo de Pantalla Personalizado Admin -->
+        <div style="background: rgba(255, 255, 255, 0.04); border-radius: 12px; padding: 12px; margin-bottom: 16px; border: 1px solid var(--border-glass);">
+          <div style="font-size: 12px; font-weight: 700; color: #fff; margin-bottom: 8px;">
+            <i class="fa-solid fa-image" style="color: var(--accent-purple);"></i> Fondo de Interfaz Personalizado:
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <input type="file" id="adminBgFileInput" accept="image/*" style="display: none;" onchange="handleAdminBgFileUpload(event)">
+            <div style="display: flex; gap: 8px;">
+              <button type="button" class="btn-sm" style="flex:1; background: var(--accent-purple); color: #fff; border: none; font-weight: 700; padding: 8px; border-radius: 8px; cursor: pointer;" onclick="document.getElementById('adminBgFileInput').click()">
+                <i class="fa-solid fa-upload"></i> Subir Foto Fondo
+              </button>
+              <button type="button" class="btn-sm" style="flex:1; background: rgba(239, 68, 68, 0.25); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.4); font-weight: 700; padding: 8px; border-radius: 8px; cursor: pointer;" onclick="removeCustomBg()">
+                <i class="fa-solid fa-trash"></i> Eliminar Fondo
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- PWA & Plantillas Admin -->
+        <div style="background: rgba(255, 255, 255, 0.04); border-radius: 12px; padding: 12px; margin-bottom: 16px; border: 1px solid var(--border-glass);">
+          <div style="font-size: 12px; font-weight: 700; color: #fff; margin-bottom: 8px;">
+            <i class="fa-solid fa-mobile-screen" style="color: #38BDF8;"></i> Aplicación Web Instalable (PWA):
+          </div>
+          <button id="btnInstallPwa" class="btn-mobile-submit" style="background: linear-gradient(135deg, #0284C7, #38BDF8); color: #fff; margin-bottom: 12px; font-size: 13px;" onclick="triggerPwaInstall()">
+            <i class="fa-solid fa-download"></i> Instalar App PWA en Celular / PC
+          </button>
+
+          <div style="font-size: 12px; font-weight: 700; color: #fff; margin-bottom: 6px;">
+            <i class="fa-solid fa-pen-to-square" style="color: var(--accent-emerald);"></i> Editar Plantilla Mensaje SOS:
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="adminSosTemplateInput" class="mobile-input" style="font-size: 12px;" placeholder="Mensaje SOS predeterminado" value="🚨 ALERTA SOS MANUAL DE EMERGENCIA FAMILIAR">
+            <button type="button" class="btn-sm" style="background: var(--accent-emerald); color: #fff; font-weight: 700; border: none; padding: 0 12px;" onclick="saveSosTemplateFromAdmin()">Guardar</button>
+          </div>
+        </div>
+
+        <p class="sheet-sub">Gestiona y corrige errores de registro de familiares:</p>
+        
+        <div class="admin-members-table" id="adminMembersTable">
+          <!-- Renderizado dinámico en app.js -->
+        </div>
+
+        <button class="btn-add-member-admin" onclick="openRegisterModal()"><i class="fa-solid fa-plus"></i> Agregar Nuevo Familiar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 4: EDICIÓN DE FAMILIAR (ADMIN) -->
+  <div id="editMemberModal" class="modal-backdrop hidden">
+    <div class="bottom-sheet glass-card">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <h3><i class="fa-solid fa-pen-to-square"></i> Editar Familiar</h3>
+        <button class="btn-sheet-close" onclick="closeEditModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="editMemberForm" onsubmit="handleEditSubmit(event)">
+        <input type="hidden" id="editMemberId">
+        <div class="form-group">
+          <label>Nombre y Apellido:</label>
+          <input type="text" id="editFullName" class="mobile-input" required>
+        </div>
+        <div class="form-group">
+          <label>DNI:</label>
+          <input type="text" id="editDni" class="mobile-input" required>
+        </div>
+        <div class="form-group">
+          <label>Teléfono:</label>
+          <input type="tel" id="editPhone" class="mobile-input" required>
+        </div>
+        <div class="form-group">
+          <label>Nuevo PIN (dejar vacío si no cambia):</label>
+          <input type="text" id="editPin" class="mobile-input" placeholder="4 a 5 dígitos" maxlength="5">
+        </div>
+        <button type="submit" class="btn-mobile-submit"><i class="fa-solid fa-floppy-disk"></i> Guardar Cambios</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 5: PIN DE COACCIÓN (9999) -->
+  <div id="duressModal" class="modal-backdrop hidden">
+    <div class="bottom-sheet glass-card">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <h3><i class="fa-solid fa-shield-halved"></i> Teclado de Seguridad</h3>
+        <button class="btn-sheet-close" onclick="closeDuressModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <p class="sheet-sub">Ingresa tu código PIN para autorizar:</p>
+      <div class="pin-display-box" id="duressPinDisplay">••••</div>
+      <div class="keypad-mobile">
+        <button type="button" class="k-btn" onclick="pressDuressPin('1')">1</button>
+        <button type="button" class="k-btn" onclick="pressDuressPin('2')">2</button>
+        <button type="button" class="k-btn" onclick="pressDuressPin('3')">3</button>
+        <button type="button" class="k-btn" onclick="pressDuressPin('4')">4</button>
+        <button type="button" class="k-btn" onclick="pressDuressPin('5')">5</button>
+        <button type="button" class="k-btn" onclick="pressDuressPin('6')">6</button>
+        <button type="button" class="k-btn" onclick="pressDuressPin('7')">7</button>
+        <button type="button" class="k-btn" onclick="pressDuressPin('8')">8</button>
+        <button type="button" class="k-btn" onclick="pressDuressPin('9')">9</button>
+        <button type="button" class="k-btn k-clear" onclick="clearDuressPin()"><i class="fa-solid fa-delete-left"></i></button>
+        <button type="button" class="k-btn" onclick="pressDuressPin('0')">0</button>
+        <button type="button" class="k-btn k-enter" onclick="submitDuressPin()"><i class="fa-solid fa-check"></i></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- New WhatsApp Alert Modal -->
+  <div id="whatsappAlertModal" class="modal-backdrop hidden">
+    <div class="bottom-sheet glass-card">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <h3><i class="fa-brands fa-whatsapp"></i> Alerta de envío a WhatsApp</h3>
+        <button class="btn-sheet-close" onclick="closeWhatsAppAlertModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <p class="sheet-sub">Tu ubicación ha sido enviada a través de WhatsApp Cloud API.</p>
+      <button class="btn-mobile-submit" onclick="closeWhatsAppAlertModal()"><i class="fa-solid fa-check"></i> Cerrar</button>
+    </div>
+  </div>
+
+  <!-- MODAL 6: WHATSAPP CLOUD API PREVIEW -->
+  <div id="whatsappModal" class="modal-backdrop hidden">
+    <div class="bottom-sheet glass-card whatsapp-sheet">
+      <div class="sheet-handle"></div>
+      <div class="wa-header">
+        <div class="wa-brand">
+          <i class="fa-brands fa-whatsapp"></i>
+          <div>
+            <strong>WhatsApp Cloud API v21.0</strong>
+            <small>Notificación de Alerta Despachada</small>
+          </div>
+        </div>
+        <button class="btn-sheet-close" onclick="closeWhatsAppModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="wa-message-bubble">
+        <div class="wa-map-preview">
+          <i class="fa-solid fa-location-dot"></i>
+          <span id="waLocationTitle">Alerta SOS: Familia Andrada</span>
+        </div>
+        <div class="wa-body" id="waBodyContent"></div>
+        <div class="wa-buttons">
+          <a id="btnSendDirectWhatsApp" href="#" target="_blank" class="btn-wa-action" style="background: #25D366; color: #fff; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <i class="fa-brands fa-whatsapp"></i> Abrir WhatsApp y Enviar Directo
+          </a>
+          <button class="btn-wa-action" style="background: #0284C7; color: #fff; display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="sendGroupWhatsApp()">
+            <i class="fa-solid fa-users"></i> Enviar al Grupo Familiar de WhatsApp
+          </button>
+          <button class="btn-wa-action" onclick="acknowledgeAlert()"><i class="fa-solid fa-route"></i> Confirmar (ACK)</button>
+          <a id="waGoogleMapsLink" href="#" target="_blank" class="btn-wa-link"><i class="fa-solid fa-map-location-dot"></i> Abrir en Google Maps</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 7: ALERTA SOS EXPRÉS POR FAMILIAR -->
+  <div id="expressSosModal" class="modal-backdrop hidden">
+    <div class="bottom-sheet glass-card">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <h3><i class="fa-solid fa-triangle-exclamation" style="color: #EF4444;"></i> Alerta SOS Exprés</h3>
+        <button class="btn-sheet-close" onclick="closeExpressSosModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <p class="sheet-sub">Elige cómo enviar la alerta de auxilio a <strong id="expressSosTargetName">Familiar</strong>:</p>
+
+      <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 16px;">
+        <button class="btn-mobile-submit" style="background: linear-gradient(135deg, #25D366, #128C7E); color: #fff; font-weight: 700; font-size: 14px;" onclick="sendExpressSosViaWhatsApp()">
+          <i class="fa-brands fa-whatsapp" style="font-size: 20px;"></i> Enviar Mensaje SOS por WhatsApp
+        </button>
+
+        <button class="btn-mobile-submit" style="background: linear-gradient(135deg, #EF4444, #DC2626); color: #fff; font-weight: 700; font-size: 14px;" onclick="sendExpressSosViaCommonMessage()">
+          <i class="fa-solid fa-bell" style="font-size: 18px;"></i> Enviar Alerta Común (Push / Háptica)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 8: PERFIL DE MIEMBRO Y CIERRE DE SESIÓN CON PIN -->
+  <div id="memberProfileModal" class="modal-backdrop hidden">
+    <div class="bottom-sheet glass-card">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <h3><i class="fa-solid fa-id-card"></i> Mi Perfil Familiar</h3>
+        <button class="btn-sheet-close" onclick="closeMemberProfileModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <p class="sheet-sub">Actualiza tus datos o cambia tu PIN personal de seguridad:</p>
+
+      <form id="memberProfileForm" onsubmit="handleMemberProfileSave(event)">
+        <div class="form-group" style="text-align: center; margin-bottom: 14px;">
+          <div id="profPhotoPreviewBox" style="width: 76px; height: 76px; border-radius: 50%; margin: 0 auto 8px; overflow: hidden; border: 2px solid var(--accent-blue); display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); box-shadow: 0 0 15px rgba(56, 189, 248, 0.3);">
+            <i class="fa-solid fa-camera" style="font-size: 24px; color: var(--text-secondary);"></i>
+          </div>
+          <label for="profPhotoFileInput" class="btn-sm" style="background: rgba(56, 189, 248, 0.18); color: var(--accent-blue); border: 1px solid rgba(56, 189, 248, 0.4); padding: 6px 14px; border-radius: 8px; cursor: pointer; display: inline-block; font-size: 12px; font-weight: 700;">
+            <i class="fa-solid fa-upload"></i> Subir Foto de Perfil
+          </label>
+          <input type="file" id="profPhotoFileInput" accept="image/*" style="display: none;" onchange="handleMemberPhotoUpload(event)">
+        </div>
+
+        <div class="form-group">
+          <label>Nombre y Apellido:</label>
+          <input type="text" id="profNameInput" class="mobile-input" required>
+        </div>
+
+        <div class="form-group">
+          <label>Teléfono Oficial:</label>
+          <input type="tel" id="profPhoneInput" class="mobile-input" required>
+        </div>
+
+        <div class="form-group">
+          <label>Zona Actual / Habitual:</label>
+          <input type="text" id="profZoneInput" class="mobile-input" required>
+        </div>
+
+        <div class="form-group">
+          <label>Nuevo PIN Personal (4 a 5 números):</label>
+          <input type="password" id="profPinInput" class="mobile-input" placeholder="Ingresa para cambiar tu PIN" maxlength="5">
+        </div>
+
+        <button type="submit" class="btn-mobile-submit" style="margin-bottom: 10px;">
+          <i class="fa-solid fa-floppy-disk"></i> Guardar Cambios en mi Perfil
+        </button>
+
+        <button type="button" class="btn-mobile-submit" style="background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.4);" onclick="handlePinProtectedLogout()">
+          <i class="fa-solid fa-arrow-right-from-bracket"></i> Cerrar Sesión (Requiere PIN)
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL DE SALVAGUARDA DE ACTIVACIÓN ACCIDENTAL (COUNTDOWN & CANCEL) -->
+  <div id="safeguardModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="safeguardTitle">
+    <div class="safeguard-modal-content">
+      <div style="font-size: 36px; color: #EF4444; margin-bottom: 6px;">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+      </div>
+      <h2 id="safeguardTitle" style="font-size: 18px; color: #EF4444; font-weight: 900; margin-bottom: 4px;">ACTIVACIÓN DE EMERGENCIA</h2>
+      <p id="safeguardSubtitle" style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Se ha pulsado una acción crítica. Iniciando protocolo en:</p>
+      
+      <div class="countdown-radial-box">
+        <svg class="countdown-svg" width="110" height="110" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="45"></circle>
+          <circle id="safeguardCircleProgress" class="progress" cx="50" cy="50" r="45"></circle>
+        </svg>
+        <span id="safeguardCountdownNumber" class="countdown-number">5</span>
+      </div>
+
+      <button class="btn-safeguard-cancel" onclick="cancelEmergencySafeguard()">
+        <i class="fa-solid fa-xmark"></i> CANCELAR AHORA (Fue un Toque Accidental)
+      </button>
+
+      <button class="btn-safeguard-confirm" onclick="confirmEmergencyNow()">
+        <i class="fa-solid fa-bolt"></i> Disparar Inmediatamente sin Esperar
+      </button>
+    </div>
+  </div>
+
+  <!-- PANTALLA TÁCTICA DE BLOQUEO POR ARREBATO (SNATCH & LOCK) -->
+  <div id="snatchLockOverlay" class="snatch-lock-overlay hidden" role="dialog" aria-modal="true">
+    <div class="snatch-lock-shield">
+      <i class="fa-solid fa-shield-halved"></i>
+    </div>
+    <div class="snatch-lock-title">¡DISPOSITIVO BLOQUEADO!</div>
+    <div class="snatch-lock-desc">La IA detectó aceleración brusca y despojo en carrera. La última posición GPS fue transmitida a la Familia Andrada. Ingresa tu PIN para desbloquear.</div>
+    
+    <div class="snatch-pin-dots" id="snatchPinDots">
+      <div class="snatch-pin-dot"></div>
+      <div class="snatch-pin-dot"></div>
+      <div class="snatch-pin-dot"></div>
+      <div class="snatch-pin-dot"></div>
+    </div>
+
+    <div class="snatch-keypad">
+      <button class="btn-snatch-key" onclick="pressSnatchPinKey('1')">1</button>
+      <button class="btn-snatch-key" onclick="pressSnatchPinKey('2')">2</button>
+      <button class="btn-snatch-key" onclick="pressSnatchPinKey('3')">3</button>
+      <button class="btn-snatch-key" onclick="pressSnatchPinKey('4')">4</button>
+      <button class="btn-snatch-key" onclick="pressSnatchPinKey('5')">5</button>
+      <button class="btn-snatch-key" onclick="pressSnatchPinKey('6')">6</button>
+      <button class="btn-snatch-key" onclick="pressSnatchPinKey('7')">7</button>
+      <button class="btn-snatch-key" onclick="pressSnatchPinKey('8')">8</button>
+      <button class="btn-snatch-key" onclick="pressSnatchPinKey('9')">9</button>
+      <button class="btn-snatch-key" onclick="clearSnatchPin()"><i class="fa-solid fa-eraser"></i></button>
+      <button class="btn-snatch-key" onclick="pressSnatchPinKey('0')">0</button>
+      <button class="btn-snatch-key" onclick="verifySnatchPin()"><i class="fa-solid fa-arrow-right"></i></button>
+    </div>
+  </div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Scripts de la Aplicación -->
+  <script src="js/audio_recorder.js"></script>
+  <script>
+    // Open WhatsApp Share modal cleanly and populate with live active user location
+    function openWhatsAppShare() {
+      const user = (typeof activeUser !== 'undefined' && activeUser) ? activeUser : (typeof familyMembers !== 'undefined' && familyMembers.length > 0 ? familyMembers[0] : { name: 'Carlos Andrada', role: 'Padre', lat: -34.603722, lng: -58.381592, battery: 92, zone: 'Casa Andrada' });
+      const lat = user.lat || -34.603722;
+      const lng = user.lng || -58.381592;
+
+      const header = `📍 Alerta de Ubicación: ${user.name}`;
+      const body = `Familiar: ${user.name}\nRol: ${user.role || 'Familia'}\nZona Actual: ${user.zone || 'En vivo'}\nBatería: ${user.battery || 90}%\nCoordenadas: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+
+      if (typeof showWhatsAppModal === 'function') {
+        showWhatsAppModal(header, body, lat, lng);
+      } else {
+        const modal = document.getElementById('whatsappModal');
+        const title = document.getElementById('waLocationTitle');
+        const bodyContent = document.getElementById('waBodyContent');
+        const link = document.getElementById('waGoogleMapsLink');
+        const directLink = document.getElementById('btnSendDirectWhatsApp');
+
+        if (title) title.textContent = header;
+        if (bodyContent) bodyContent.innerHTML = body.replace(/\n/g, '<br>');
+        const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+        if (link) link.href = mapsUrl;
+        if (directLink) {
+          const text = `🚨 *ALERTA FAMILIAR* 📍\n\n${body}\n\n📌 Ubicación:\n${mapsUrl}`;
+          directLink.href = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+        }
+        if (modal) modal.classList.remove('hidden');
+      }
+    }
+
+    function closeWhatsAppAlertModal() {
+      const modal = document.getElementById('whatsappAlertModal');
+      if (modal) modal.classList.add('hidden');
+    }
+  </script>
+  <script src="js/app.js"></script>
+</body>
+</html>

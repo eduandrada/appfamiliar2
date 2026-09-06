@@ -1,0 +1,16 @@
+{
+  "name": "@seguridad-familiar/shared",
+  "version": "1.0.0",
+  "description": "Contratos, tipos y constantes compartidas para la plataforma de seguridad familiar 2026",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}
