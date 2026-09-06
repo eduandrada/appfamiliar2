@@ -7,7 +7,11 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
-from rules import SafetyRuleEngine, SAFE_ZONES_ANDRADA
+try:
+    from rules import SafetyRuleEngine, SAFE_ZONES_ANDRADA
+except ImportError:
+    from python_engine.rules import SafetyRuleEngine, SAFE_ZONES_ANDRADA
+
 
 app = FastAPI(
     title="Familia Andrada - Motor de Seguridad Inteligente",
