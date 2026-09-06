@@ -1019,79 +1019,8 @@ function submitLoginPin() {
   }
 }
 
-// ==================== REGISTRO DE NUEVO FAMILIAR ====================
-function openRegisterModal() {
-  closeLoginModal();
-  document.getElementById('registerFamilyForm').reset();
-  document.getElementById('registerModal').classList.remove('hidden');
-}
+// ==================== REGISTRO DE NUEVO FAMILIAR (Ver implementación unificada en línea 3620) ====================
 
-function closeRegisterModal() {
-  document.getElementById('registerModal').classList.add('hidden');
-}
-
-function handleRegisterSubmit(e) {
-  e.preventDefault();
-  const fullName = document.getElementById('regFullName').value.trim();
-  const dni = document.getElementById('regDni').value.trim();
-  const phone = document.getElementById('regPhone').value.trim();
-  const role = document.getElementById('regRole').value;
-  const pin = document.getElementById('regPin').value.trim();
-
-  if (pin.length < 4 || pin.length > 5) {
-    alert('El PIN debe tener entre 4 y 5 números.');
-    return;
-  }
-
-  const initials = fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-  const newId = 'member_' + Date.now();
-
-  const newMember = {
-    id: newId,
-    name: fullName,
-    dni,
-    phone,
-    pin,
-    role,
-    lat: -34.603722 + (Math.random() - 0.5) * 0.005,
-    lng: -58.381592 + (Math.random() - 0.5) * 0.005,
-    battery: 100,
-    speed: 0.0,
-    zone: 'Casa Andrada',
-    avatar: initials || 'FA'
-  };
-
-  familyMembers.push(newMember);
-  saveMembers();
-
-  // Registrar también en la API Backend de Python
-  fetch('/api/register', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      name: fullName,
-      dni: dni,
-      phone: phone,
-      pin: pin,
-      role: role
-    })
-  }).catch(() => {});
-
-  activeUser = newMember;
-  localStorage.setItem('andrada_active_session', JSON.stringify(newMember));
-  updateActiveUserUI();
-
-  renderMemberChips();
-  renderDirectoryList();
-  updateMapMarkers();
-
-  closeRegisterModal();
-  alert(`✅ ¡Familiar ${fullName} registrado con éxito! Conectado al círculo.`);
-
-  if (isAdminLoggedIn) {
-    renderAdminTable();
-  }
-}
 
 // ==================== PANEL DE ADMINISTRADOR (admin / 1234) ====================
 function openAdminModal() {
@@ -3618,14 +3547,20 @@ function forceRealBatteryUpdate() {
 
 // --- Restricción de Registro de Miembros: Solo Administrador (PIN 9999) ---
 function openRegisterModal() {
-  const entered = prompt('🔐 RESTRICCIÓN DE SEGURIDAD:\n\nSolo el Administrador puede registrar nuevos familiares. Ingrese el PIN de Administrador (9999):');
-  if (!entered || entered !== '9999') {
-    alert('⛔ Acceso Denegado: Solo el Administrador (PIN 9999) puede registrar nuevos miembros en la Familia Andrada.');
-    return;
+  if (!isAdminLoggedIn) {
+    const entered = prompt('🔐 RESTRICCIÓN DE SEGURIDAD:\n\nSolo el Administrador puede registrar nuevos familiares. Ingrese el PIN de Administrador (9999):');
+    if (!entered || entered !== '9999') {
+      alert('⛔ Acceso Denegado: Solo el Administrador (PIN 9999) puede registrar nuevos miembros en la Familia Andrada.');
+      return;
+    }
   }
 
   const modal = document.getElementById('registerModal');
-  if (modal) modal.classList.remove('hidden');
+  if (modal) {
+    const form = document.getElementById('registerFamilyForm');
+    if (form) form.reset();
+    modal.classList.remove('hidden');
+  }
 }
 
 function closeRegisterModal() {
@@ -3667,13 +3602,49 @@ function handleRegisterSubmit(e) {
       renderDirectoryList();
       renderMemberChips();
       updateMapMarkers();
+      if (typeof renderAdminTable === 'function') {
+        renderAdminTable();
+      }
       notifyInPhone('👤 Nuevo Familiar Registrado', `${name} ha sido incorporado por el Administrador.`);
-      alert(`✅ Registro Exitoso:\n\nEl familiar ${name} (${role}) fue registrado correctamente en el sistema.`);
+
+      // GENERAR MENSAJE COMPLETO DE WHATSAPP CON TODOS LOS DATOS DEL MIEMBRO NUEVO
+      const cleanPhone = phone.replace(/[^0-9]/g, '');
+      const appUrl = 'https://appfamiliar2.onrender.com/';
+      const currentSafeWord = localStorage.getItem('andrada_safe_word') || 'HALCÓN AZUL';
+
+      const waMessage = data.welcome_message || (
+        `🛡️ *SISTEMA DE PROTECCIÓN - FAMILIA ANDRADA* 🛡️\n\n` +
+        `¡Hola *${name}*! Has sido registrado/a en el círculo familiar por el Administrador.\n\n` +
+        `📋 *TUS DATOS COMPLETOS DE ACCESO:*\n` +
+        `👤 *Nombre:* ${name}\n` +
+        `🎖️ *Rol:* ${role}\n` +
+        `💳 *DNI:* ${dni}\n` +
+        `📱 *Teléfono:* ${phone}\n` +
+        `🔐 *PIN de Acceso:* ${pin}\n` +
+        `🔑 *Palabra Clave Secreta:* ${currentSafeWord}\n\n` +
+        `🌐 *LINK DE INGRESO A LA APP:*\n${appUrl}\n\n` +
+        `📌 *Instrucciones de Ingreso:*\n` +
+        `1. Abre el enlace ${appUrl} desde tu celular.\n` +
+        `2. Selecciona tu nombre (*${name}*) e ingresa tu PIN (*${pin}*).\n` +
+        `3. Mantén activada tu ubicación GPS para estar conectado en tiempo real con la familia.`
+      );
+
+      const waUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(waMessage)}`;
+
+      // Abrir WhatsApp automáticamente con el mensaje pre-cargado
+      try {
+        window.open(waUrl, '_blank');
+      } catch (errWin) {
+        console.warn('No se pudo abrir ventana emergente de WhatsApp:', errWin);
+      }
+
+      alert(`✅ Registro Exitoso:\n\nEl familiar ${name} (${role}) fue registrado correctamente.\n\n📱 Se generó y abrió el mensaje de WhatsApp con todos los datos completos para enviarle a ${phone}.\n\nPIN asignado: ${pin}`);
     } else {
       alert(`❌ Error al registrar: ${data.detail || data.message || 'Verifica los datos'}`);
     }
   })
   .catch(err => {
+    console.error('[Registro] Error al registrar miembro:', err);
     alert('Error al conectar con el servidor.');
   });
 }

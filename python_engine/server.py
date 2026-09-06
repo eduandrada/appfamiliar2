@@ -440,7 +440,24 @@ def register_member(data: RegisterMemberInput):
     members.append(new_member)
     DATA_STORE["members"] = members
     save_data_store(DATA_STORE)
-    return {"status": "SUCCESS", "member": new_member, "members": members}
+
+    welcome_message = (
+        f"🛡️ *SISTEMA DE PROTECCIÓN - FAMILIA ANDRADA* 🛡️\n\n"
+        f"¡Hola *{data.name}*! Has sido registrado/a en el círculo familiar por el Administrador.\n\n"
+        f"📋 *TUS DATOS COMPLETOS DE ACCESO:*\n"
+        f"👤 *Nombre:* {data.name}\n"
+        f"🎖️ *Rol:* {data.role or 'Familiar'}\n"
+        f"💳 *DNI:* {data.dni}\n"
+        f"📱 *Teléfono:* {data.phone}\n"
+        f"🔐 *PIN de Acceso:* {data.pin}\n\n"
+        f"🌐 *LINK DE INGRESO A LA APP:*\nhttps://appfamiliar2.onrender.com/\n\n"
+        f"📌 *Instrucciones de Ingreso:*\n"
+        f"1. Abre https://appfamiliar2.onrender.com/ desde tu celular.\n"
+        f"2. Selecciona tu nombre (*{data.name}*) e ingresa tu PIN (*{data.pin}*).\n"
+        f"3. Mantén activada tu ubicación GPS para estar conectado en tiempo real."
+    )
+
+    return {"status": "SUCCESS", "member": new_member, "members": members, "welcome_message": welcome_message}
 
 class LocationUpdateInput(BaseModel):
     member_id: str
