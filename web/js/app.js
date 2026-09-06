@@ -8,65 +8,73 @@ const DEFAULT_MEMBERS = [
     id: 'carlos_andrada',
     name: 'Carlos Andrada',
     dni: '34.567.890',
-    phone: '+54 9 11 2345-6789',
+    phone: '+54 9 383 456-7890',
     pin: '1234',
     role: 'Padre (Protector)',
-    lat: -34.603722,
-    lng: -58.381592,
+    lat: -28.469570,
+    lng: -65.785240,
     battery: 92,
     speed: 0.0,
-    zone: 'Casa Andrada',
-    avatar: 'CA'
+    zone: 'Peatonal Rivadavia (Catamarca)',
+    avatar: 'CA',
+    isOnline: true,
+    lastSeen: 'Ahora'
   },
   {
     id: 'lucia_andrada',
     name: 'Lucía Andrada',
     dni: '36.789.012',
-    phone: '+54 9 11 3456-7890',
+    phone: '+54 9 383 467-8901',
     pin: '4321',
     role: 'Madre (Protectora)',
-    lat: -34.605000,
-    lng: -58.380000,
+    lat: -28.476500,
+    lng: -65.771200,
     battery: 78,
     speed: 42.5,
-    zone: 'En Ruta',
-    avatar: 'LA'
+    zone: 'La Chacarita (Catamarca)',
+    avatar: 'LA',
+    isOnline: true,
+    lastSeen: 'Hace 2 min'
   },
   {
     id: 'mateo_andrada',
     name: 'Mateo Andrada',
     dni: '45.123.456',
-    phone: '+54 9 11 4567-8901',
+    phone: '+54 9 383 478-9012',
     pin: '1122',
     role: 'Hijo',
-    lat: -34.608500,
-    lng: -58.375000,
+    lat: -28.463200,
+    lng: -65.781100,
     battery: 64,
     speed: 0.0,
-    zone: 'Colegio / Escuela',
-    avatar: 'MA'
+    zone: 'Colegio Quintana (Catamarca)',
+    avatar: 'MA',
+    isOnline: true,
+    lastSeen: 'Ahora'
   },
   {
     id: 'sofia_andrada',
     name: 'Sofía Andrada',
     dni: '48.987.654',
-    phone: '+54 9 11 5678-9012',
+    phone: '+54 9 383 489-0123',
     pin: '3344',
     role: 'Hija',
-    lat: -34.599000,
-    lng: -58.390000,
+    lat: -28.459400,
+    lng: -65.789100,
     battery: 45,
     speed: 0.0,
-    zone: 'Trabajo / Oficina',
-    avatar: 'SA'
+    zone: 'UNCA Universidad (Catamarca)',
+    avatar: 'SA',
+    isOnline: false,
+    lastSeen: 'Hace 18 min'
   }
 ];
 
-// Zonas Seguras
+// Zonas Seguras en San Fernando del Valle de Catamarca
 const SAFE_ZONES = [
-  { name: 'Casa Andrada', lat: -34.603722, lng: -58.381592, radius: 250, color: '#10B981' },
-  { name: 'Colegio / Escuela', lat: -34.608500, lng: -58.375000, radius: 200, color: '#38BDF8' },
-  { name: 'Trabajo / Oficina', lat: -34.599000, lng: -58.390000, radius: 300, color: '#8B5CF6' }
+  { name: 'Casa Andrada (Centro Catamarca)', lat: -28.469570, lng: -65.785240, radius: 250, color: '#10B981' },
+  { name: 'Colegio Quintana (Catamarca)', lat: -28.463200, lng: -65.781100, radius: 200, color: '#38BDF8' },
+  { name: 'UNCA Universidad (Catamarca)', lat: -28.459400, lng: -65.789100, radius: 300, color: '#8B5CF6' }
 ];
 
 // Estado de la Aplicación
@@ -3250,6 +3258,272 @@ function resetAppDatabaseFromAdmin() {
   notifyInPhone('🔄 Sistema Restablecido', 'Base de datos restablecida con éxito.');
   alert('✅ Base de datos restablecida a los valores iniciales de la Familia Andrada.');
 }
+
+// ==============================================================================
+// 10. MAPA DE LEAFLET (CATAMARCA), SEGUIMIENTO EN TIEMPO REAL Y CONTROL DE SESIÓN
+// ==============================================================================
+
+let aloneSafetyInterval = null;
+let aloneSecondsRemaining = 1800; // 30 minutos
+
+// --- A. Inicialización del Mapa en San Fernando del Valle de Catamarca ---
+function initMap() {
+  const mapContainer = document.getElementById('familyMap');
+  if (!mapContainer || typeof L === 'undefined') {
+    console.warn('[Mapa] Contenedor familyMap o librería Leaflet no disponible.');
+    return;
+  }
+
+  if (map) {
+    try { map.remove(); } catch (e) {}
+  }
+
+  // Coordenadas de San Fernando del Valle de Catamarca, Argentina
+  const catamarcaCenter = [-28.46957, -65.78524];
+
+  map = L.map('familyMap', {
+    zoomControl: false,
+    attributionControl: false
+  }).setView(catamarcaCenter, 14);
+
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    maxZoom: 19,
+    subdomains: 'abcd'
+  }).addTo(map);
+
+  // Dibujar Zonas Seguras en Catamarca
+  if (typeof SAFE_ZONES !== 'undefined') {
+    SAFE_ZONES.forEach(zone => {
+      L.circle([zone.lat, zone.lng], {
+        radius: zone.radius,
+        color: zone.color || '#10B981',
+        fillColor: zone.color || '#10B981',
+        fillOpacity: 0.12,
+        weight: 1.5,
+        dashArray: '4, 4'
+      }).addTo(map).bindTooltip(`🛡️ ${zone.name}`, { permanent: false, direction: 'top' });
+    });
+  }
+
+  updateMapMarkers();
+}
+
+// --- B. Actualización de Marcadores de la Familia en Tiempo Real ---
+function updateMapMarkers() {
+  if (!map || typeof L === 'undefined') return;
+
+  // Clear old markers
+  Object.keys(memberMarkers).forEach(id => {
+    if (memberMarkers[id]) map.removeLayer(memberMarkers[id]);
+  });
+  memberMarkers = {};
+
+  if (window.familyMeshPolyline) {
+    map.removeLayer(window.familyMeshPolyline);
+    window.familyMeshPolyline = null;
+  }
+
+  const onlineCoords = [];
+
+  familyMembers.forEach(m => {
+    if (!m.lat || !m.lng) return;
+
+    const isOnline = (m.isOnline !== undefined) ? m.isOnline : true;
+    const statusDot = isOnline
+      ? '<span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#10B981; border:2px solid #fff; box-shadow:0 0 8px #10B981;"></span>'
+      : '<span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#EF4444; border:2px solid #fff;"></span>';
+
+    const customIcon = L.divIcon({
+      className: 'custom-member-marker',
+      html: `
+        <div style="position: relative; text-align: center;">
+          <div style="width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, #0284C7, #06B6D4); color: #fff; font-weight: 800; font-size: 13px; display: flex; align-items: center; justify-content: center; border: 2.5px solid #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.4); margin: 0 auto;">
+            ${m.avatar || m.name.charAt(0)}
+          </div>
+          <div style="position: absolute; top: -2px; right: -2px;">${statusDot}</div>
+          <div style="background: rgba(7, 11, 20, 0.85); color: #fff; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); white-space: nowrap; margin-top: 2px;">
+            ${m.name.split(' ')[0]} • 🔋${m.battery}%
+          </div>
+        </div>
+      `,
+      iconSize: [40, 56],
+      iconAnchor: [20, 28]
+    });
+
+    const marker = L.marker([m.lat, m.lng], { icon: customIcon }).addTo(map);
+
+    const popupHtml = `
+      <div style="text-align: center; padding: 6px; min-width: 170px;">
+        <strong style="font-size: 13px; color: #000;">${m.name}</strong><br>
+        <small style="color: #666;">${m.role || 'Familia'}</small><br>
+        <div style="margin: 6px 0; font-size: 11px;">
+          ${isOnline ? '🟢 <strong>En Línea (Tiempo Real)</strong>' : '🔴 <strong>Offline</strong>'}<br>
+          📍 ${m.zone || 'Catamarca'}<br>
+          🔋 Batería: ${m.battery}% • ⚡ ${m.speed || 0} km/h
+        </div>
+        <button onclick="showFullMemberDetails('${m.id}')" style="background: #0284C7; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; width: 100%;">
+          Ver Perfil Completo
+        </button>
+      </div>
+    `;
+
+    marker.bindPopup(popupHtml);
+    memberMarkers[m.id] = marker;
+
+    if (isOnline) {
+      onlineCoords.push([m.lat, m.lng]);
+    }
+  });
+
+  // Polyline mesh connecting online family members
+  if (onlineCoords.length > 1) {
+    window.familyMeshPolyline = L.polyline(onlineCoords, {
+      color: '#06B6D4',
+      weight: 2,
+      opacity: 0.7,
+      dashArray: '6, 6'
+    }).addTo(map);
+  }
+}
+
+function centerMapOnFamily() {
+  if (!map) return;
+  const catamarcaCenter = [-28.46957, -65.78524];
+  if (activeUser && activeUser.lat && activeUser.lng) {
+    map.flyTo([activeUser.lat, activeUser.lng], 16, { duration: 1.2 });
+  } else {
+    map.flyTo(catamarcaCenter, 14, { duration: 1.2 });
+  }
+}
+
+// --- C. Manejo de Sesión de Usuario y Botón de Perfil en Cabecera ---
+function handleUserSessionPillClick() {
+  if (activeUser) {
+    openMemberProfileModal();
+  } else {
+    openLoginModal();
+  }
+}
+
+function updateHeaderSessionUI() {
+  const nameEl = document.getElementById('activeUserName');
+  const dotEl = document.getElementById('activeUserOnlineDot');
+  const btnLogoutHeader = document.getElementById('btnLogoutHeader');
+
+  if (activeUser) {
+    if (nameEl) nameEl.textContent = activeUser.name.split(' ')[0];
+    if (dotEl) dotEl.style.background = '#10B981';
+    if (btnLogoutHeader) btnLogoutHeader.classList.remove('hidden');
+  } else {
+    if (nameEl) nameEl.textContent = 'Ingresar';
+    if (dotEl) dotEl.style.background = '#EF4444';
+    if (btnLogoutHeader) btnLogoutHeader.classList.add('hidden');
+  }
+}
+
+function handlePinProtectedLogout() {
+  if (activeUser) {
+    const enteredPin = prompt(`🔐 Ingrese su PIN personal de ${activeUser.name} para cerrar sesión (o PIN admin 9999):`);
+    if (!enteredPin) return;
+
+    if (enteredPin === '9999' || enteredPin === (activeUser.pin || '1234')) {
+      logoutActiveUser();
+    } else {
+      alert('❌ PIN Incorrecto. No se pudo cerrar la sesión.');
+    }
+  } else {
+    logoutActiveUser();
+  }
+}
+
+function logoutActiveUser() {
+  localStorage.removeItem('app_familiar_auth');
+  activeUser = null;
+  closeMemberProfileModal();
+  updateHeaderSessionUI();
+  notifyInPhone('🔒 Sesión Cerrada', 'Has cerrado la sesión en este dispositivo.');
+  openLoginModal();
+}
+
+// --- D. Modo Quedo Solo en Casa Completo ---
+function toggleAloneMode(enabled) {
+  const title = document.getElementById('aloneStatusTitle');
+  const sub = document.getElementById('aloneStatusSub');
+  const box = document.getElementById('aloneActiveAlert');
+
+  if (enabled) {
+    if (title) title.textContent = '🛡️ Vigilancia del Hogar Activa';
+    if (sub) sub.textContent = 'Familia notificada. Supervisión de ruidos y temporizador activo.';
+    if (box) box.classList.remove('hidden');
+    startAloneSafetyTimer();
+    notifyInPhone('🏠 Solo en Casa Activado', 'Toda la familia sabe que estás en casa a solas. Toca "¡Estoy Bien!" periódicamente.');
+  } else {
+    if (title) title.textContent = 'Modo Casa Desactivado';
+    if (sub) sub.textContent = 'Toca para avisar a toda la familia que estás en casa a solas.';
+    if (box) box.classList.add('hidden');
+    if (aloneSafetyInterval) clearInterval(aloneSafetyInterval);
+    notifyInPhone('🏠 Solo en Casa Desactivado', 'Modo de supervisión de hogar finalizado.');
+  }
+}
+
+function startAloneSafetyTimer() {
+  aloneSecondsRemaining = 1800; // 30 min
+  updateAloneTimerDisplay();
+
+  if (aloneSafetyInterval) clearInterval(aloneSafetyInterval);
+  aloneSafetyInterval = setInterval(() => {
+    aloneSecondsRemaining--;
+    updateAloneTimerDisplay();
+
+    if (aloneSecondsRemaining <= 0) {
+      clearInterval(aloneSafetyInterval);
+      triggerAloneTimerExpired();
+    }
+  }, 1000);
+}
+
+function updateAloneTimerDisplay() {
+  const display = document.getElementById('aloneTimerDisplay');
+  if (!display) return;
+  const mins = Math.floor(Math.max(0, aloneSecondsRemaining) / 60);
+  const secs = Math.max(0, aloneSecondsRemaining) % 60;
+  display.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+}
+
+function confirmAloneSafetyCheck() {
+  startAloneSafetyTimer();
+  notifyInPhone('✅ Comprobación Confirmada', 'Temporizador de seguridad de 30 minutos reiniciado.');
+  alert('✅ Comprobación de Seguridad Confirmada:\n\nTemporizador reiniciado en 30 minutos. Tu familia sabe que estás bien.');
+}
+
+function triggerAloneTimerExpired() {
+  const user = activeUser || familyMembers[0];
+  const alertMsg = `🚨 ALERTA SOLO EN CASA: ${user.name} no respondió a la comprobación de seguridad periódica en el hogar.`;
+  playAlarmSirenSound();
+  showWhatsAppModal('🚨 ALERTA SOLO EN CASA (SIN CONFIRMACIÓN)', alertMsg, user.lat, user.lng);
+}
+
+function triggerDomesticAlert(alertType) {
+  const user = activeUser || familyMembers[0];
+  let title = 'Emergencia Doméstica';
+  let detail = 'Solicitud de auxilio en el hogar';
+
+  if (alertType === 'SUSPICIOUS_NOISE') {
+    title = '👁️ Ruido Sospechoso en Puerta / Afuera';
+    detail = `${user.name} escuchó un ruido sospechoso en la entrada de la casa en Catamarca.`;
+  } else if (alertType === 'FIRE_ALERT') {
+    title = '🔥 Alerta Extrema: Incendio / Fuga de Gas';
+    detail = `🚨 Fuego o escape de gas reportado por ${user.name} en el domicilio.`;
+  } else if (alertType === 'MEDICAL_HELP') {
+    title = '🚑 Urgencia Médica / Caída Doméstica';
+    detail = `Urgencia médica o accidente doméstico reportado por ${user.name}.`;
+  }
+
+  notifyInPhone(title, detail);
+  playAlarmSirenSound();
+  showWhatsAppModal(title, detail, user.lat, user.lng);
+}
+
 
 
 

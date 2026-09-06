@@ -65,9 +65,13 @@
         <button id="btnAiAssistant" class="icon-touch-btn ai-btn" title="Asistente Virtual con Inteligencia Artificial" aria-label="Asistente AI" onclick="openAiAssistantModal()">
           <i class="fa-solid fa-robot" aria-hidden="true"></i>
         </button>
-        <button id="userSessionPill" class="session-pill" aria-label="Iniciar sesión" onclick="openLoginModal()">
+        <button id="userSessionPill" class="session-pill" aria-label="Perfil y Ajustes de PIN" title="Perfil y Ajustes de PIN" onclick="handleUserSessionPillClick()">
           <i class="fa-solid fa-user-circle" aria-hidden="true"></i>
           <span id="activeUserName">Ingresar</span>
+          <span id="activeUserOnlineDot" style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#10B981; margin-left:4px;"></span>
+        </button>
+        <button id="btnLogoutHeader" class="icon-touch-btn logout-btn hidden" title="Cerrar Sesión" aria-label="Cerrar sesión" onclick="handlePinProtectedLogout()">
+          <i class="fa-solid fa-arrow-right-from-bracket" style="color: #EF4444;" aria-hidden="true"></i>
         </button>
         <button id="btnBellNotify" class="icon-touch-btn" title="Activar Notificaciones al Celular" aria-label="Notificaciones" onclick="initPushNotifications()">
           <i class="fa-solid fa-bell" aria-hidden="true"></i>
@@ -401,23 +405,23 @@
         </div>
       </section>
 
-      <!-- TAB 3: SOLO EN CASA (MODO MAMÁ / HOGAR) -->
+      <!-- TAB 3: SOLO EN CASA (MODO HOGAR SEGURO CATAMARCA) -->
       <section id="tab-alone" class="tab-pane">
         <div class="pane-scrollable">
-          <div class="section-banner alone-banner">
-            <div class="banner-icon"><i class="fa-solid fa-house-user"></i></div>
+          <div class="section-banner alone-banner" style="background: linear-gradient(135deg, #1E1B4B, #312E81); color: #fff;">
+            <div class="banner-icon"><i class="fa-solid fa-house-user" style="color: var(--accent-cyan);"></i></div>
             <div>
-              <h2>Modo Quedo Solo en Casa</h2>
-              <p>Diseñado para que Mamá o cualquier familiar avise cuando queda solo en el hogar y tenga auxilio inmediato.</p>
+              <h2 style="font-size: 16px; font-weight: 800; margin: 0;">Modo Quedo Solo en Casa</h2>
+              <p style="font-size: 11px; opacity: 0.9; margin: 2px 0 0;">Supervisión activa del hogar, temporizador preventivo y auxilio directo en Catamarca.</p>
             </div>
           </div>
 
           <!-- Switch Gigante de Activación -->
-          <div class="alone-switch-card glass-card">
-            <div class="switch-header">
+          <div class="alone-switch-card glass-card" style="padding: 14px; margin-bottom: 12px;">
+            <div class="switch-header" style="display: flex; justify-content: space-between; align-items: center;">
               <div>
-                <h3 id="aloneStatusTitle">Modo Casa Desactivado</h3>
-                <p id="aloneStatusSub">Toca para avisar a toda la familia que estás en casa a solas.</p>
+                <h3 id="aloneStatusTitle" style="font-size: 15px; font-weight: 800; color: #fff; margin: 0;">Modo Casa Desactivado</h3>
+                <p id="aloneStatusSub" style="font-size: 11px; color: var(--text-secondary); margin: 2px 0 0;">Toca para avisar a toda la familia que estás en casa a solas.</p>
               </div>
               <label class="toggle-switch">
                 <input type="checkbox" id="toggleAloneInHome" onchange="toggleAloneMode(this.checked)">
@@ -425,14 +429,43 @@
               </label>
             </div>
             
-            <div id="aloneActiveAlert" class="alone-active-box hidden">
-              <div class="alert-beacon"><i class="fa-solid fa-shield-halved"></i> Vigilancia Activa</div>
-              <p>Toda la Familia Andrada ha sido notificada en sus celulares de que estás sola en casa.</p>
+            <div id="aloneActiveAlert" class="alone-active-box hidden" style="margin-top: 12px; padding: 12px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px;">
+              <div class="alert-beacon" style="font-size: 13px; font-weight: 800; color: #10B981; margin-bottom: 4px;">
+                <i class="fa-solid fa-shield-halved"></i> Vigilancia del Hogar Activa
+              </div>
+              <p style="font-size: 11px; color: #fff; margin-bottom: 8px;">Toda la Familia Andrada sabe que estás a solas. Si no confirmas tu estado periódicamente, se emitirá una alerta de auxilio.</p>
+
+              <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 8px; margin-bottom: 8px;">
+                <span style="font-size: 11px; color: var(--text-secondary);">Próxima comprobación:</span>
+                <strong id="aloneTimerDisplay" style="font-size: 16px; color: var(--accent-cyan); font-family: monospace;">29:59</strong>
+              </div>
+
+              <button class="btn-mobile-submit" style="background: linear-gradient(135deg, #10B981, #059669); font-size: 13px; padding: 10px; margin: 0;" onclick="confirmAloneSafetyCheck()">
+                <i class="fa-solid fa-circle-check"></i> ¡Estoy Bien! (Reiniciar Temporizador)
+              </button>
+            </div>
+          </div>
+
+          <!-- Llamadas Directas de Emergencia en Catamarca -->
+          <div class="glass-card" style="padding: 12px; margin-bottom: 12px;">
+            <div style="font-size: 12px; font-weight: 800; color: #fff; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+              <i class="fa-solid fa-phone-volume" style="color: #EF4444;"></i> Llamada Directa de Emergencia (Catamarca):
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px;">
+              <a href="tel:911" class="btn-sm" style="background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 8px; padding: 8px 4px; text-decoration: none; text-align: center; font-weight: 800; font-size: 11px;">
+                <i class="fa-solid fa-shield-cat"></i> 911 Policía
+              </a>
+              <a href="tel:107" class="btn-sm" style="background: rgba(56, 189, 248, 0.2); color: #38BDF8; border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 8px; padding: 8px 4px; text-decoration: none; text-align: center; font-weight: 800; font-size: 11px;">
+                <i class="fa-solid fa-truck-medical"></i> 107 SAME
+              </a>
+              <a href="tel:100" class="btn-sm" style="background: rgba(245, 158, 11, 0.2); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 8px; padding: 8px 4px; text-decoration: none; text-align: center; font-weight: 800; font-size: 11px;">
+                <i class="fa-solid fa-fire-extinguisher"></i> 100 Bomberos
+              </a>
             </div>
           </div>
 
           <!-- Botones de Auxilio Doméstico Inmediato -->
-          <h3 class="group-title"><i class="fa-solid fa-hand-holding-hand"></i> Auxilio Rápido en Casa</h3>
+          <h3 class="group-title" style="margin-bottom: 8px;"><i class="fa-solid fa-hand-holding-hand"></i> Auxilio Rápido en Casa</h3>
           <div class="domestic-alerts-grid">
             <button class="domestic-btn btn-suspicious" onclick="triggerDomesticAlert('SUSPICIOUS_NOISE')">
               <i class="fa-solid fa-eye"></i>

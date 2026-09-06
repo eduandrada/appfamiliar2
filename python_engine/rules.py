@@ -2,24 +2,24 @@ import math
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime
 
-# Definición de Zonas Seguras de la Familia Andrada
+# Definición de Zonas Seguras de la Familia Andrada en San Fernando del Valle de Catamarca
 SAFE_ZONES_ANDRADA = [
     {
         "name": "Casa Andrada",
-        "latitude": -34.603722,
-        "longitude": -58.381592,
+        "latitude": -28.469570,
+        "longitude": -65.785240,
         "radius_meters": 250.0
     },
     {
         "name": "Colegio / Escuela",
-        "latitude": -34.608500,
-        "longitude": -58.375000,
+        "latitude": -28.463200,
+        "longitude": -65.781100,
         "radius_meters": 200.0
     },
     {
-        "name": "Trabajo / Oficina",
-        "latitude": -34.599000,
-        "longitude": -58.390000,
+        "name": "Trabajo / UNCA",
+        "latitude": -28.459400,
+        "longitude": -65.789100,
         "radius_meters": 300.0
     }
 ]
