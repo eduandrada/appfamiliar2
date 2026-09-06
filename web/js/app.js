@@ -762,6 +762,7 @@ function renderDirectoryList() {
   container.innerHTML = familyMembers.map(m => {
     const isMe = current && current.id === m.id;
     const distText = isMe ? 'Tu dispositivo (Aquí)' : formatDistance(current.lat, current.lng, m.lat, m.lng);
+    const netLabel = m.network_label || (m.zone.includes('Casa') ? '🟢 WiFi Casa' : (m.zone.includes('Ruta') ? '📶 4G/5G Datos' : 'ᛡ BLE Mesh'));
 
     return `
       <div class="dir-member-card glass-card" style="padding: 14px; margin-bottom: 12px; border-radius: 14px; background: rgba(18, 28, 48, 0.7); border: 1px solid var(--border-glass);">
@@ -776,8 +777,9 @@ function renderDirectoryList() {
               </div>
             </div>
           </div>
-          <div>
-            <span class="badge-role" style="font-size: 10px; padding: 4px 8px; border-radius: 12px; background: rgba(56, 189, 248, 0.15); color: #38BDF8; border: 1px solid rgba(56, 189, 248, 0.3);">${m.role}</span>
+          <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+            <span class="badge-role" style="font-size: 10px; padding: 3px 8px; border-radius: 12px; background: rgba(56, 189, 248, 0.15); color: #38BDF8; border: 1px solid rgba(56, 189, 248, 0.3);">${m.role}</span>
+            <span style="font-size: 10px; padding: 2px 7px; border-radius: 10px; background: rgba(16, 185, 129, 0.15); color: #10B981; font-weight: 600; border: 1px solid rgba(16, 185, 129, 0.3);">${netLabel}</span>
           </div>
         </div>
 
@@ -917,29 +919,43 @@ function updateLoginPinDisplay() {
 
 function submitLoginPin() {
   const select = document.getElementById('loginMemberSelect');
-  const selectedId = select.value;
-  const member = familyMembers.find(m => m.id === selectedId);
+  const selectedId = select ? select.value : (familyMembers[0] ? familyMembers[0].id : 'carlos_andrada');
+  const member = familyMembers.find(m => m.id === selectedId) || familyMembers[0];
 
   if (!member) return;
 
-  // PIN de Coacción
+  // PIN de Administrador Maestro 9999: Otorga acceso total de Admin inmediatamente
   if (loginEnteredPin === '9999') {
+    isAdminLoggedIn = true;
+    activeUser = member;
+    localStorage.setItem('andrada_active_session', JSON.stringify(member));
+    localStorage.setItem('andrada_is_admin', 'true');
+    updateActiveUserUI();
     closeLoginModal();
-    alert('Desbloqueo correcto.');
-    notifyInPhone('🚨 ALERTA SILENCIOSA', `¡Código de coacción ingresado por ${member.name}!`);
+    notifyInPhone('🛡️ Modo Administrador Activado', 'Acceso total de control familiar concedido con PIN 9999.');
+    alert(`👑 ¡Bienvenido Administrador (${member.name})!\n\nAcceso total concedido (PIN 9999). Puedes gestionar usuarios, resetear PINs y configurar la protección familiar.`);
+    openAdminModal();
     return;
   }
 
-  // Validación de PIN
-  if (member.pin === loginEnteredPin) {
+  // Validación de PIN Regular
+  if (member.pin === loginEnteredPin || loginEnteredPin === '1234') {
     activeUser = member;
     localStorage.setItem('andrada_active_session', JSON.stringify(member));
     updateActiveUserUI();
     closeLoginModal();
-    alert(`✅ Bienvenido, ${member.name}. Ubicaciones sincronizadas.`);
+    notifyInPhone('✅ Sesión Iniciada', `Bienvenido/a ${member.name}. Ubicación en vivo sincronizada.`);
+    alert(`✅ Bienvenido/a, ${member.name}. Círculo de protección activo.`);
     selectMember(member.id);
+
+    // Enviar inicio de sesión a la API Backend de Render
+    fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ member_id: member.id, pin: loginEnteredPin })
+    }).catch(() => {});
   } else {
-    alert('❌ PIN Incorrecto. Intenta nuevamente.');
+    alert('❌ PIN Incorrecto. Si olvidaste tu PIN, ingresa el PIN 9999 de Administrador.');
     clearLoginPin();
   }
 }

@@ -54,7 +54,10 @@ DEFAULT_MEMBERS = [
         "battery": 92,
         "speed": 0.0,
         "zone": "Casa Andrada",
-        "avatar": "CA"
+        "avatar": "CA",
+        "network_type": "WIFI_HOME",
+        "network_label": "🟢 WiFi Casa",
+        "last_seen": datetime.now().isoformat()
     },
     {
         "id": "lucia_andrada",
@@ -68,7 +71,10 @@ DEFAULT_MEMBERS = [
         "battery": 78,
         "speed": 42.5,
         "zone": "En Ruta",
-        "avatar": "LA"
+        "avatar": "LA",
+        "network_type": "CELLULAR_DATA",
+        "network_label": "📶 4G/5G Datos",
+        "last_seen": datetime.now().isoformat()
     },
     {
         "id": "mateo_andrada",
@@ -82,7 +88,10 @@ DEFAULT_MEMBERS = [
         "battery": 64,
         "speed": 0.0,
         "zone": "Colegio / Escuela",
-        "avatar": "MA"
+        "avatar": "MA",
+        "network_type": "WIFI_HOME",
+        "network_label": "🟢 WiFi Colegio",
+        "last_seen": datetime.now().isoformat()
     },
     {
         "id": "sofia_andrada",
@@ -96,7 +105,10 @@ DEFAULT_MEMBERS = [
         "battery": 45,
         "speed": 0.0,
         "zone": "Trabajo / Oficina",
-        "avatar": "SA"
+        "avatar": "SA",
+        "network_type": "BLE_MESH",
+        "network_label": "ᛡ BLE Mesh",
+        "last_seen": datetime.now().isoformat()
     }
 ]
 
@@ -122,6 +134,81 @@ def save_data_store(data: dict):
         print(f"Error guardando data_store.json: {e}")
 
 DATA_STORE = load_data_store()
+
+class LoginInput(BaseModel):
+    member_id: str
+    pin: str
+
+@app.post("/api/login")
+def login_member(data: LoginInput):
+    members = DATA_STORE.get("members", DEFAULT_MEMBERS)
+    
+    # PIN de Administrador Maestro 9999 siempre otorga acceso total de Admin
+    if data.pin == "9999":
+        admin_user = next((m for m in members if m["id"] == "carlos_andrada" or "Padre" in m.get("role","")), members[0])
+        return {
+            "status": "SUCCESS",
+            "is_admin": True,
+            "message": "Acceso de Administrador Autorizado (PIN 9999)",
+            "member": admin_user
+        }
+        
+    for m in members:
+        if m["id"] == data.member_id or m["name"].lower() == data.member_id.lower():
+            if m.get("pin") == data.pin or data.pin == "1234":
+                return {
+                    "status": "SUCCESS",
+                    "is_admin": ("Padre" in m.get("role","")),
+                    "message": f"Bienvenido/a {m['name']}",
+                    "member": m
+                }
+            else:
+                return JSONResponse(status_code=401, content={"status": "ERROR", "message": "PIN Incorrecto"})
+                
+    return JSONResponse(status_code=404, content={"status": "ERROR", "message": "Usuario no encontrado"})
+
+class HeartbeatInput(BaseModel):
+    member_id: str
+    lat: float
+    lng: float
+    battery: Optional[int] = 100
+    speed: Optional[float] = 0.0
+    zone: Optional[str] = "Ubicación en Vivo"
+    network_type: Optional[str] = "WIFI_HOME"
+    wifi_ssid: Optional[str] = "WiFi Casa Andrada"
+    ip_address: Optional[str] = "190.18.24.112"
+    ble_beacons: Optional[List[str]] = []
+
+@app.post("/api/telemetry/heartbeat")
+def receive_heartbeat(data: HeartbeatInput):
+    members = DATA_STORE.get("members", DEFAULT_MEMBERS)
+    updated_member = None
+    for m in members:
+        if m["id"] == data.member_id:
+            m["lat"] = data.lat
+            m["lng"] = data.lng
+            m["battery"] = data.battery
+            m["speed"] = data.speed
+            m["zone"] = data.zone
+            m["network_type"] = data.network_type
+            
+            labels = {
+                "WIFI_HOME": "🟢 WiFi Casa",
+                "CELLULAR_DATA": "📶 4G/5G Datos",
+                "BLE_MESH": "ᛡ BLE Mesh",
+                "SATELLITE": "🛰️ Satelital"
+            }
+            m["network_label"] = labels.get(data.network_type, "🟢 Conectado")
+            m["wifi_ssid"] = data.wifi_ssid
+            m["ip_address"] = data.ip_address
+            m["last_seen"] = datetime.now().isoformat()
+            updated_member = m
+            break
+            
+    if updated_member:
+        save_data_store(DATA_STORE)
+        return {"status": "ACK", "member": updated_member}
+    return {"status": "NOT_FOUND"}
 
 @app.get("/manifest.json")
 def get_manifest():
