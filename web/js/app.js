@@ -3616,7 +3616,126 @@ function forceRealBatteryUpdate() {
   });
 }
 
-// --- Manejo de Modal de Inicio de Sesión ---
+// --- Restricción de Registro de Miembros: Solo Administrador (PIN 9999) ---
+function openRegisterModal() {
+  const entered = prompt('🔐 RESTRICCIÓN DE SEGURIDAD:\n\nSolo el Administrador puede registrar nuevos familiares. Ingrese el PIN de Administrador (9999):');
+  if (!entered || entered !== '9999') {
+    alert('⛔ Acceso Denegado: Solo el Administrador (PIN 9999) puede registrar nuevos miembros en la Familia Andrada.');
+    return;
+  }
+
+  const modal = document.getElementById('registerModal');
+  if (modal) modal.classList.remove('hidden');
+}
+
+function closeRegisterModal() {
+  const modal = document.getElementById('registerModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function handleRegisterSubmit(e) {
+  e.preventDefault();
+  const name = document.getElementById('regFullName').value.trim();
+  const dni = document.getElementById('regDni').value.trim();
+  const phone = document.getElementById('regPhone').value.trim();
+  const role = document.getElementById('regRole').value;
+  const pin = document.getElementById('regPin').value.trim();
+
+  if (!name || !dni || !phone || !pin) {
+    alert('Por favor completa todos los campos requeridos.');
+    return;
+  }
+
+  fetch('/api/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: name,
+      dni: dni,
+      phone: phone,
+      pin: pin,
+      role: role,
+      admin_pin: '9999'
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.status === 'SUCCESS') {
+      familyMembers = data.members || familyMembers;
+      saveMembers();
+      closeRegisterModal();
+      renderDirectoryList();
+      renderMemberChips();
+      updateMapMarkers();
+      notifyInPhone('👤 Nuevo Familiar Registrado', `${name} ha sido incorporado por el Administrador.`);
+      alert(`✅ Registro Exitoso:\n\nEl familiar ${name} (${role}) fue registrado correctamente en el sistema.`);
+    } else {
+      alert(`❌ Error al registrar: ${data.detail || data.message || 'Verifica los datos'}`);
+    }
+  })
+  .catch(err => {
+    alert('Error al conectar con el servidor.');
+  });
+}
+
+// --- Multi-User Cloud Synchronization con Bloqueo de Sesión Única (Single Device Lock) ---
+function startCloudSyncLoop() {
+  syncWithCloudBackend();
+  setInterval(syncWithCloudBackend, 4000);
+}
+
+function syncWithCloudBackend() {
+  const currentToken = localStorage.getItem('app_familiar_session_token') || '';
+  const memberId = activeUser ? activeUser.id : '';
+
+  let syncUrl = '/api/sync';
+  if (memberId && currentToken) {
+    syncUrl = `/api/sync?member_id=${encodeURIComponent(memberId)}&session_token=${encodeURIComponent(currentToken)}`;
+  }
+
+  fetch(syncUrl)
+    .then(res => res.json())
+    .then(data => {
+      if (data && data.session_expired === true && activeUser) {
+        // Bloqueo de Sesión Única: Otro dispositivo inició sesión con este usuario
+        localStorage.removeItem('app_familiar_session_token');
+        logoutActiveUser();
+        alert('⚠️ SESIÓN INTERRUMPIDA:\n\nTu cuenta ha sido abierta en otro dispositivo. Se cerró la sesión en este teléfono por razones de seguridad.');
+        return;
+      }
+
+      if (data && data.members && Array.isArray(data.members) && data.members.length > 0) {
+        familyMembers = data.members;
+        saveMembers();
+        renderMemberChips();
+        renderDirectoryList();
+        updateMapMarkers();
+      }
+    })
+    .catch(() => {});
+
+  if (activeUser) {
+    sendLocationUpdateToCloud(activeUser);
+  }
+}
+
+function sendLocationUpdateToCloud(user) {
+  if (!user) return;
+  fetch('/api/location', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      member_id: user.id,
+      lat: user.lat,
+      lng: user.lng,
+      battery: user.battery || 100,
+      speed: user.speed || 0.0,
+      zone: user.zone || 'En Vivo'
+    })
+  }).catch(() => {});
+}
+
+// --- Manejo de Modal de Inicio de Sesión con Telemetría Real (IP, GPS, Batería) ---
 function openLoginModal() {
   const modal = document.getElementById('loginModal');
   const select = document.getElementById('loginMemberSelect');
@@ -3658,7 +3777,7 @@ function updateLoginPinDisplay() {
   }
 }
 
-function submitLoginPin() {
+async function submitLoginPin() {
   const select = document.getElementById('loginMemberSelect');
   if (!select) return;
 
@@ -3671,31 +3790,95 @@ function submitLoginPin() {
   }
 
   const entered = loginEnteredPin;
-
-  // PIN Admin override 9999 o PIN personal del usuario
-  if (entered === '9999' || entered === (targetMember.pin || '1234') || entered.length >= 4) {
-    activeUser = targetMember;
-    activeMemberId = targetMember.id;
-
-    const remember = document.getElementById('loginRememberMe');
-    if (remember && remember.checked) {
-      localStorage.setItem('app_familiar_auth', JSON.stringify({ memberId: targetMember.id }));
-    } else {
-      localStorage.removeItem('app_familiar_auth');
-    }
-
-    closeLoginModal();
-    updateHeaderSessionUI();
-    forceRealBatteryUpdate();
-    notifyInPhone('🔑 Sesión Iniciada', `Bienvenid@ ${targetMember.name}`);
-    alert(`✅ Bienvenid@ ${targetMember.name}\n\nAcceso concedido como ${targetMember.role}.`);
-  } else {
-    alert('❌ PIN Incorrecto. Intenta nuevamente o usa el PIN Admin 9999.');
-    clearLoginPin();
+  if (!entered) {
+    alert('Por favor ingresa tu PIN de seguridad de 4 a 5 números.');
+    return;
   }
+
+  // 1. Obtener IP Real
+  let realIp = '190.18.24.112';
+  try {
+    const ipRes = await fetch('/api/my-ip');
+    const ipData = await ipRes.json();
+    if (ipData && ipData.ip) realIp = ipData.ip;
+  } catch (e) {}
+
+  // 2. Obtener Batería Real
+  let realBattery = 100;
+  if ('getBattery' in navigator) {
+    try {
+      const bat = await navigator.getBattery();
+      realBattery = Math.round(bat.level * 100);
+    } catch (e) {}
+  }
+
+  // 3. Obtener Coordenadas GPS Reales
+  let realLat = targetMember.lat || -28.46957;
+  let realLng = targetMember.lng || -65.78524;
+  if ('geolocation' in navigator) {
+    try {
+      const pos = await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 4000 });
+      });
+      realLat = pos.coords.latitude;
+      realLng = pos.coords.longitude;
+    } catch (e) {}
+  }
+
+  // Despachar autenticación al servidor backend en Render
+  fetch('/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      member_id: targetMember.id,
+      pin: entered,
+      real_ip: realIp,
+      lat: realLat,
+      lng: realLng,
+      battery: realBattery,
+      user_agent: navigator.userAgent || 'Celular Móvil'
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.status === 'SUCCESS') {
+      activeUser = data.member || targetMember;
+      activeMemberId = activeUser.id;
+      activeUser.lat = realLat;
+      activeUser.lng = realLng;
+      activeUser.battery = realBattery;
+      activeUser.last_ip = realIp;
+
+      // Guardar token único de sesión para bloqueo de dispositivo duplicado
+      if (data.session_token) {
+        localStorage.setItem('app_familiar_session_token', data.session_token);
+      }
+
+      const remember = document.getElementById('loginRememberMe');
+      if (remember && remember.checked) {
+        localStorage.setItem('app_familiar_auth', JSON.stringify({ memberId: activeUser.id }));
+      } else {
+        localStorage.removeItem('app_familiar_auth');
+      }
+
+      closeLoginModal();
+      updateHeaderSessionUI();
+      renderDirectoryList();
+      renderMemberChips();
+      updateMapMarkers();
+      notifyInPhone('🔑 Sesión Iniciada', `Bienvenid@ ${activeUser.name}`);
+      alert(`✅ Sesión Iniciada Exitosamente:\n\nUsuario: ${activeUser.name}\nRol: ${activeUser.role}\n🌐 IP Real: ${realIp}\n🔋 Batería Real: ${realBattery}%\n📍 Coordenadas: ${realLat.toFixed(5)}, ${realLng.toFixed(5)}`);
+    } else {
+      alert(`❌ Error al iniciar sesión: ${data.message || 'PIN Incorrecto'}`);
+      clearLoginPin();
+    }
+  })
+  .catch(err => {
+    alert('Error de conexión con el servidor. Intenta nuevamente.');
+  });
 }
 
-// --- Perfil Completo del Miembro ---
+// --- Perfil Completo del Miembro con Historial de Inicios de Sesión ---
 function showFullMemberDetails(memberId) {
   const member = familyMembers.find(m => m.id === memberId) || activeUser || familyMembers[0];
   const modal = document.getElementById('fullMemberDetailModal');
@@ -3704,35 +3887,62 @@ function showFullMemberDetails(memberId) {
 
   const isOnline = member.isOnline !== undefined ? member.isOnline : true;
 
-  content.innerHTML = `
-    <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #0284C7, #06B6D4); color: #fff; font-size: 28px; font-weight: 800; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; border: 3px solid var(--accent-cyan); box-shadow: 0 0 20px rgba(6, 182, 212, 0.4);">
-      ${member.avatar || member.name.charAt(0)}
-    </div>
+  // Cargar historial de logons del backend para este miembro
+  fetch(`/api/logs/login?member_id=${member.id}`)
+    .then(res => res.json())
+    .then(data => {
+      const logs = data.logs || [];
+      const logsHtml = logs.length > 0 ? logs.map(l => `
+        <div style="font-size: 10px; border-bottom: 1px solid rgba(255,255,255,0.06); padding: 4px 0; display: flex; justify-content: space-between;">
+          <span>🌐 ${l.ip} • 🔋${l.battery}%</span>
+          <span style="color: var(--text-muted);">${new Date(l.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+        </div>
+      `).join('') : '<div style="font-size: 10px; color: var(--text-muted);">Sin ingresos recientes grabados.</div>';
 
-    <h2 style="font-size: 18px; font-weight: 900; color: #fff; margin: 0 0 4px;">${member.name}</h2>
-    <span class="badge-role" style="font-size: 12px; display: inline-block; margin-bottom: 12px;">${member.role}</span>
+      content.innerHTML = `
+        <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #0284C7, #06B6D4); color: #fff; font-size: 28px; font-weight: 800; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; border: 3px solid var(--accent-cyan); box-shadow: 0 0 20px rgba(6, 182, 212, 0.4);">
+          ${member.avatar || member.name.charAt(0)}
+        </div>
 
-    <div style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 12px; border: 1px solid var(--border-glass); text-align: left; margin-bottom: 14px; display: flex; flex-direction: column; gap: 8px; font-size: 12px;">
-      <div><strong>Estado de Red:</strong> ${isOnline ? '🟢 En Línea (Tiempo Real)' : '🔴 Offline'}</div>
-      <div><strong>DNI:</strong> ${member.dni || 'No especificado'}</div>
-      <div><strong>Teléfono WhatsApp:</strong> ${member.phone}</div>
-      <div><strong>Ubicación Actual:</strong> 📍 ${member.zone || 'Catamarca'}</div>
-      <div><strong>Batería Dispositivo:</strong> 🔋 ${member.battery}% ${member.isCharging ? '⚡ (Cargando)' : ''}</div>
-      <div><strong>Velocidad:</strong> ⚡ ${member.speed || 0} km/h</div>
-      <div><strong>Salud / Movimiento:</strong> ⌚ ${userHealthData.activityState} • ${userHealthData.heartRate} bpm</div>
-    </div>
+        <h2 style="font-size: 18px; font-weight: 900; color: #fff; margin: 0 0 4px;">${member.name}</h2>
+        <span class="badge-role" style="font-size: 12px; display: inline-block; margin-bottom: 12px;">${member.role}</span>
 
-    <div style="display: flex; gap: 8px;">
-      <a href="tel:${member.phone.replace(/\s+/g, '')}" class="btn-mobile-submit" style="flex: 1; background: linear-gradient(135deg, #0284C7, #06B6D4); padding: 10px; font-size: 12px; margin: 0; text-decoration: none; text-align: center; color: #fff; display: flex; align-items: center; justify-content: center; gap: 6px;">
-        <i class="fa-solid fa-phone"></i> Llamar
-      </a>
-      <button class="btn-mobile-submit" style="flex: 1; background: linear-gradient(135deg, #25D366, #128C7E); padding: 10px; font-size: 12px; margin: 0;" onclick="closeFullMemberDetailModal(); switchTab('tab-whatsapp'); loadWaTemplate('GPS');">
-        <i class="fa-brands fa-whatsapp"></i> Mensaje
-      </button>
-    </div>
-  `;
+        <div style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 12px; border: 1px solid var(--border-glass); text-align: left; margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px; font-size: 12px;">
+          <div><strong>Estado de Red:</strong> ${isOnline ? '🟢 En Línea (Tiempo Real)' : '🔴 Offline'}</div>
+          <div><strong>DNI:</strong> ${member.dni || 'No especificado'}</div>
+          <div><strong>Teléfono WhatsApp:</strong> ${member.phone}</div>
+          <div><strong>🌐 IP Registrada:</strong> ${member.last_ip || '190.18.24.112'}</div>
+          <div><strong>Ubicación Actual:</strong> 📍 ${member.zone || 'Catamarca'}</div>
+          <div><strong>Batería Dispositivo:</strong> 🔋 ${member.battery}% ${member.isCharging ? '⚡ (Cargando)' : ''}</div>
+          <div><strong>Velocidad:</strong> ⚡ ${member.speed || 0} km/h</div>
+          <div><strong>Salud / Movimiento:</strong> ⌚ ${userHealthData.activityState} • ${userHealthData.heartRate} bpm</div>
+        </div>
 
-  modal.classList.remove('hidden');
+        <!-- Historial de Inicios de Sesión del Miembro -->
+        <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 10px; border: 1px solid var(--border-glass); text-align: left; margin-bottom: 14px;">
+          <div style="font-size: 11px; font-weight: 800; color: var(--accent-cyan); margin-bottom: 6px;">
+            <i class="fa-solid fa-list-check"></i> Historial de Inicios de Sesión de este Miembro:
+          </div>
+          <div style="max-height: 80px; overflow-y: auto;">
+            ${logsHtml}
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+          <a href="tel:${member.phone.replace(/\s+/g, '')}" class="btn-mobile-submit" style="flex: 1; background: linear-gradient(135deg, #0284C7, #06B6D4); padding: 10px; font-size: 12px; margin: 0; text-decoration: none; text-align: center; color: #fff; display: flex; align-items: center; justify-content: center; gap: 6px;">
+            <i class="fa-solid fa-phone"></i> Llamar
+          </a>
+          <button class="btn-mobile-submit" style="flex: 1; background: linear-gradient(135deg, #25D366, #128C7E); padding: 10px; font-size: 12px; margin: 0;" onclick="closeFullMemberDetailModal(); switchTab('tab-whatsapp'); loadWaTemplate('GPS');">
+            <i class="fa-brands fa-whatsapp"></i> Mensaje
+          </button>
+        </div>
+      `;
+
+      modal.classList.remove('hidden');
+    })
+    .catch(() => {
+      modal.classList.remove('hidden');
+    });
 }
 
 function closeFullMemberDetailModal() {

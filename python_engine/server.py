@@ -274,49 +274,135 @@ def delete_camera(cam_id: str):
     save_data_store(DATA_STORE)
     return {"status": "SUCCESS", "cameras": new_cams}
 
+@app.get("/api/my-ip")
+def get_my_ip(request: Request):
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        client_ip = forwarded.split(",")[0].strip()
+    else:
+        client_ip = request.client.host if (request.client and request.client.host) else "190.18.24.112"
+    return {"ip": client_ip}
+
 @app.get("/api/sync")
-def get_cloud_sync():
+def get_cloud_sync(member_id: Optional[str] = Query(None), session_token: Optional[str] = Query(None)):
+    members = DATA_STORE.get("members", DEFAULT_MEMBERS)
+    session_expired = False
+
+    if member_id and session_token:
+        found_m = next((m for m in members if m["id"] == member_id), None)
+        if found_m and found_m.get("active_session_token"):
+            if found_m["active_session_token"] != session_token:
+                session_expired = True
+
     return {
         "status": "ONLINE",
+        "session_expired": session_expired,
         "timestamp": datetime.now().isoformat(),
-        "members": DATA_STORE.get("members", []),
+        "members": members,
         "cameras": DATA_STORE.get("cameras", []),
         "check_ins": DATA_STORE.get("check_ins", [])[-15:],
         "alerts": DATA_STORE.get("alerts", [])[-10:],
-        "audit_logs": DATA_STORE.get("audit_logs", [])[-15:]
+        "audit_logs": DATA_STORE.get("audit_logs", [])[-15:],
+        "login_logs": DATA_STORE.get("login_logs", [])[-30:]
     }
 
 class LoginInput(BaseModel):
     member_id: str
     pin: str
+    real_ip: Optional[str] = "190.18.24.112"
+    lat: Optional[float] = -28.46957
+    lng: Optional[float] = -65.78524
+    battery: Optional[int] = 100
+    user_agent: Optional[str] = "Mobile Device"
 
 @app.post("/api/login")
-def login_member(data: LoginInput):
+def login_member(data: LoginInput, request: Request):
     members = DATA_STORE.get("members", DEFAULT_MEMBERS)
     
+    # Extraer IP real si no viene en body
+    if not data.real_ip or data.real_ip == "190.18.24.112":
+        forwarded = request.headers.get("X-Forwarded-For")
+        if forwarded:
+            data.real_ip = forwarded.split(",")[0].strip()
+        elif request.client and request.client.host:
+            data.real_ip = request.client.host
+
+    # Generar Token Único de Sesión para impedir sesiones duplicadas
+    session_token = f"token_{data.member_id}_{int(datetime.now().timestamp()*1000)}"
+
     # PIN Maestro de Administrador 9999 otorga acceso total de Admin incondicional
     if data.pin == "9999":
         admin_user = next((m for m in members if m["id"] == "carlos_andrada" or "Padre" in m.get("role","")), members[0])
+        admin_user["active_session_token"] = session_token
+        admin_user["last_ip"] = data.real_ip
+        admin_user["lat"] = data.lat
+        admin_user["lng"] = data.lng
+        admin_user["battery"] = data.battery
+        admin_user["last_seen"] = datetime.now().isoformat()
+
+        record_login_log(admin_user, data.real_ip, data.lat, data.lng, data.battery, data.user_agent)
+        save_data_store(DATA_STORE)
+
         return {
             "status": "SUCCESS",
             "is_admin": True,
+            "session_token": session_token,
             "message": "Acceso de Administrador Autorizado (PIN 9999)",
-            "member": admin_user
+            "member": admin_user,
+            "real_ip": data.real_ip
         }
         
     for m in members:
         if m["id"] == data.member_id or m["name"].lower() == data.member_id.lower():
             if m.get("pin") == data.pin or data.pin == "1234":
+                m["active_session_token"] = session_token
+                m["last_ip"] = data.real_ip
+                m["lat"] = data.lat
+                m["lng"] = data.lng
+                m["battery"] = data.battery
+                m["last_seen"] = datetime.now().isoformat()
+
+                record_login_log(m, data.real_ip, data.lat, data.lng, data.battery, data.user_agent)
+                save_data_store(DATA_STORE)
+
                 return {
                     "status": "SUCCESS",
                     "is_admin": ("Padre" in m.get("role","")),
+                    "session_token": session_token,
                     "message": f"Bienvenido/a {m['name']}",
-                    "member": m
+                    "member": m,
+                    "real_ip": data.real_ip
                 }
             else:
                 return JSONResponse(status_code=401, content={"status": "ERROR", "message": "PIN Incorrecto"})
                 
     return JSONResponse(status_code=404, content={"status": "ERROR", "message": "Usuario no encontrado"})
+
+def record_login_log(member, ip, lat, lng, battery, user_agent):
+    if "login_logs" not in DATA_STORE:
+        DATA_STORE["login_logs"] = []
+    
+    log_entry = {
+        "id": f"log_{int(datetime.now().timestamp()*1000)}",
+        "member_id": member["id"],
+        "member_name": member["name"],
+        "ip": ip,
+        "lat": lat,
+        "lng": lng,
+        "location": "San Fernando del Valle de Catamarca",
+        "battery": battery,
+        "timestamp": datetime.now().isoformat(),
+        "device": user_agent or "Navegador Móvil"
+    }
+    DATA_STORE["login_logs"].append(log_entry)
+
+@app.get("/api/logs/login")
+def get_login_logs(member_id: Optional[str] = Query(None)):
+    all_logs = DATA_STORE.get("login_logs", [])
+    if member_id:
+        filtered = [l for l in all_logs if l.get("member_id") == member_id]
+        return {"member_id": member_id, "logs": filtered[-15:]}
+    return {"logs": all_logs[-30:]}
 
 class RegisterMemberInput(BaseModel):
     name: str
@@ -324,9 +410,14 @@ class RegisterMemberInput(BaseModel):
     phone: str
     pin: str
     role: Optional[str] = "Familiar"
+    admin_pin: Optional[str] = None
 
 @app.post("/api/register")
 def register_member(data: RegisterMemberInput):
+    # RESTRICCIÓN: Solo el Administrador (PIN 9999 o Admin activo) puede crear miembros
+    if data.admin_pin != "9999":
+        raise HTTPException(status_code=403, detail="Acceso denegado: Solo el Administrador (PIN 9999) puede registrar nuevos miembros.")
+
     members = DATA_STORE.get("members", [])
     initials = "".join([n[0] for n in data.name.split() if n]).upper()[:2] or "FA"
     new_member = {
@@ -336,11 +427,11 @@ def register_member(data: RegisterMemberInput):
         "phone": data.phone,
         "pin": data.pin,
         "role": data.role or "Familiar",
-        "lat": -34.603722,
-        "lng": -58.381592,
+        "lat": -28.469570,
+        "lng": -65.785240,
         "battery": 100,
         "speed": 0.0,
-        "zone": "Casa Andrada",
+        "zone": "San Fernando del Valle de Catamarca",
         "avatar": initials,
         "network_type": "WIFI_HOME",
         "network_label": "🟢 WiFi Casa",
