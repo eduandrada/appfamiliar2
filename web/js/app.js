@@ -101,6 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initGaitMotionSensor();
   loadStoredAuditLogs();
   startCloudSyncLoop();
+  initRealtimeGpsTracker();
 });
 
 // ==================== PWA INSTALLATION PROMPT ====================
@@ -471,6 +472,56 @@ function updateMapMarkers() {
       memberMarkers[m.id] = marker;
     }
   });
+
+  // Dibujar red inteligente de conexión (Mesh Links) entre familiares en el mapa
+  if (familyMembers.length > 1) {
+    const polyCoords = familyMembers.map(m => [m.lat, m.lng]);
+    if (window.familyMeshPolyline) {
+      map.removeLayer(window.familyMeshPolyline);
+    }
+    window.familyMeshPolyline = L.polyline(polyCoords, {
+      color: '#06B6D4',
+      weight: 2,
+      dashArray: '6, 8',
+      opacity: 0.6
+    }).addTo(map);
+  }
+}
+
+// ==================== RASTREO GPS REALTIME EN TIEMPO REAL ====================
+function initRealtimeGpsTracker() {
+  if (!('geolocation' in navigator)) {
+    console.warn('[GPS] Geolocalización HTML5 no disponible');
+    return;
+  }
+
+  navigator.geolocation.watchPosition(
+    (pos) => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      const speed = pos.coords.speed ? (pos.coords.speed * 3.6) : 0.0;
+
+      if (activeUser) {
+        activeUser.lat = lat;
+        activeUser.lng = lng;
+        activeUser.speed = speed;
+
+        updateActiveUserUI();
+        updateMapMarkers();
+
+        // Transmitir inmediatamente la posición real GPS a Render
+        sendLocationUpdateToCloud(activeUser);
+      }
+    },
+    (err) => {
+      console.warn('[GPS] Error obteniendo GPS en vivo:', err.message);
+    },
+    {
+      enableHighAccuracy: true,
+      maximumAge: 1000,
+      timeout: 10000
+    }
+  );
 }
 
 function renderMemberChips() {
