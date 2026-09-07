@@ -6398,26 +6398,27 @@ function getDeviceDetails() {
 }
 
 function sendTelemetryUpdate() {
-  if (!currentUser) return;
+  const user = activeUser || (familyMembers && familyMembers[0]);
+  if (!user) return;
   const dev = getDeviceDetails();
-  currentUser.device_type = dev.deviceType;
-  currentUser.device_name = dev.deviceName;
+  user.device_type = dev.deviceType;
+  user.device_name = dev.deviceName;
 
-  const m = familyMembers.find(item => item.id === currentUser.id);
+  const m = familyMembers.find(item => item.id === user.id);
   if (m) {
     m.device_type = dev.deviceType;
     m.device_name = dev.deviceName;
   }
 
-  fetch(`/api/members/${currentUser.id}/location`, {
+  fetch(`/api/members/${user.id}/location`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      lat: currentUser.lat,
-      lng: currentUser.lng,
-      speed: currentUser.speed || 0,
-      battery: currentUser.battery || 100,
-      zone: currentUser.zone || 'Catamarca',
+      lat: user.lat,
+      lng: user.lng,
+      speed: user.speed || 0,
+      battery: user.battery || 100,
+      zone: user.zone || 'Catamarca',
       device_type: dev.deviceType,
       device_name: dev.deviceName
     })
@@ -6431,13 +6432,14 @@ function initBatteryMonitoring() {
       const updateBattery = () => {
         const level = Math.round(battery.level * 100);
         console.log(`[Batería Real] Nivel detectado: ${level}% (Cargando: ${battery.charging})`);
-        if (currentUser) {
-          currentUser.battery = level;
-          const m = familyMembers.find(item => item.id === currentUser.id);
+        const user = activeUser || (familyMembers && familyMembers[0]);
+        if (user) {
+          user.battery = level;
+          const m = familyMembers.find(item => item.id === user.id);
           if (m) m.battery = level;
         }
         renderMemberChips();
-        renderFamilyDirectory();
+        renderDirectoryList();
         sendTelemetryUpdate();
       };
       updateBattery();
@@ -6456,19 +6458,20 @@ function initHighPrecisionGPS() {
         const speed = Math.round((position.coords.speed || 0) * 3.6);
         console.log(`[GPS Vivo Presición] lat: ${lat}, lng: ${lng}, speed: ${speed} km/h`);
         
-        if (currentUser) {
-          currentUser.lat = lat;
-          currentUser.lng = lng;
-          currentUser.speed = speed;
-          const m = familyMembers.find(item => item.id === currentUser.id);
+        const user = activeUser || (familyMembers && familyMembers[0]);
+        if (user) {
+          user.lat = lat;
+          user.lng = lng;
+          user.speed = speed;
+          const m = familyMembers.find(item => item.id === user.id);
           if (m) {
             m.lat = lat;
             m.lng = lng;
             m.speed = speed;
           }
         }
-        if (map && memberMarkers[currentUser?.id]) {
-          memberMarkers[currentUser.id].setLatLng([lat, lng]);
+        if (map && user && memberMarkers[user.id]) {
+          memberMarkers[user.id].setLatLng([lat, lng]);
         }
         sendTelemetryUpdate();
       },
@@ -6487,16 +6490,17 @@ function refreshMapLocation() {
       (pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
-        if (currentUser) {
-          currentUser.lat = lat;
-          currentUser.lng = lng;
-          const m = familyMembers.find(item => item.id === currentUser.id);
+        const user = activeUser || (familyMembers && familyMembers[0]);
+        if (user) {
+          user.lat = lat;
+          user.lng = lng;
+          const m = familyMembers.find(item => item.id === user.id);
           if (m) { m.lat = lat; m.lng = lng; }
         }
         if (map) {
           map.setView([lat, lng], 16);
-          if (memberMarkers[currentUser?.id]) {
-            memberMarkers[currentUser.id].setLatLng([lat, lng]).openPopup();
+          if (user && memberMarkers[user.id]) {
+            memberMarkers[user.id].setLatLng([lat, lng]).openPopup();
           }
         }
         if (btn) btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Refrescar';
@@ -6571,8 +6575,9 @@ function toggleRiskZonesLayer() {
 }
 
 function reportPoliceOperation() {
-  const lat = currentUser?.lat || -28.469570;
-  const lng = currentUser?.lng || -65.785240;
+  const user = activeUser || (familyMembers && familyMembers[0]);
+  const lat = user?.lat || -28.469570;
+  const lng = user?.lng || -65.785240;
   const desc = prompt("Descripción del Operativo Policial / Control:", "Control Policial en Av. Belgrano");
   if (!desc) return;
 
@@ -6582,7 +6587,7 @@ function reportPoliceOperation() {
         className: 'police-marker',
         html: `<div style="background:#6366F1; color:#fff; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; border:2px solid #fff; box-shadow:0 0 10px #6366F1;"><i class="fa-solid fa-shield-cat"></i></div>`
       })
-    }).addTo(map).bindPopup(`🚨 <b>OPERATIVO POLICIAL</b><br>${desc}<br><small>Reportado por: ${currentUser?.name || 'Familia'}</small>`).openPopup();
+    }).addTo(map).bindPopup(`🚨 <b>OPERATIVO POLICIAL</b><br>${desc}<br><small>Reportado por: ${user?.name || 'Familia'}</small>`).openPopup();
   }
 
   fetch('/api/reports/create', {
@@ -6593,7 +6598,7 @@ function reportPoliceOperation() {
       lat: lat,
       lng: lng,
       description: desc,
-      reporter_name: currentUser?.name || 'Familia Andrada'
+      reporter_name: user?.name || 'Familia Andrada'
     })
   }).catch(err => console.warn(err));
 
@@ -6601,8 +6606,9 @@ function reportPoliceOperation() {
 }
 
 function reportTrafficAccident() {
-  const lat = currentUser?.lat || -28.469570;
-  const lng = currentUser?.lng || -65.785240;
+  const user = activeUser || (familyMembers && familyMembers[0]);
+  const lat = user?.lat || -28.469570;
+  const lng = user?.lng || -65.785240;
   const desc = prompt("Descripción del Accidente / Incidente Vial:", "Colisión vehicular / Calle cortada");
   if (!desc) return;
 
@@ -6612,7 +6618,7 @@ function reportTrafficAccident() {
         className: 'accident-marker',
         html: `<div style="background:#EF4444; color:#fff; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; border:2px solid #fff; box-shadow:0 0 10px #EF4444;"><i class="fa-solid fa-car-burst"></i></div>`
       })
-    }).addTo(map).bindPopup(`💥 <b>ACCIDENTE VIAL</b><br>${desc}<br><small>Reportado por: ${currentUser?.name || 'Familia'}</small>`).openPopup();
+    }).addTo(map).bindPopup(`💥 <b>ACCIDENTE VIAL</b><br>${desc}<br><small>Reportado por: ${user?.name || 'Familia'}</small>`).openPopup();
   }
 
   fetch('/api/reports/create', {
@@ -6623,7 +6629,7 @@ function reportTrafficAccident() {
       lat: lat,
       lng: lng,
       description: desc,
-      reporter_name: currentUser?.name || 'Familia Andrada'
+      reporter_name: user?.name || 'Familia Andrada'
     })
   }).catch(err => console.warn(err));
 
