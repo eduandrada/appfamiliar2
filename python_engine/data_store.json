@@ -19,7 +19,7 @@
       "avatar": "CA",
       "network_type": "WIFI_HOME",
       "network_label": "🟢 WiFi Casa",
-      "last_seen": "2026-09-07T09:33:10.489124",
+      "last_seen": "2026-09-07T09:35:10.513656",
       "active_session_token": "token_carlos_andrada_1788783859785",
       "last_ip": "127.0.0.1"
     },
@@ -113,52 +113,52 @@
       "type": "IP_NIGHT_VISION"
     },
     {
-      "id": "cam_1788784397524",
+      "id": "cam_1788784525608",
       "name": "Cámara IP Test 3",
       "location": "Zona Test",
       "ip_address": "192.168.1.13",
-      "qr_code": "CAM_QR_1788784397",
+      "qr_code": "CAM_QR_1788784525",
       "stream_url": "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80",
       "is_online": true,
       "is_hidden": false,
       "status": "ONLINE",
-      "added_at": "2026-09-07T09:33:17.524819"
+      "added_at": "2026-09-07T09:35:25.608107"
     },
     {
-      "id": "cam_1788784397530",
+      "id": "cam_1788784525615",
       "name": "Cámara IP Test 4",
       "location": "Zona Test",
       "ip_address": "192.168.1.14",
-      "qr_code": "CAM_QR_1788784397",
+      "qr_code": "CAM_QR_1788784525",
       "stream_url": "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80",
       "is_online": true,
       "is_hidden": false,
       "status": "ONLINE",
-      "added_at": "2026-09-07T09:33:17.530529"
+      "added_at": "2026-09-07T09:35:25.615262"
     },
     {
-      "id": "cam_1788784397536",
+      "id": "cam_1788784525621",
       "name": "Cámara IP Test 5",
       "location": "Zona Test",
       "ip_address": "192.168.1.15",
-      "qr_code": "CAM_QR_1788784397",
+      "qr_code": "CAM_QR_1788784525",
       "stream_url": "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80",
       "is_online": true,
       "is_hidden": false,
       "status": "ONLINE",
-      "added_at": "2026-09-07T09:33:17.536535"
+      "added_at": "2026-09-07T09:35:25.621104"
     },
     {
-      "id": "cam_1788784397542",
+      "id": "cam_1788784525627",
       "name": "Cámara IP Test 6",
       "location": "Zona Test",
       "ip_address": "192.168.1.16",
-      "qr_code": "CAM_QR_1788784397",
+      "qr_code": "CAM_QR_1788784525",
       "stream_url": "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80",
       "is_online": true,
       "is_hidden": false,
       "status": "ONLINE",
-      "added_at": "2026-09-07T09:33:17.542272"
+      "added_at": "2026-09-07T09:35:25.627305"
     }
   ],
   "check_ins": [],
