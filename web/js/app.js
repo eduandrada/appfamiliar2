@@ -364,9 +364,9 @@ function switchTab(tabId) {
     'tab-antifraud': 1,
     'tab-alone': 2,
     'tab-pickup': 3,
-    'tab-edgeai': 4,
+    'tab-sos': 4,
     'tab-cameras': 5,
-    'tab-sos': 7,
+    'tab-edgeai': 6,
     'tab-family': 8
   };
   const btnIndex = indexMap[tabId];
@@ -808,18 +808,21 @@ function sendQuickReply(replyText) {
 }
 
 function handleSendCustomMessage(e) {
-  e.preventDefault();
+  if (e && e.preventDefault) e.preventDefault();
   const input = document.getElementById('customChatInput');
+  if (!input) return;
   const rawText = input.value.trim();
   if (!rawText) return;
 
   const cleanText = filterBadWords(rawText);
   appendChatMessage('outgoing', `Tú: "${cleanText}"`);
   input.value = '';
+  input.focus(); // Mantiene el foco en PC para seguir escribiendo
 
   setTimeout(() => {
     appendChatMessage('incoming', 'Familiar: "Entendido, estoy atento al mapa."');
-  }, 2000);
+    if ('vibrate' in navigator) navigator.vibrate(100);
+  }, 1800);
 }
 
 function appendChatMessage(type, htmlContent) {
@@ -834,7 +837,9 @@ function appendChatMessage(type, htmlContent) {
   msgDiv.innerHTML = `${htmlContent} <span class="msg-time">${timeStr}</span>`;
 
   container.appendChild(msgDiv);
-  container.scrollTop = container.scrollHeight;
+  setTimeout(() => {
+    container.scrollTop = container.scrollHeight;
+  }, 50);
 }
 
 // ==================== TAB 4: CÁMARAS DE SEGURIDAD ====================
@@ -842,14 +847,29 @@ function startCameraClocks() {
   setInterval(() => {
     const now = new Date();
     const timeStr = now.toLocaleTimeString();
-    for (let i = 1; i <= 4; i++) {
+    for (let i = 1; i <= 6; i++) {
       const el = document.getElementById(`camTime${i}`);
       if (el) el.textContent = `REC ${timeStr}`;
     }
   }, 1000);
 }
 
-// ==================== TAB 5: BOTÓN SOS 30s ====================
+// ==================== TAB 5: BOTÓN SOS MULTIPLATAFORMA (PC / MÓVIL) ====================
+function handleNavBarSosClick() {
+  switchTab('tab-sos');
+  const user = activeUser || familyMembers[0];
+
+  if (isDrillMode) {
+    // MODO PRUEBA / SIMULACRO EN TIEMPO REAL
+    triggerRealtimeAlertOnMap(user.id, '🧪 SIMULACRO SOS', `${user.name} - Simulacro de SOS en tiempo real`);
+    notifyInPhone('🧪 SIMULACRO DE SOS', `Simulacro de alerta emitido correctamente en el mapa en Modo Prueba.`);
+    showToast('🧪 SIMULACRO DE SOS: Alerta enviada al mapa en tiempo real (Modo Prueba activa)', 'info');
+  } else {
+    // MODO REAL - ALERTAR EN MAPA Y DISPARAR SOCORRO
+    triggerPanicCountdown();
+  }
+}
+
 function triggerPanicCountdown() {
   triggerEmergencyWithSafeguard(
     'SOS',

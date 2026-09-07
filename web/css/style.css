@@ -1553,21 +1553,35 @@ input:checked + .slider:before { transform: translateX(24px); }
 
 .nav-item-sos {
   position: relative;
-  top: -12px;
+  top: -14px;
+  z-index: 10;
 }
 
 .sos-bubble {
-  width: 48px;
-  height: 48px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
-  background: radial-gradient(circle, #EF4444, #B91C1C);
+  background: radial-gradient(circle, #EF4444 0%, #B91C1C 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
-  font-size: 20px;
-  box-shadow: 0 0 15px rgba(239, 68, 68, 0.7);
-  border: 2px solid #fff;
+  font-size: 22px;
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.8), 0 0 6px rgba(255, 255, 255, 0.8);
+  border: 3px solid #fff;
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease;
+  animation: navSosPulse 2s infinite alternate;
+}
+
+.nav-item-sos:hover .sos-bubble,
+.nav-item-sos:active .sos-bubble {
+  transform: scale(1.14);
+  box-shadow: 0 0 28px rgba(239, 68, 68, 1), 0 0 10px rgba(255, 255, 255, 1);
+}
+
+@keyframes navSosPulse {
+  0% { transform: scale(1); box-shadow: 0 0 16px rgba(239, 68, 68, 0.7); }
+  100% { transform: scale(1.08); box-shadow: 0 0 24px rgba(239, 68, 68, 1); }
 }
 
 /* ==================== BOTTOM SHEET MODALES ==================== */

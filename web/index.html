@@ -799,7 +799,7 @@
 
     </main>
 
-    <!-- Barra de Navegación Inferior Móvil (Bottom Navigation Bar) -->
+    <!-- Barra de Navegación Inferior Móvil / PC (Bottom Navigation Bar) -->
     <nav class="bottom-nav-bar" role="navigation" aria-label="Barra de navegación inferior">
       <button class="nav-item active" onclick="switchTab('tab-map')">
         <i class="fa-solid fa-map-location-dot"></i>
@@ -817,22 +817,24 @@
         <i class="fa-solid fa-car"></i>
         <span>Buscame</span>
       </button>
-      <button class="nav-item" id="navItemEdgeAi" onclick="switchTab('tab-edgeai')">
-        <i class="fa-solid fa-brain"></i>
-        <span>Edge AI</span>
+      
+      <!-- BOTÓN SOS DESTACADO EN EL CENTRO EXACTO (4 a la izquierda, 4 a la derecha) -->
+      <button class="nav-item nav-item-sos" onclick="handleNavBarSosClick()" title="Botón SOS de Pánico (PC / Celular)">
+        <div class="sos-bubble"><i class="fa-solid fa-triangle-exclamation"></i></div>
+        <span>SOS</span>
       </button>
+
       <button class="nav-item" onclick="switchTab('tab-cameras')">
         <i class="fa-solid fa-video"></i>
         <span>Cámaras</span>
       </button>
-      <!-- New WhatsApp Share Button -->
+      <button class="nav-item" id="navItemEdgeAi" onclick="switchTab('tab-edgeai')">
+        <i class="fa-solid fa-brain"></i>
+        <span>Edge AI</span>
+      </button>
       <button class="nav-item" id="btnWhatsAppShare" onclick="openWhatsAppShare()">
         <i class="fa-brands fa-whatsapp"></i>
         <span>WhatsApp</span>
-      </button>
-      <button class="nav-item nav-item-sos" onclick="switchTab('tab-sos')">
-        <div class="sos-bubble"><i class="fa-solid fa-triangle-exclamation"></i></div>
-        <span>SOS</span>
       </button>
       <button class="nav-item" onclick="switchTab('tab-family')">
         <i class="fa-solid fa-users-gear"></i>

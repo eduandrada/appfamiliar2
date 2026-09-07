@@ -19,8 +19,8 @@
       "avatar": "CA",
       "network_type": "WIFI_HOME",
       "network_label": "🟢 WiFi Casa",
-      "last_seen": "2026-09-07T09:18:25.211312",
-      "active_session_token": "token_carlos_andrada_1788782854052",
+      "last_seen": "2026-09-07T09:33:10.489124",
+      "active_session_token": "token_carlos_andrada_1788783859785",
       "last_ip": "127.0.0.1"
     },
     {
@@ -113,52 +113,52 @@
       "type": "IP_NIGHT_VISION"
     },
     {
-      "id": "cam_1788783759410",
+      "id": "cam_1788784397524",
       "name": "Cámara IP Test 3",
       "location": "Zona Test",
       "ip_address": "192.168.1.13",
-      "qr_code": "CAM_QR_1788783759",
+      "qr_code": "CAM_QR_1788784397",
       "stream_url": "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80",
       "is_online": true,
       "is_hidden": false,
       "status": "ONLINE",
-      "added_at": "2026-09-07T09:22:39.410988"
+      "added_at": "2026-09-07T09:33:17.524819"
     },
     {
-      "id": "cam_1788783759417",
+      "id": "cam_1788784397530",
       "name": "Cámara IP Test 4",
       "location": "Zona Test",
       "ip_address": "192.168.1.14",
-      "qr_code": "CAM_QR_1788783759",
+      "qr_code": "CAM_QR_1788784397",
       "stream_url": "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80",
       "is_online": true,
       "is_hidden": false,
       "status": "ONLINE",
-      "added_at": "2026-09-07T09:22:39.417222"
+      "added_at": "2026-09-07T09:33:17.530529"
     },
     {
-      "id": "cam_1788783759422",
+      "id": "cam_1788784397536",
       "name": "Cámara IP Test 5",
       "location": "Zona Test",
       "ip_address": "192.168.1.15",
-      "qr_code": "CAM_QR_1788783759",
+      "qr_code": "CAM_QR_1788784397",
       "stream_url": "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80",
       "is_online": true,
       "is_hidden": false,
       "status": "ONLINE",
-      "added_at": "2026-09-07T09:22:39.422975"
+      "added_at": "2026-09-07T09:33:17.536535"
     },
     {
-      "id": "cam_1788783759429",
+      "id": "cam_1788784397542",
       "name": "Cámara IP Test 6",
       "location": "Zona Test",
       "ip_address": "192.168.1.16",
-      "qr_code": "CAM_QR_1788783759",
+      "qr_code": "CAM_QR_1788784397",
       "stream_url": "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80",
       "is_online": true,
       "is_hidden": false,
       "status": "ONLINE",
-      "added_at": "2026-09-07T09:22:39.429056"
+      "added_at": "2026-09-07T09:33:17.542272"
     }
   ],
   "check_ins": [],
@@ -271,6 +271,18 @@
       "location": "San Fernando del Valle de Catamarca",
       "battery": 100,
       "timestamp": "2026-09-07T09:07:34.052487",
+      "device": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36"
+    },
+    {
+      "id": "log_1788783859785",
+      "member_id": "carlos_andrada",
+      "member_name": "Eduardo Andrada",
+      "ip": "127.0.0.1",
+      "lat": -28.46957,
+      "lng": -65.78524,
+      "location": "San Fernando del Valle de Catamarca",
+      "battery": 100,
+      "timestamp": "2026-09-07T09:24:19.785151",
       "device": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36"
     }
   ],
