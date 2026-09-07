@@ -432,7 +432,52 @@
             </div>
           </div>
 
-          <!-- TARJETA ACOMPÁÑAME (SAFE WALK) CON TEMPORIZADOR Y PIN DE COACCIÓN -->
+          <!-- TARJETA DE SOLICITUD DE RESCATE -->
+          <div class="glass-card pickup-action-card">
+            <button class="btn-big-pickup" onclick="triggerPickupRequest()">
+              <i class="fa-solid fa-location-arrow"></i>
+              <span>¡VENÍ A BUSCARME AQUÍ!</span>
+              <small>Envía coordenadas GPS + Batería actual</small>
+            </button>
+
+            <div id="nearestFamilyBanner" class="nearest-family-box">
+              <i class="fa-solid fa-person-walking-dashed-line-arrow-right"></i>
+              <span>Familiar más cercano: <strong id="nearestMemberName">Lucía Andrada (a 850m)</strong></span>
+            </div>
+          </div>
+
+          <!-- VENTANA DE CHAT EN TIEMPO REAL -->
+          <div class="glass-card chat-container">
+            <div class="chat-header">
+              <div class="chat-title">
+                <i class="fa-solid fa-comments"></i>
+                <span>Chat de Auxilio Familiar</span>
+              </div>
+              <span class="chat-online-badge"><span class="mini-dot"></span> En Vivo</span>
+            </div>
+
+            <div class="chat-messages" id="chatMessages">
+              <div class="chat-msg msg-system">
+                <span>Canal seguro activo para la Familia Andrada.</span>
+              </div>
+            </div>
+
+            <!-- Respuestas Rápidas de 1 toque -->
+            <div class="quick-replies-bar">
+              <button class="quick-reply-pill" onclick="sendQuickReply('🚗 ¡Voy en camino!')">🚗 Voy en camino</button>
+              <button class="quick-reply-pill" onclick="sendQuickReply('📍 Ya estoy cerca del lugar')">📍 Estoy cerca</button>
+              <button class="quick-reply-pill" onclick="sendQuickReply('🚕 Te pedí un Uber/Taxi')">🚕 Te pedí un auto</button>
+              <button class="quick-reply-pill" onclick="sendQuickReply('⏳ Esperame ahí, no te muevas')">⏳ Esperame ahí</button>
+            </div>
+
+            <!-- Campo de Texto para Chatear -->
+            <form class="chat-input-row" onsubmit="handleSendCustomMessage(event)">
+              <input type="text" id="customChatInput" placeholder="Escribe un mensaje urgente..." autocomplete="off">
+              <button type="submit" class="btn-chat-send"><i class="fa-solid fa-paper-plane"></i></button>
+            </form>
+          </div>
+
+          <!-- TARJETA ACOMPÁÑAME (SAFE WALK) CON TEMPORIZADOR Y PIN DE COACCIÓN (ABAJO DEL CHAT) -->
           <div class="glass-card safe-walk-card" style="padding: 14px; margin-bottom: 12px;">
             <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
               <h3 style="font-size: 14px; margin: 0;"><i class="fa-solid fa-person-walking-luggage" style="color: var(--accent-cyan);"></i> Acompáñame (Safe Walk)</h3>
@@ -470,51 +515,6 @@
                 </button>
               </div>
             </div>
-          </div>
-
-          <!-- Tarjeta de Solicitud de Rescate -->
-          <div class="glass-card pickup-action-card">
-            <button class="btn-big-pickup" onclick="triggerPickupRequest()">
-              <i class="fa-solid fa-location-arrow"></i>
-              <span>¡VENÍ A BUSCARME AQUÍ!</span>
-              <small>Envía coordenadas GPS + Batería actual</small>
-            </button>
-
-            <div id="nearestFamilyBanner" class="nearest-family-box">
-              <i class="fa-solid fa-person-walking-dashed-line-arrow-right"></i>
-              <span>Familiar más cercano: <strong id="nearestMemberName">Lucía Andrada (a 850m)</strong></span>
-            </div>
-          </div>
-
-          <!-- Ventana de Chat en Tiempo Real -->
-          <div class="glass-card chat-container">
-            <div class="chat-header">
-              <div class="chat-title">
-                <i class="fa-solid fa-comments"></i>
-                <span>Chat de Auxilio Familiar</span>
-              </div>
-              <span class="chat-online-badge"><span class="mini-dot"></span> En Vivo</span>
-            </div>
-
-            <div class="chat-messages" id="chatMessages">
-              <div class="chat-msg msg-system">
-                <span>Canal seguro activo para la Familia Andrada.</span>
-              </div>
-            </div>
-
-            <!-- Respuestas Rápidas de 1 toque -->
-            <div class="quick-replies-bar">
-              <button class="quick-reply-pill" onclick="sendQuickReply('🚗 ¡Voy en camino!')">🚗 Voy en camino</button>
-              <button class="quick-reply-pill" onclick="sendQuickReply('📍 Ya estoy cerca del lugar')">📍 Estoy cerca</button>
-              <button class="quick-reply-pill" onclick="sendQuickReply('🚕 Te pedí un Uber/Taxi')">🚕 Te pedí un auto</button>
-              <button class="quick-reply-pill" onclick="sendQuickReply('⏳ Esperame ahí, no te muevas')">⏳ Esperame ahí</button>
-            </div>
-
-            <!-- Campo de Texto para Chatear -->
-            <form class="chat-input-row" onsubmit="handleSendCustomMessage(event)">
-              <input type="text" id="customChatInput" placeholder="Escribe un mensaje urgente..." autocomplete="off">
-              <button type="submit" class="btn-chat-send"><i class="fa-solid fa-paper-plane"></i></button>
-            </form>
           </div>
         </div>
       </section>
@@ -626,8 +626,14 @@
             </div>
           </div>
 
-          <!-- PACTO DE PRIVACIDAD NO INVASIVO Y REGISTRO TRANSPARENTE DE CONSULTAS -->
-          <div class="glass-card privacy-pact-card" style="padding: 12px; margin-bottom: 10px;">
+          <!-- DIRECTORIO DE TODOS LOS FAMILIARES -->
+          <h3 class="group-title"><i class="fa-solid fa-address-book"></i> Directorio de la Familia Andrada</h3>
+          <div class="family-directory-list" id="familyDirectoryList" style="margin-bottom: 12px;">
+            <!-- Renderizado dinámico en app.js -->
+          </div>
+
+          <!-- PACTO DE PRIVACIDAD NO INVASIVO Y REGISTRO TRANSPARENTE DE CONSULTAS (JUSTO ARRIBA DEL PANEL ADMIN) -->
+          <div class="glass-card privacy-pact-card" style="padding: 12px; margin-bottom: 12px;">
             <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
               <h3 style="font-size: 13px; margin: 0; color: #fff;">
                 <i class="fa-solid fa-handshake-angle" style="color: var(--accent-emerald);"></i> Pacto de Privacidad y Transparencia
@@ -645,7 +651,7 @@
               </select>
             </div>
 
-            <!-- Registro Transparente de Vistas (Audit Trail) -->
+            <!-- Registro Transparente de Vistas (Audit Log) -->
             <div style="font-size: 11px; font-weight: 700; color: #fff; margin-bottom: 4px;">
               <i class="fa-solid fa-eye" style="color: var(--accent-blue);"></i> Registro Transparente de Consultas:
             </div>
@@ -655,8 +661,8 @@
             </div>
           </div>
 
-          <!-- Acceso Especial de Administrador -->
-          <div class="glass-card admin-callout-card" style="margin-bottom: 12px;">
+          <!-- ACCESO ESPECIAL DE ADMINISTRADOR (ABAJO DE TODO EN LA PESTAÑA) -->
+          <div class="glass-card admin-callout-card" style="margin-bottom: 24px;">
             <div class="admin-callout-header">
               <div>
                 <h4><i class="fa-solid fa-user-shield"></i> Panel Administrador</h4>
@@ -667,12 +673,6 @@
               </button>
             </div>
             <p class="admin-callout-desc">Permite corregir errores de DNI, cambiar números de teléfono, resetear PINs olvidados o eliminar familiares.</p>
-          </div>
-
-          <!-- Directorio de Todos los Familiares -->
-          <h3 class="group-title"><i class="fa-solid fa-address-book"></i> Directorio de la Familia Andrada</h3>
-          <div class="family-directory-list" id="familyDirectoryList">
-            <!-- Renderizado dinámico en app.js -->
           </div>
         </div>
       </section>

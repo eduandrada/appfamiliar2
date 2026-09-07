@@ -442,6 +442,81 @@ function formatDistance(lat1, lon1, lat2, lon2) {
   return `a ${km.toFixed(1)} km`;
 }
 
+// ==================== IA DE MOVIMIENTO Y GESTIÓN DE ALERTAS EN TIEMPO REAL EN MAPA ====================
+window.activeMapAlerts = window.activeMapAlerts || {};
+
+function analyzeMemberMovementAi(m) {
+  const spd = m.speed || 0.0;
+  if (m.hasActiveAlert || (window.activeMapAlerts && window.activeMapAlerts[m.id])) {
+    const alertInfo = window.activeMapAlerts[m.id];
+    return {
+      label: alertInfo ? `🤖 IA: ¡ALERTA! ${alertInfo.type}` : '🤖 IA: ¡MOVIMIENTO ANÓMALO / ALERTA!',
+      badgeStyle: 'background: rgba(239, 68, 68, 0.25); color: #EF4444; border-color: rgba(239, 68, 68, 0.5);',
+      icon: 'fa-triangle-exclamation',
+      isAlert: true
+    };
+  }
+  if (spd === 0) {
+    return {
+      label: '🤖 IA: Detenido / En Reposo',
+      badgeStyle: 'background: rgba(16, 185, 129, 0.15); color: #10B981; border-color: rgba(16, 185, 129, 0.3);',
+      icon: 'fa-person',
+      isAlert: false
+    };
+  } else if (spd > 0 && spd <= 15) {
+    return {
+      label: `🤖 IA: Caminando (${spd.toFixed(1)} km/h)`,
+      badgeStyle: 'background: rgba(56, 189, 248, 0.15); color: #38BDF8; border-color: rgba(56, 189, 248, 0.3);',
+      icon: 'fa-person-walking',
+      isAlert: false
+    };
+  } else if (spd > 15 && spd <= 120) {
+    return {
+      label: `🤖 IA: En Vehículo / Colectivo (${spd.toFixed(1)} km/h)`,
+      badgeStyle: 'background: rgba(245, 158, 11, 0.15); color: #F59E0B; border-color: rgba(245, 158, 11, 0.3);',
+      icon: 'fa-car',
+      isAlert: false
+    };
+  } else {
+    return {
+      label: `🤖 IA: ¡Velocidad Excesiva! (${spd.toFixed(1)} km/h)`,
+      badgeStyle: 'background: rgba(236, 72, 153, 0.15); color: #EC4899; border-color: rgba(236, 72, 153, 0.3);',
+      icon: 'fa-gauge-high',
+      isAlert: true
+    };
+  }
+}
+
+function triggerRealtimeAlertOnMap(memberId, alertType, alertMessage) {
+  const member = familyMembers.find(m => m.id === memberId) || activeUser || familyMembers[0];
+  if (!member) return;
+
+  window.activeMapAlerts[member.id] = {
+    type: alertType,
+    msg: alertMessage,
+    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  };
+
+  member.hasActiveAlert = true;
+  updateMapMarkers();
+
+  if (map) {
+    map.flyTo([member.lat, member.lng], 16, { animate: true, duration: 1 });
+    if (memberMarkers[member.id]) {
+      memberMarkers[member.id].openPopup();
+    }
+  }
+
+  const mapStatusText = document.getElementById('mapStatusText');
+  if (mapStatusText) {
+    mapStatusText.innerHTML = `<strong style="color: #EF4444;"><i class="fa-solid fa-triangle-exclamation"></i> ALERTA EN VIVO: ${member.name.split(' ')[0]} - ${alertType}</strong>`;
+  }
+
+  if ('vibrate' in navigator) {
+    navigator.vibrate([300, 100, 300, 100, 300]);
+  }
+}
+
 function updateMapMarkers() {
   if (!map) return;
   const current = activeUser || familyMembers[0];
@@ -450,12 +525,14 @@ function updateMapMarkers() {
     const isSelected = m.id === activeMemberId;
     const isMe = current && current.id === m.id;
     const distText = isMe ? 'Tu dispositivo' : formatDistance(current.lat, current.lng, m.lat, m.lng);
+    const aiMotion = analyzeMemberMovementAi(m);
+    const hasAlert = aiMotion.isAlert;
 
     const iconHtml = m.photo ? `
-      <img src="${m.photo}" alt="${m.name}" style="width:38px; height:38px; border-radius:50%; object-fit:cover; border:2px solid ${isSelected ? '#38BDF8' : '#fff'}; box-shadow:0 0 16px ${isSelected ? 'rgba(56, 189, 248, 0.9)' : 'rgba(0,0,0,0.6)'};">
+      <img src="${m.photo}" alt="${m.name}" style="width:38px; height:38px; border-radius:50%; object-fit:cover; border:2px solid ${hasAlert ? '#EF4444' : isSelected ? '#38BDF8' : '#fff'}; box-shadow:0 0 16px ${hasAlert ? 'rgba(239, 68, 68, 1)' : isSelected ? 'rgba(56, 189, 248, 0.9)' : 'rgba(0,0,0,0.6)'};">
     ` : `
       <div style="
-        background: ${isSelected ? '#38BDF8' : '#1E293B'};
+        background: ${hasAlert ? '#EF4444' : isSelected ? '#38BDF8' : '#1E293B'};
         border: 2px solid #fff;
         border-radius: 50%;
         width: 38px;
@@ -466,22 +543,32 @@ function updateMapMarkers() {
         font-weight: 800;
         font-size: 13px;
         color: #fff;
-        box-shadow: 0 0 16px ${isSelected ? 'rgba(56, 189, 248, 0.9)' : 'rgba(0,0,0,0.6)'};
+        box-shadow: 0 0 16px ${hasAlert ? 'rgba(239, 68, 68, 1)' : isSelected ? 'rgba(56, 189, 248, 0.9)' : 'rgba(0,0,0,0.6)'};
       ">${m.avatar}</div>
     `;
 
     const customIcon = L.divIcon({
       html: iconHtml,
-      className: 'custom-member-pin',
+      className: `custom-member-pin ${hasAlert ? 'pulse-emergency-pin' : ''}`,
       iconSize: [38, 38],
       iconAnchor: [19, 19]
     });
 
+    const alertBox = hasAlert ? `
+      <div style="background: rgba(239, 68, 68, 0.15); border: 1px solid #EF4444; color: #EF4444; font-size: 10px; font-weight: 800; padding: 4px 6px; border-radius: 6px; margin-top: 4px;">
+        🚨 ${window.activeMapAlerts[m.id]?.msg || 'Alerta activa en tiempo real'}
+      </div>
+    ` : '';
+
     const popupHtml = `
-      <div style="min-width: 190px; font-family: sans-serif; color: #000; padding: 4px;">
+      <div style="min-width: 200px; font-family: sans-serif; color: #000; padding: 4px;">
         <div style="font-weight: 800; font-size: 14px; color: #0F172A; margin-bottom: 2px;">${m.name}</div>
         <div style="font-size: 11px; color: #475569; font-weight: 600;">${m.role} • ${distText}</div>
         <div style="font-size: 11px; color: #0284C7; font-weight: 700; margin-top: 4px;">🔋 Batería: ${m.battery}% • ${m.zone}</div>
+        <div class="ai-motion-badge" style="${aiMotion.badgeStyle}">
+          <i class="fa-solid ${aiMotion.icon}"></i> ${aiMotion.label}
+        </div>
+        ${alertBox}
         <div style="display: flex; gap: 6px; margin-top: 8px;">
           <button style="flex:1; background: #25D366; color: #fff; border: none; border-radius: 6px; padding: 6px; font-size: 11px; font-weight: 700; cursor: pointer;" onclick="sendDirectMemberWhatsApp('${m.id}')">💬 WhatsApp</button>
           <button style="flex:1; background: #EF4444; color: #fff; border: none; border-radius: 6px; padding: 6px; font-size: 11px; font-weight: 700; cursor: pointer;" onclick="openExpressSosModal('${m.id}')">🚨 SOS</button>
@@ -597,6 +684,7 @@ function triggerSimulationEvent(type) {
     case 'CRITICAL_BATTERY':
       member.battery = 2;
       notifyInPhone('🚨 Batería Crítica (2%)', `${member.name} se está apagando. Última posición GPS capturada.`);
+      triggerRealtimeAlertOnMap(member.id, 'BATERÍA CRÍTICA 2%', `${member.name} - Batería 2% (Apagado Inminente)`);
       showWhatsAppModal(
         `🚨 APAGADO INMINENTE / BATERÍA CRÍTICA (2%)`,
         `Dispositivo de ${member.name} (DNI: ${member.dni}) se está apagando (ACTION_SHUTDOWN).\nÚltimas coordenadas GPS capturadas.\nBatería restante: 2%.`,
@@ -608,6 +696,7 @@ function triggerSimulationEvent(type) {
     case 'IMPACT':
       member.speed = 0.0;
       notifyInPhone('🚨 Impacto / Caída Detectada', `Desaceleración brusca registrada para ${member.name}.`);
+      triggerRealtimeAlertOnMap(member.id, 'IMPACTO / FRENADA BRUSCA', `${member.name} - Desaceleración violenta 4.8G`);
       showWhatsAppModal(
         `🚨 IMPACTO O COLISIÓN DETECTADA`,
         `Desaceleración violenta (>40 km/h a 0 en <1s) en el teléfono de ${member.name}.\nAcelerómetro: 4.8G.\nAlarma SOS activada en segundo plano.`,
@@ -617,15 +706,29 @@ function triggerSimulationEvent(type) {
       break;
 
     case 'ROUTE_DEVIATION':
-      member.lat = -34.638000;
-      member.lng = -58.428000;
+      member.lat = -28.485000;
+      member.lng = -65.798000;
       member.zone = 'Desvío (4.1 km)';
+      triggerRealtimeAlertOnMap(member.id, 'DESVÍO DE RUTA', `${member.name} se desvió 4.1 km de su ruta habitual`);
       updateMapMarkers();
       selectMember(member.id);
       notifyInPhone('⚠️ Desvío de Ruta', `${member.name} se desvió a más de 4 km de zonas seguras.`);
       showWhatsAppModal(
         `⚠️ DESVÍO ATÍPICO DE RUTA (> 1.5 km)`,
         `El familiar ${member.name} se alejó a 4.1 km de Casa Andrada o Colegio.\nVelocidad: ${member.speed} km/h.`,
+        member.lat,
+        member.lng
+      );
+      break;
+
+    case 'SPEED_EXCESS':
+      member.speed = 135.0;
+      triggerRealtimeAlertOnMap(member.id, 'EXCESO DE VELOCIDAD', `${member.name} circulando a 135 km/h`);
+      updateMapMarkers();
+      notifyInPhone('⚠️ Exceso de Velocidad', `${member.name} circula a 135.0 km/h.`);
+      showWhatsAppModal(
+        `⚠️ EXCESO DE VELOCIDAD (135 km/h)`,
+        `Velocidad de ${member.name} superó el límite (135.0 km/h).`,
         member.lat,
         member.lng
       );
@@ -758,6 +861,9 @@ function triggerPanicCountdown() {
 
 function startRealPanicCountdown() {
   if (panicTimer) return;
+
+  const current = activeUser || familyMembers[0];
+  triggerRealtimeAlertOnMap(current.id, 'SOS PÁNICO 30s', `${current.name} activó el Botón de Pánico`);
 
   const btn = document.getElementById('btnMainSOS');
   const cancelBtn = document.getElementById('btnCancelSOS');
@@ -4084,6 +4190,7 @@ function triggerDomesticAlert(alertType) {
   }
 
   notifyInPhone(title, detail);
+  triggerRealtimeAlertOnMap(user.id, title, detail);
   playAlarmSirenSound();
   showWhatsAppModal(title, detail, user.lat, user.lng);
 }

@@ -2770,3 +2770,50 @@ select option, optgroup {
   from { opacity: 0; transform: translateY(-30px) scale(0.92); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
+
+/* Estilos de Alerta en Tiempo Real e IA de Movimiento en Mapa */
+.custom-member-pin {
+  position: relative;
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.pulse-emergency-pin {
+  animation: mapEmergencyPulse 1.2s infinite alternate;
+}
+
+.pulse-emergency-pin::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  right: -8px;
+  bottom: -8px;
+  border-radius: 50%;
+  border: 3px solid #EF4444;
+  background: rgba(239, 68, 68, 0.35);
+  animation: mapPulseRing 1s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+  z-index: -1;
+}
+
+@keyframes mapEmergencyPulse {
+  0% { transform: scale(1); filter: drop-shadow(0 0 10px rgba(239, 68, 68, 0.8)); }
+  100% { transform: scale(1.15); filter: drop-shadow(0 0 22px rgba(239, 68, 68, 1)); }
+}
+
+@keyframes mapPulseRing {
+  0% { transform: scale(0.8); opacity: 1; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+.ai-motion-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  margin-top: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+

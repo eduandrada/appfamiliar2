@@ -19,8 +19,8 @@
       "avatar": "CA",
       "network_type": "WIFI_HOME",
       "network_label": "🟢 WiFi Casa",
-      "last_seen": "2026-09-07T09:04:21.567939",
-      "active_session_token": "token_carlos_andrada_1788780249425",
+      "last_seen": "2026-09-07T09:18:25.211312",
+      "active_session_token": "token_carlos_andrada_1788782854052",
       "last_ip": "127.0.0.1"
     },
     {
@@ -92,19 +92,73 @@
       "id": "cam_01",
       "name": "Cámara Entrada Principal",
       "location": "Entrada / Porche",
+      "ip_address": "192.168.1.101",
       "stream_url": "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80",
       "qr_code": "CAM_QR_ENTRADA_ANDRADA_2026",
       "is_online": true,
+      "is_hidden": true,
+      "status": "ONLINE",
       "type": "IP_FULL_HD"
     },
     {
       "id": "cam_02",
       "name": "Cámara Patio / Jardín",
       "location": "Patio Trasero",
+      "ip_address": "192.168.1.102",
       "stream_url": "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80",
       "qr_code": "CAM_QR_PATIO_ANDRADA_2026",
       "is_online": true,
+      "is_hidden": false,
+      "status": "ONLINE",
       "type": "IP_NIGHT_VISION"
+    },
+    {
+      "id": "cam_1788783759410",
+      "name": "Cámara IP Test 3",
+      "location": "Zona Test",
+      "ip_address": "192.168.1.13",
+      "qr_code": "CAM_QR_1788783759",
+      "stream_url": "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80",
+      "is_online": true,
+      "is_hidden": false,
+      "status": "ONLINE",
+      "added_at": "2026-09-07T09:22:39.410988"
+    },
+    {
+      "id": "cam_1788783759417",
+      "name": "Cámara IP Test 4",
+      "location": "Zona Test",
+      "ip_address": "192.168.1.14",
+      "qr_code": "CAM_QR_1788783759",
+      "stream_url": "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80",
+      "is_online": true,
+      "is_hidden": false,
+      "status": "ONLINE",
+      "added_at": "2026-09-07T09:22:39.417222"
+    },
+    {
+      "id": "cam_1788783759422",
+      "name": "Cámara IP Test 5",
+      "location": "Zona Test",
+      "ip_address": "192.168.1.15",
+      "qr_code": "CAM_QR_1788783759",
+      "stream_url": "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80",
+      "is_online": true,
+      "is_hidden": false,
+      "status": "ONLINE",
+      "added_at": "2026-09-07T09:22:39.422975"
+    },
+    {
+      "id": "cam_1788783759429",
+      "name": "Cámara IP Test 6",
+      "location": "Zona Test",
+      "ip_address": "192.168.1.16",
+      "qr_code": "CAM_QR_1788783759",
+      "stream_url": "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80",
+      "is_online": true,
+      "is_hidden": false,
+      "status": "ONLINE",
+      "added_at": "2026-09-07T09:22:39.429056"
     }
   ],
   "check_ins": [],
@@ -206,6 +260,19 @@
       "battery": 100,
       "timestamp": "2026-09-07T08:24:09.425758",
       "device": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36"
+    },
+    {
+      "id": "log_1788782854052",
+      "member_id": "carlos_andrada",
+      "member_name": "Eduardo Andrada",
+      "ip": "127.0.0.1",
+      "lat": -28.46957,
+      "lng": -65.78524,
+      "location": "San Fernando del Valle de Catamarca",
+      "battery": 100,
+      "timestamp": "2026-09-07T09:07:34.052487",
+      "device": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36"
     }
-  ]
+  ],
+  "messages": []
 }
