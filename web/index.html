@@ -834,6 +834,37 @@
 
 
 
+  <!-- MODAL 1: ALERTA E IMPACTO VISUAL SOS (PC Y MÓVIL) -->
+  <div id="sosAlertModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="sosModalTitle">
+    <div class="bottom-sheet glass-card sos-modal-card" style="text-align: center; border: 2px solid #EF4444; box-shadow: 0 0 50px rgba(239,68,68,0.7); max-width: 440px;">
+      <div class="sos-modal-header" style="margin-bottom: 12px;">
+        <div class="sos-modal-icon-ring" style="width: 76px; height: 76px; margin: 0 auto 12px; border-radius: 50%; background: radial-gradient(circle, #EF4444, #B91C1C); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 30px rgba(239,68,68,0.9); animation: navSosPulse 1.2s infinite alternate;">
+          <i class="fa-solid fa-triangle-exclamation" style="font-size: 36px; color: #fff;"></i>
+        </div>
+        <h3 id="sosModalTitle" style="font-size: 19px; font-weight: 900; color: #EF4444; margin: 0;">🚨 ¡ALERTA SOS ACTIVADA!</h3>
+        <span id="sosModalBadgeMode" class="badge-tag" style="background: rgba(239, 68, 68, 0.2); color: #EF4444; font-size: 11px; margin-top: 6px; display: inline-block;">MODO REAL EN CURSO</span>
+      </div>
+
+      <p id="sosModalDesc" style="font-size: 13px; color: #fff; margin-bottom: 14px; line-height: 1.4;">
+        Has oprimido el botón de auxilio. Transmitiendo tu posición GPS en tiempo real a toda la Familia Andrada en el mapa.
+      </p>
+
+      <div style="background: rgba(0,0,0,0.4); padding: 12px; border-radius: 12px; border: 1px solid var(--border-glass); margin-bottom: 16px;">
+        <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 2px;">TIEMPO RESTANTE PARA DESPACHO DE SOCORRO</div>
+        <div id="sosModalTimerDisplay" style="font-size: 38px; font-weight: 900; color: #EF4444; font-family: var(--font-heading);">30s</div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <button class="btn-mobile-submit" style="background: linear-gradient(135deg, #EF4444, #991B1B); padding: 14px; font-size: 14px; margin: 0; box-shadow: 0 0 20px rgba(239, 68, 68, 0.5); font-weight: 800;" onclick="cancelPanicCountdown()">
+          <i class="fa-solid fa-ban"></i> CANCELAR ALERTA Y NOTIFICAR "A SALVO"
+        </button>
+        <button class="btn-secondary" style="width: 100%; padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-glass); background: rgba(56, 189, 248, 0.15); color: var(--accent-blue); font-weight: 700; cursor: pointer;" onclick="closeSosAlertModalAndGoToMap()">
+          <i class="fa-solid fa-map-location-dot"></i> Ver Alerta en el Mapa en Vivo
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL 2: REGISTRO DE NUEVO FAMILIAR -->
   <div id="registerModal" class="modal-backdrop hidden">
     <div class="bottom-sheet glass-card">
@@ -1665,6 +1696,41 @@
 
       <div id="fullMemberDetailContent" style="text-align: center;">
         <!-- Contenido dinámico renderizado por JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE IMPACTO Y ALERTA PÁNICO SOS / SIMULACRO (PC & MÓVIL) -->
+  <div id="sosAlertModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="sosModalTitle">
+    <div class="modal-card glass-card sos-modal-impact">
+      <div class="sos-modal-pulse-container">
+        <div class="sos-modal-pulse-ring"></div>
+        <div class="sos-modal-icon-box">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+      </div>
+
+      <div class="sos-modal-badge" id="sosModalBadgeMode">🚨 MODO REAL</div>
+
+      <h2 id="sosModalTitle" class="sos-modal-title">¡ALERTA SOS ACTIVADA!</h2>
+      
+      <p id="sosModalDesc" class="sos-modal-desc">
+        Has oprimido el Botón de Pánico. Se transmitirá tu posición exacta y señal de ayuda a todos los familiares.
+      </p>
+
+      <div class="sos-modal-timer-wrap">
+        <span class="sos-timer-label">Cuenta Regresiva para Despacho:</span>
+        <div id="sosModalTimerDisplay" class="sos-timer-number">30s</div>
+      </div>
+
+      <div class="sos-modal-actions">
+        <button id="btnSosModalCancel" class="btn-sos-cancel-impact" onclick="cancelPanicCountdown()">
+          <i class="fa-solid fa-ban"></i> CANCELAR ALARMA SOS (ESC)
+        </button>
+
+        <button class="btn-sos-map-impact" onclick="closeSosAlertModalAndGoToMap()">
+          <i class="fa-solid fa-map-location-dot"></i> Ver Alerta en Mapa
+        </button>
       </div>
     </div>
   </div>

@@ -877,17 +877,7 @@ function startCameraClocks() {
 // ==================== TAB 5: BOTÓN SOS MULTIPLATAFORMA (PC / MÓVIL) ====================
 function handleNavBarSosClick() {
   switchTab('tab-sos');
-  const user = activeUser || familyMembers[0];
-
-  if (isDrillMode) {
-    // MODO PRUEBA / SIMULACRO EN TIEMPO REAL
-    triggerRealtimeAlertOnMap(user.id, '🧪 SIMULACRO SOS', `${user.name} - Simulacro de SOS en tiempo real`);
-    notifyInPhone('🧪 SIMULACRO DE SOS', `Simulacro de alerta emitido correctamente en el mapa en Modo Prueba.`);
-    showToast('🧪 SIMULACRO DE SOS: Alerta enviada al mapa en tiempo real (Modo Prueba activa)', 'info');
-  } else {
-    // MODO REAL - ALERTAR EN MAPA Y DISPARAR SOCORRO
-    triggerPanicCountdown();
-  }
+  triggerPanicCountdown();
 }
 
 function triggerPanicCountdown() {
@@ -910,6 +900,13 @@ function startRealPanicCountdown() {
   const badge = document.getElementById('sosTimerBadge');
   const headline = document.getElementById('sosHeadline');
 
+  // Modal Impact Overlay Elements
+  const modal = document.getElementById('sosAlertModal');
+  const modalBadge = document.getElementById('sosModalBadgeMode');
+  const modalTitle = document.getElementById('sosModalTitle');
+  const modalDesc = document.getElementById('sosModalDesc');
+  const modalTimerDisplay = document.getElementById('sosModalTimerDisplay');
+
   panicSeconds = 30;
 
   if (btn) btn.classList.add('active-panic');
@@ -923,7 +920,29 @@ function startRealPanicCountdown() {
     headline.style.color = '#EF4444';
   }
 
-  // Vibración inicial
+  // Visual Impact Modal Display (PC & Mobile)
+  if (modal) {
+    modal.classList.remove('hidden');
+    if (modalTimerDisplay) modalTimerDisplay.textContent = `${panicSeconds}s`;
+
+    if (isDrillMode) {
+      if (modalBadge) {
+        modalBadge.textContent = '🧪 MODO PRUEBA / SIMULACRO';
+        modalBadge.classList.add('drill-mode');
+      }
+      if (modalTitle) modalTitle.textContent = '🧪 SIMULACRO SOS EN CURSO';
+      if (modalDesc) modalDesc.textContent = 'Entrenamiento de emergencia activo. Se simula alerta en mapa sin despacho a WhatsApp.';
+    } else {
+      if (modalBadge) {
+        modalBadge.textContent = '🚨 MODO REAL DE EMERGENCIA';
+        modalBadge.classList.remove('drill-mode');
+      }
+      if (modalTitle) modalTitle.textContent = '🚨 ¡ALERTA SOS ACTIVADA!';
+      if (modalDesc) modalDesc.textContent = 'Has oprimido el Botón de Pánico. Se transmitirá tu posición exacta y señal de ayuda en vivo.';
+    }
+  }
+
+  // Vibración inicial (Móvil)
   if ('vibrate' in navigator) navigator.vibrate([200, 100, 200]);
 
   if (isDrillMode) {
@@ -938,6 +957,7 @@ function startRealPanicCountdown() {
     panicSeconds--;
     if (badge) badge.textContent = panicSeconds;
     if (headline) headline.textContent = `🚨 DESPACHANDO SOS EN ${panicSeconds}s`;
+    if (modalTimerDisplay) modalTimerDisplay.textContent = `${panicSeconds}s`;
 
     // Vibración suave cada 5 segundos
     if (panicSeconds % 5 === 0 && 'vibrate' in navigator) {
@@ -951,6 +971,7 @@ function startRealPanicCountdown() {
       if (btn) btn.classList.remove('active-panic');
       if (cancelBtn) cancelBtn.classList.add('hidden');
       if (badge) badge.classList.add('hidden');
+      if (modal) modal.classList.add('hidden');
       if (headline) {
         headline.textContent = 'BOTÓN DE PÁNICO FAMILIAR';
         headline.style.color = '#fff';
@@ -979,10 +1000,12 @@ function cancelPanicCountdown() {
   const cancelBtn = document.getElementById('btnCancelSOS');
   const badge = document.getElementById('sosTimerBadge');
   const headline = document.getElementById('sosHeadline');
+  const modal = document.getElementById('sosAlertModal');
 
   if (btn) btn.classList.remove('active-panic');
   if (cancelBtn) cancelBtn.classList.add('hidden');
   if (badge) badge.classList.add('hidden');
+  if (modal) modal.classList.add('hidden');
 
   if (headline) {
     headline.textContent = '✅ Alarma SOS Cancelada a Salvo';
@@ -996,6 +1019,22 @@ function cancelPanicCountdown() {
   showModernToast('SOS Cancelado', 'La cuenta regresiva de emergencia fue desactivada.', 'success');
   notifyInPhone('🟢 ALERTA SOS CANCELADA', 'Has detenido la cuenta regresiva a tiempo.');
 }
+
+function closeSosAlertModalAndGoToMap() {
+  const modal = document.getElementById('sosAlertModal');
+  if (modal) modal.classList.add('hidden');
+  switchTab('tab-map');
+}
+
+// Escuchador de tecla ESC en PC para cancelar alarma SOS
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    const modal = document.getElementById('sosAlertModal');
+    if (modal && !modal.classList.contains('hidden')) {
+      cancelPanicCountdown();
+    }
+  }
+});
 
 // ==================== TAB 6: DIRECTORIO Y ACCIONES FAMILIARES ====================
 let expressSosTargetMemberId = null;
