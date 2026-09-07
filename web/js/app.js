@@ -1869,7 +1869,6 @@ async function addDiscoveredCameraToSystem(ipAddress, camName, protocol) {
     if (res.ok) {
       showModernToast('Cámara Vinculada', `La cámara ${ipAddress} ha sido vinculada con acceso en vivo dentro y fuera del hogar.`, 'success');
       closeDetectCameraModal();
-      await fetchCamerasFromBackend();
       renderCamerasGrid();
     } else {
       showModernToast('Error al agregar', 'No se pudo registrar la cámara.', 'error');
@@ -2537,45 +2536,13 @@ function simulateQrScanSuccess() {
 }
 
 function processScannedCamera(camData) {
-  // COMPROBACIÓN DE DUPLICADO (SI YA ESTÁ AGREGADA)
-  const existing = installedCamerasList.find(c => c.id === camData.id || c.ip_address === camData.ip_address);
-  
-  if (existing) {
-    const notice = document.getElementById('qrDuplicateNotice');
-    const text = document.getElementById('qrDuplicateText');
-    if (notice && text) {
-      text.textContent = `⚠️ La "${existing.name}" (IP: ${existing.ip_address}) YA ESTÁ INSTALADA en la app. Se instala una sola vez y no se vuelve a buscar. Si el Administrador la elimina por error, la volverá a detectar.`;
-      notice.classList.remove('hidden');
-    }
-    if (typeof showToastAlert === 'function') {
-      showToastAlert(`⚠️ La cámara "${existing.name}" ya está instalada en la app.`);
-    } else {
-      alert(`⚠️ La cámara "${existing.name}" ya está instalada. No es necesario volver a buscarla.`);
-    }
-    return;
-  }
-
-  // SI NO ESTÁ INSTALADA (NUEVA O RE-ESCANEO TRAS ELIMINACIÓN)
-  const newCam = {
-    id: camData.id || `cam_${Date.now()}`,
-    name: camData.name || 'Cámara Seguridad QR',
-    location: camData.location || 'Acceso Exterior',
-    ip_address: camData.ip_address || '192.168.1.105',
-    stream_url: camData.stream_url || 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80',
-    has_alarm: true,
-    has_sound: true
-  };
-
-  installedCamerasList.push(newCam);
   stopCameraQrScan();
   closeAddCameraModal();
-  renderCamerasGrid();
-
-  if (typeof showToastAlert === 'function') {
-    showToastAlert(`✅ Cámara "${newCam.name}" vinculada e instalada con éxito en la App`);
-  } else {
-    alert(`✅ Cámara "${newCam.name}" vinculada e instalada con éxito en la App.`);
-  }
+  addDiscoveredCameraToSystem(
+    camData.ip_address || '192.168.1.105',
+    camData.name || 'Cámara Seguridad QR',
+    camData.protocol || 'rtsp'
+  );
 }
 
 function submitManualCameraAdd() {
@@ -2599,53 +2566,17 @@ function submitManualCameraAdd() {
 }
 
 function deleteCameraByAdmin(camId) {
-  if (!confirm('¿Estás seguro de eliminar esta cámara? Podrás volver a escanear su código QR para reinstalarla cuando quieras.')) return;
+  if (!confirm('¿Estás seguro de eliminar esta cámara? Podrás volver a escanear su código QR o detectar su IP para reinstalarla cuando quieras.')) return;
 
-  installedCamerasList = installedCamerasList.filter(c => c.id !== camId);
-  renderCamerasGrid();
-  if (typeof showToastAlert === 'function') {
-    showToastAlert('🗑️ Cámara eliminada. Ahora puede volver a ser detectada por escáner QR.');
-  } else {
-    alert('🗑️ Cámara eliminada. Ahora puede volver a ser detectada por escáner QR.');
-  }
-}
-
-function renderCamerasGrid() {
-  const grid = document.getElementById('camerasGrid');
-  const countText = document.getElementById('camCountText');
-  if (countText) countText.textContent = `${installedCamerasList.length} / 6 Cámaras Conectadas`;
-
-  if (!grid) return;
-
-  if (installedCamerasList.length === 0) {
-    grid.innerHTML = '<div style="font-size: 12px; color: #94A3B8; text-align: center; grid-column: 1 / -1; padding: 20px;">No hay cámaras vinculadas. Haz clic en "Vincular Cámara (QR/IP)" para escanear.</div>';
-    return;
-  }
-
-  grid.innerHTML = installedCamerasList.map(cam => `
-    <div class="glass-card camera-card" style="padding: 12px; margin-bottom: 10px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-        <strong style="font-size: 13px; color: #fff;"><i class="fa-solid fa-video" style="color: #06B6D4;"></i> ${cam.name}</strong>
-        <span class="badge-tag" style="background: rgba(16, 185, 129, 0.2); color: #10B981; font-size: 10px;">🟢 En Vivo</span>
-      </div>
-      
-      <div style="position: relative; width: 100%; height: 160px; background: #000; border-radius: 10px; overflow: hidden; margin-bottom: 8px;">
-        <img src="${cam.stream_url}" style="width: 100%; height: 100%; object-fit: cover;" alt="${cam.name}">
-        <div style="position: absolute; bottom: 6px; left: 6px; background: rgba(0,0,0,0.6); color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 4px;">
-          📍 ${cam.location} (${cam.ip_address})
-        </div>
-      </div>
-
-      <div style="display: flex; gap: 6px;">
-        <button class="btn-sm" style="flex: 2; background: linear-gradient(135deg, #0284C7, #06B6D4); color: #fff; border: none; padding: 8px; border-radius: 8px; font-weight: 800; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="openLiveCameraModal('${cam.id}')">
-          <i class="fa-solid fa-play"></i> Ver en Vivo (PC / Celular)
-        </button>
-        <button class="btn-sm" style="background: rgba(239, 68, 68, 0.15); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.4); padding: 8px 10px; border-radius: 8px; font-size: 11px; cursor: pointer;" onclick="deleteCameraByAdmin('${cam.id}')" title="Eliminar Cámara">
-          <i class="fa-solid fa-trash-can"></i>
-        </button>
-      </div>
-    </div>
-  `).join('');
+  fetch(`/api/cameras/${camId}`, { method: 'DELETE' })
+    .then(res => res.json())
+    .then(() => {
+      renderCamerasGrid();
+      showModernToast('🗑️ Cámara Eliminada', 'La cámara ha sido removida del sistema.', 'info');
+    })
+    .catch(() => {
+      renderCamerasGrid();
+    });
 }
 
 

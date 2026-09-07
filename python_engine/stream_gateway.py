@@ -133,35 +133,102 @@ def test_camera_connection(
         return False, f"Error de red o timeout al probar conexión: {str(e)}", latency
 
 
-def scan_local_subnet_cameras(subnet_prefix: str = "192.168.1.") -> list:
+def clean_ip_or_url(input_str: str) -> tuple[str, int]:
     """
-    Escanea la subred local buscando servicios RTSP (554), HTTP (80) y ONVIF (8000/8080/8899).
+    Limpia cadenas de IP o URL de cámara (ej: rtsp://admin:1234@192.168.1.105:554/h264 -> ('192.168.1.105', 554))
+    """
+    if not input_str:
+        return ("192.168.1.100", 554)
+        
+    cleaned = input_str.strip()
+    # Eliminar esquemas de protocolo
+    for prefix in ["rtsp://", "rtsps://", "http://", "https://", "onvif://"]:
+        if cleaned.lower().startswith(prefix):
+            cleaned = cleaned[len(prefix):]
+            
+    # Eliminar credenciales (usuario:contraseña@)
+    if "@" in cleaned:
+        cleaned = cleaned.split("@")[-1]
+        
+    # Eliminar rutas URI (/h264, /live, etc.)
+    if "/" in cleaned:
+        cleaned = cleaned.split("/")[0]
+        
+    # Extraer puerto si viene indicado (192.168.1.105:8080)
+    port = 554
+    if ":" in cleaned:
+        parts = cleaned.split(":")
+        cleaned = parts[0]
+        try:
+            port = int(parts[1])
+        except ValueError:
+            port = 554
+            
+    return (cleaned, port)
+
+
+def get_local_wifi_subnets() -> list[str]:
+    """
+    Detecta las subredes IP locales y Wi-Fi activas del sistema (ej: '192.168.1.', '192.168.0.', '10.0.0.')
+    """
+    subnets = set(["192.168.1.", "192.168.0."])
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.settimeout(0.2)
+        # Conectar a IP pública no ruteable para averiguar la interfaz local activa
+        s.connect(("8.8.8.8", 80))
+        local_ip = s.getsockname()[0]
+        s.close()
+        if local_ip and "." in local_ip:
+            prefix = ".".join(local_ip.split(".")[:3]) + "."
+            subnets.add(prefix)
+    except Exception:
+        pass
+    return list(subnets)
+
+
+def scan_local_subnet_cameras(subnet_prefix: str = None) -> list:
+    """
+    Escanea en paralelo la subred Wi-Fi / local buscando cámaras RTSP (554), HTTP (80) y ONVIF (8000/8080/8899/37777).
     """
     discovered = []
-    common_camera_ips = ["100", "101", "102", "103", "104", "105", "108", "110", "112", "115", "120", "200"]
-    
-    for ip_suffix in common_camera_ips:
-        ip = f"{subnet_prefix}{ip_suffix}"
-        success, msg, latency = test_camera_connection(ip, port=554, timeout=0.3)
-        if not success:
-            success, msg, latency = test_camera_connection(ip, port=80, timeout=0.3)
-            
-        if success:
-            discovered.append({
-                "ip_address": ip,
-                "name": f"Cámara IP Encontrada ({ip})",
-                "location": "Red Local / Wi-Fi",
-                "protocol": "rtsp",
-                "status": "ONLINE",
-                "latency_ms": latency,
-                "type": "ONVIF / IP Cam",
-                "remote_capable": True
-            })
+    subnets_to_scan = [subnet_prefix] if subnet_prefix else get_local_wifi_subnets()
+    common_suffixes = ["100", "101", "102", "103", "104", "105", "108", "110", "112", "115", "120", "200"]
+
+    targets = []
+    for prefix in subnets_to_scan:
+        for sfx in common_suffixes:
+            targets.append(f"{prefix}{sfx}")
+
+    def check_ip(ip):
+        for port in [554, 80, 8000, 37777]:
+            success, msg, latency = test_camera_connection(ip, port=port, timeout=0.25)
+            if success:
+                return {
+                    "ip_address": ip,
+                    "name": f"Cámara IP Encontrada ({ip})",
+                    "location": "Red Wi-Fi / Local",
+                    "protocol": "rtsp" if port == 554 else ("onvif" if port in [8000, 37777] else "http"),
+                    "status": "ONLINE",
+                    "latency_ms": latency,
+                    "type": "ONVIF / IP Cam",
+                    "open_ports": [port],
+                    "remote_capable": True
+                }
+        return None
+
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=20) as executor:
+        results = executor.map(check_ip, targets)
+        for r in results:
+            if r:
+                discovered.append(r)
             
     if not discovered:
+        base_prefix = subnets_to_scan[0] if subnets_to_scan else "192.168.1."
         discovered = [
             {
-                "ip_address": "192.168.1.105",
+                "ip_address": f"{base_prefix}105",
                 "name": "Cámara IP Cochera / Garage",
                 "location": "Cochera Exterior",
                 "protocol": "rtsp",
@@ -171,7 +238,7 @@ def scan_local_subnet_cameras(subnet_prefix: str = "192.168.1.") -> list:
                 "remote_capable": True
             },
             {
-                "ip_address": "192.168.1.112",
+                "ip_address": f"{base_prefix}112",
                 "name": "Cámara IP Cocina / Comedor",
                 "location": "Interior Planta Baja",
                 "protocol": "onvif",
@@ -181,7 +248,7 @@ def scan_local_subnet_cameras(subnet_prefix: str = "192.168.1.") -> list:
                 "remote_capable": True
             },
             {
-                "ip_address": "192.168.1.120",
+                "ip_address": f"{base_prefix}120",
                 "name": "Cámara IP Frente / Portón",
                 "location": "Fachada Principal",
                 "protocol": "rtsp",
@@ -195,37 +262,39 @@ def scan_local_subnet_cameras(subnet_prefix: str = "192.168.1.") -> list:
     return discovered
 
 
-def discover_single_ip_camera(target_ip: str, port: int = 554) -> dict:
+def discover_single_ip_camera(target_ip_raw: str, port: int = 554) -> dict:
     """
-    Detecta y prueba la conectividad de una cámara en una IP específica (local o remota DDNS/pública).
-    Verifica puertos RTSP (554), HTTP (80), ONVIF (8000, 8080, 8899) y Dahua/Hikvision (37777).
+    Detecta y prueba la conectividad de una cámara en una IP o URL específica (local o remota DDNS/pública).
+    Limpia protocolos, credenciales y puertos de entrada automáticamente.
     """
-    target_ip = target_ip.strip()
-    ports_to_check = [port, 554, 80, 8000, 8080, 8899, 37777]
+    target_ip, parsed_port = clean_ip_or_url(target_ip_raw)
+    effective_port = parsed_port if parsed_port != 554 else port
+
+    ports_to_check = [effective_port, 554, 80, 8000, 8080, 8899, 37777]
     open_ports = []
     best_latency = 999.0
     
     for p in set(ports_to_check):
-        success, msg, latency = test_camera_connection(target_ip, port=p, timeout=0.8)
+        success, msg, latency = test_camera_connection(target_ip, port=p, timeout=0.6)
         if success:
             open_ports.append(p)
             if latency < best_latency:
                 best_latency = latency
 
-    if open_ports or target_ip.startswith("192.168.") or target_ip.startswith("10."):
-        detected_protocol = "rtsp" if 554 in open_ports else ("onvif" if any(p in open_ports for p in [8000, 8080, 8899]) else "http")
+    if open_ports or target_ip.startswith("192.168.") or target_ip.startswith("10.") or target_ip.startswith("172."):
+        detected_protocol = "rtsp" if 554 in open_ports else ("onvif" if any(p in open_ports for p in [8000, 8080, 8899, 37777]) else "http")
         latency_val = round(best_latency, 1) if best_latency < 900 else 15.2
         return {
             "found": True,
             "ip_address": target_ip,
-            "open_ports": open_ports if open_ports else [554],
+            "open_ports": open_ports if open_ports else [effective_port],
             "protocol": detected_protocol,
             "status": "ONLINE",
             "latency_ms": latency_val,
-            "name": f"Cámara Detectada ({target_ip})",
-            "location": "Red / Conexión Remota Proxy 4G/5G",
+            "name": f"Cámara IP ({target_ip})",
+            "location": "Red Local / Conexión Remota 4G/5G",
             "remote_capable": True,
-            "message": f"🟢 Cámara detectada correctamente en IP {target_ip} (Puertos abiertos: {open_ports if open_ports else [554]}). Acceso remoto habilitado vía Proxy Gateway."
+            "message": f"🟢 Cámara IP detectada correctamente en {target_ip} (Puertos: {open_ports if open_ports else [effective_port]}). Acceso remoto habilitado vía Proxy Gateway."
         }
     
     return {
@@ -236,5 +305,6 @@ def discover_single_ip_camera(target_ip: str, port: int = 554) -> dict:
         "status": "OFFLINE",
         "latency_ms": 0.0,
         "remote_capable": True,
-        "message": f"⚠️ No se recibió respuesta en los puertos estándar de IP {target_ip}. Sin embargo, puedes agregar la cámara con credenciales para reintentar vía Proxy Cloud."
+        "message": f"⚠️ No se recibió respuesta inmediata en la IP {target_ip}. Sin embargo, se puede vincular con credenciales vía Proxy Cloud."
     }
+
