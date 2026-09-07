@@ -45,10 +45,13 @@ DEFAULT_MEMBERS = [
     {
         "id": "carlos_andrada",
         "name": "Carlos Andrada",
+        "nickname": "Papá / Admin",
         "dni": "34.567.890",
         "phone": "+54 9 383 456-7890",
         "pin": "1234",
         "role": "Padre (Protector)",
+        "trusted_contact_name": "Tío Juan / Emergencias",
+        "trusted_contact_phone": "+54 9 383 491-1911",
         "lat": -28.469570,
         "lng": -65.785240,
         "battery": 92,
@@ -62,10 +65,13 @@ DEFAULT_MEMBERS = [
     {
         "id": "lucia_andrada",
         "name": "Lucía Andrada",
+        "nickname": "Mamá",
         "dni": "36.789.012",
         "phone": "+54 9 383 467-8901",
         "pin": "4321",
         "role": "Madre (Protectora)",
+        "trusted_contact_name": "Carlos (Esposo)",
+        "trusted_contact_phone": "+54 9 383 456-7890",
         "lat": -28.476500,
         "lng": -65.771200,
         "battery": 78,
@@ -79,10 +85,13 @@ DEFAULT_MEMBERS = [
     {
         "id": "mateo_andrada",
         "name": "Mateo Andrada",
+        "nickname": "Bro",
         "dni": "45.123.456",
         "phone": "+54 9 383 478-9012",
         "pin": "1122",
         "role": "Hijo",
+        "trusted_contact_name": "Lucía (Mamá)",
+        "trusted_contact_phone": "+54 9 383 467-8901",
         "lat": -28.463200,
         "lng": -65.781100,
         "battery": 64,
@@ -96,10 +105,13 @@ DEFAULT_MEMBERS = [
     {
         "id": "sofia_andrada",
         "name": "Sofía Andrada",
+        "nickname": "Amor",
         "dni": "48.987.654",
         "phone": "+54 9 383 489-0123",
         "pin": "3344",
         "role": "Hija",
+        "trusted_contact_name": "Carlos (Papá)",
+        "trusted_contact_phone": "+54 9 383 456-7890",
         "lat": -28.459400,
         "lng": -65.789100,
         "battery": 45,
@@ -202,6 +214,9 @@ class MemberUpdateInput(BaseModel):
     pin: Optional[str] = None
     role: Optional[str] = None
     zone: Optional[str] = None
+    nickname: Optional[str] = None
+    trusted_contact_name: Optional[str] = None
+    trusted_contact_phone: Optional[str] = None
 
 @app.put("/api/members/{member_id}")
 def update_member(member_id: str, data: MemberUpdateInput):
@@ -218,6 +233,12 @@ def update_member(member_id: str, data: MemberUpdateInput):
                 m["role"] = data.role
             if data.zone:
                 m["zone"] = data.zone
+            if data.nickname is not None:
+                m["nickname"] = data.nickname
+            if data.trusted_contact_name is not None:
+                m["trusted_contact_name"] = data.trusted_contact_name
+            if data.trusted_contact_phone is not None:
+                m["trusted_contact_phone"] = data.trusted_contact_phone
             found = True
             break
     if found:
@@ -411,6 +432,9 @@ class RegisterMemberInput(BaseModel):
     pin: str
     role: Optional[str] = "Familiar"
     admin_pin: Optional[str] = None
+    nickname: Optional[str] = None
+    trusted_contact_name: Optional[str] = None
+    trusted_contact_phone: Optional[str] = None
 
 @app.post("/api/register")
 def register_member(data: RegisterMemberInput):
@@ -423,10 +447,13 @@ def register_member(data: RegisterMemberInput):
     new_member = {
         "id": f"member_{int(datetime.now().timestamp()*1000)}",
         "name": data.name,
+        "nickname": data.nickname or "",
         "dni": data.dni,
         "phone": data.phone,
         "pin": data.pin,
         "role": data.role or "Familiar",
+        "trusted_contact_name": data.trusted_contact_name or "Contacto de Confianza",
+        "trusted_contact_phone": data.trusted_contact_phone or data.phone,
         "lat": -28.469570,
         "lng": -65.785240,
         "battery": 100,

@@ -7,10 +7,13 @@ const DEFAULT_MEMBERS = [
   {
     id: 'carlos_andrada',
     name: 'Carlos Andrada',
+    nickname: 'Papá / Admin',
     dni: '34.567.890',
     phone: '+54 9 383 456-7890',
     pin: '1234',
     role: 'Padre (Protector)',
+    trusted_contact_name: 'Tío Juan / Emergencias',
+    trusted_contact_phone: '+54 9 383 491-1911',
     lat: -28.469570,
     lng: -65.785240,
     battery: 92,
@@ -23,10 +26,13 @@ const DEFAULT_MEMBERS = [
   {
     id: 'lucia_andrada',
     name: 'Lucía Andrada',
+    nickname: 'Mamá',
     dni: '36.789.012',
     phone: '+54 9 383 467-8901',
     pin: '4321',
     role: 'Madre (Protectora)',
+    trusted_contact_name: 'Carlos (Esposo)',
+    trusted_contact_phone: '+54 9 383 456-7890',
     lat: -28.476500,
     lng: -65.771200,
     battery: 78,
@@ -39,10 +45,13 @@ const DEFAULT_MEMBERS = [
   {
     id: 'mateo_andrada',
     name: 'Mateo Andrada',
+    nickname: 'Bro',
     dni: '45.123.456',
     phone: '+54 9 383 478-9012',
     pin: '1122',
     role: 'Hijo',
+    trusted_contact_name: 'Lucía (Mamá)',
+    trusted_contact_phone: '+54 9 383 467-8901',
     lat: -28.463200,
     lng: -65.781100,
     battery: 64,
@@ -55,10 +64,13 @@ const DEFAULT_MEMBERS = [
   {
     id: 'sofia_andrada',
     name: 'Sofía Andrada',
+    nickname: 'Amor',
     dni: '48.987.654',
     phone: '+54 9 383 489-0123',
     pin: '3344',
     role: 'Hija',
+    trusted_contact_name: 'Carlos (Papá)',
+    trusted_contact_phone: '+54 9 383 456-7890',
     lat: -28.459400,
     lng: -65.789100,
     battery: 45,
@@ -829,7 +841,9 @@ function renderDirectoryList() {
           <div style="display: flex; align-items: center; gap: 10px; cursor: pointer;" onclick="openFullMemberDetailModal('${m.id}')" title="Toca para ver el perfil completo">
             <div class="dir-avatar">${getAvatarHtml(m, 44)}</div>
             <div>
-              <div class="dir-name" style="font-weight: 700; font-size: 15px; color: #fff;">${m.name} ${isMe ? '<small style="color: var(--accent-blue); font-weight: 600;">(Tú)</small>' : ''}</div>
+              <div class="dir-name" style="font-weight: 700; font-size: 15px; color: #fff; display: flex; align-items: center; gap: 6px;">
+                ${m.name} ${m.nickname ? `<span style="font-size: 11px; padding: 2px 7px; border-radius: 10px; background: rgba(245, 158, 11, 0.2); color: #F59E0B; font-weight: 700; border: 1px solid rgba(245, 158, 11, 0.3);">"${m.nickname}"</span>` : ''} ${isMe ? '<small style="color: var(--accent-blue); font-weight: 600;">(Tú)</small>' : ''}
+              </div>
               <div class="dir-meta" style="font-size: 11px; color: var(--text-secondary);">DNI: ${m.dni} • Tel: ${m.phone}</div>
               <div class="dir-meta" style="font-size: 11px; color: #38BDF8; font-weight: 600; margin-top: 2px;">
                 <i class="fa-solid fa-location-arrow"></i> ${distText} • 🔋 ${m.battery}%
@@ -1069,8 +1083,9 @@ function renderAdminTable() {
   container.innerHTML = familyMembers.map(m => `
     <div class="admin-member-row">
       <div class="admin-member-details">
-        <strong>${m.name} (${m.role})</strong>
+        <strong>${m.name} ${m.nickname ? '("' + m.nickname + '")' : ''} (${m.role})</strong>
         <span>DNI: ${m.dni} • Tel: ${m.phone}</span>
+        <span style="color: #F59E0B;">Confianza: ${m.trusted_contact_name || 'Sin asignar'} (${m.trusted_contact_phone || 'N/A'})</span>
         <span style="color: #38BDF8;">PIN Actual: ${m.pin}</span>
       </div>
       <div class="admin-actions">
@@ -1119,9 +1134,12 @@ function openEditModal(memberId) {
   if (!member) return;
 
   document.getElementById('editMemberId').value = member.id;
-  document.getElementById('editFullName').value = member.name;
-  document.getElementById('editDni').value = member.dni;
-  document.getElementById('editPhone').value = member.phone;
+  document.getElementById('editFullName').value = member.name || '';
+  if (document.getElementById('editNickname')) document.getElementById('editNickname').value = member.nickname || '';
+  document.getElementById('editDni').value = member.dni || '';
+  document.getElementById('editPhone').value = member.phone || '';
+  if (document.getElementById('editTrustedName')) document.getElementById('editTrustedName').value = member.trusted_contact_name || '';
+  if (document.getElementById('editTrustedPhone')) document.getElementById('editTrustedPhone').value = member.trusted_contact_phone || '';
   document.getElementById('editPin').value = '';
 
   document.getElementById('editMemberModal').classList.remove('hidden');
@@ -1135,16 +1153,23 @@ function handleEditSubmit(e) {
   e.preventDefault();
   const id = document.getElementById('editMemberId').value;
   const fullName = document.getElementById('editFullName').value.trim();
+  const nickname = document.getElementById('editNickname') ? document.getElementById('editNickname').value.trim() : '';
   const dni = document.getElementById('editDni').value.trim();
   const phone = document.getElementById('editPhone').value.trim();
+  const trustedName = document.getElementById('editTrustedName') ? document.getElementById('editTrustedName').value.trim() : '';
+  const trustedPhone = document.getElementById('editTrustedPhone') ? document.getElementById('editTrustedPhone').value.trim() : '';
   const newPin = document.getElementById('editPin').value.trim();
 
   const member = familyMembers.find(m => m.id === id);
   if (!member) return;
 
   member.name = fullName;
+  member.nickname = nickname;
   member.dni = dni;
   member.phone = phone;
+  member.trusted_contact_name = trustedName;
+  member.trusted_contact_phone = trustedPhone;
+
   if (newPin) {
     if (newPin.length >= 4 && newPin.length <= 5) {
       member.pin = newPin;
@@ -1162,11 +1187,14 @@ function handleEditSubmit(e) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       name: fullName,
+      nickname: nickname,
       dni: dni,
       phone: phone,
       pin: newPin || member.pin,
       role: member.role,
-      zone: member.zone
+      zone: member.zone,
+      trusted_contact_name: trustedName,
+      trusted_contact_phone: trustedPhone
     })
   }).catch(() => {});
 
@@ -1256,7 +1284,7 @@ function handleRemoteCameraSubmit(e) {
   });
 }
 
-// ==================== PERFIL COMPLETO DE MIEMBRO ====================
+// ==================== PERFIL COMPLETO DE MIEMBRO & ALERTA SOSPECHA ====================
 function openFullMemberDetailModal(memberId) {
   const member = familyMembers.find(m => m.id === memberId) || activeUser || familyMembers[0];
   if (!member) return;
@@ -1264,15 +1292,19 @@ function openFullMemberDetailModal(memberId) {
   const content = document.getElementById('fullMemberDetailContent');
   if (!content) return;
 
-  const netLabel = member.network_label || (member.zone.includes('Casa') ? '🟢 WiFi Casa' : '📶 4G/5G Datos');
+  const netLabel = member.network_label || (member.zone && member.zone.includes('Casa') ? '🟢 WiFi Casa' : '📶 4G/5G Datos');
+  const nickBadge = member.nickname ? `<span style="font-size: 11px; padding: 3px 10px; border-radius: 12px; background: rgba(245, 158, 11, 0.2); color: #F59E0B; font-weight: 700; border: 1px solid rgba(245, 158, 11, 0.4); margin-left: 6px;">🏷️ "${member.nickname}"</span>` : '';
 
   content.innerHTML = `
     <div style="margin-bottom: 14px;">
       <div style="margin: 0 auto 10px; display: inline-block;">
         ${getAvatarHtml(member, 64)}
       </div>
-      <h3 style="font-size: 18px; font-weight: 800; color: #fff; margin-bottom: 2px;">${member.name}</h3>
-      <span style="font-size: 11px; padding: 3px 10px; border-radius: 12px; background: rgba(56, 189, 248, 0.15); color: #38BDF8; font-weight: 700; border: 1px solid rgba(56, 189, 248, 0.3);">${member.role}</span>
+      <h3 style="font-size: 18px; font-weight: 800; color: #fff; margin-bottom: 4px;">${member.name}</h3>
+      <div style="display: flex; justify-content: center; gap: 6px; align-items: center; flex-wrap: wrap;">
+        <span style="font-size: 11px; padding: 3px 10px; border-radius: 12px; background: rgba(56, 189, 248, 0.15); color: #38BDF8; font-weight: 700; border: 1px solid rgba(56, 189, 248, 0.3);">${member.role}</span>
+        ${nickBadge}
+      </div>
     </div>
 
     <div style="background: rgba(18, 28, 48, 0.6); border: 1px solid var(--border-glass); border-radius: 12px; padding: 12px; text-align: left; font-size: 12px; margin-bottom: 14px;">
@@ -1283,6 +1315,10 @@ function openFullMemberDetailModal(memberId) {
       <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
         <span style="color: var(--text-secondary);">Teléfono:</span>
         <strong style="color: #fff;">${member.phone}</strong>
+      </div>
+      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+        <span style="color: var(--text-secondary);">Contacto de Confianza:</span>
+        <strong style="color: #F59E0B;">🛡️ ${member.trusted_contact_name || 'Sin asignar'} (${member.trusted_contact_phone || 'N/A'})</strong>
       </div>
       <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
         <span style="color: var(--text-secondary);">Zona Actual:</span>
@@ -1296,6 +1332,12 @@ function openFullMemberDetailModal(memberId) {
         <span style="color: var(--text-secondary);">Conexión de Red:</span>
         <strong style="color: #10B981;">${netLabel}</strong>
       </div>
+    </div>
+
+    <div style="margin-bottom: 10px;">
+      <button class="btn-sm" style="width: 100%; background: linear-gradient(135deg, #F59E0B, #D97706); color: #fff; border: none; border-radius: 8px; padding: 10px; font-size: 12px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="sendTrustedContactAlert('${member.id}'); closeFullMemberDetailModal();">
+        <i class="fa-solid fa-triangle-exclamation" style="font-size: 14px;"></i> Enviar GPS por Sospecha a Contacto de Confianza
+      </button>
     </div>
 
     <div style="display: flex; gap: 8px;">
@@ -1313,6 +1355,57 @@ function openFullMemberDetailModal(memberId) {
 
   const modal = document.getElementById('fullMemberDetailModal');
   if (modal) modal.classList.remove('hidden');
+}
+
+function sendTrustedContactAlert(memberId) {
+  const member = memberId ? (familyMembers.find(m => m.id === memberId) || activeUser) : activeUser;
+  if (!member) {
+    alert('No hay usuario activo seleccionado.');
+    return;
+  }
+
+  const trustedPhone = member.trusted_contact_phone || member.phone || '';
+  const trustedName = member.trusted_contact_name || 'Contacto de Confianza';
+  const cleanPhone = trustedPhone.replace(/[^0-9]/g, '');
+
+  if (!cleanPhone) {
+    alert('⚠️ No se ha configurado un número de teléfono de confianza. Puedes agregarlo en "Mi Perfil".');
+    return;
+  }
+
+  const lat = member.lat || -28.469570;
+  const lng = member.lng || -65.785240;
+  const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+  const appUrl = 'https://appfamiliar2.onrender.com/';
+
+  const nickText = member.nickname ? ` ("${member.nickname}")` : '';
+
+  const waText = 
+    `🚨 *ALERTA PREVENTIVA POR SOSPECHA DE SEGURIDAD* 🚨\n\n` +
+    `¡Hola *${trustedName}*! Te envío mi ubicación física y estado en tiempo real por prevención/sospecha.\n\n` +
+    `👤 *Enviado por:* ${member.name}${nickText}\n` +
+    `🎖️ *Rol:* ${member.role || 'Familia'}\n` +
+    `💳 *DNI:* ${member.dni || 'Registrado'}\n` +
+    `📍 *Ubicación GPS Exacta:* ${mapsUrl}\n` +
+    `🏙️ *Zona Actual:* ${member.zone || 'San Fernando del Valle de Catamarca'}\n` +
+    `🔋 *Batería Celular:* ${member.battery || 100}%\n` +
+    `📶 *Conexión:* ${member.network_label || 'En línea'}\n\n` +
+    `🌐 *LINK DE MONITOREO EN VIVO:*\n${appUrl}\n\n` +
+    `📌 *Por favor mantente atento/a o comunícate conmigo inmediatamente.*`;
+
+  const waUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(waText)}`;
+
+  try {
+    window.open(waUrl, '_blank');
+  } catch (err) {
+    console.warn('Error al abrir enlace de WhatsApp:', err);
+  }
+
+  if (navigator.vibrate) {
+    navigator.vibrate([200, 100, 200, 100, 400]);
+  }
+
+  alert(`🚨 Alerta por sospecha generada para ${trustedName} (${trustedPhone}).\n\n📱 Se abrió WhatsApp con tu posición GPS exacta en vivo.`);
 }
 
 function closeFullMemberDetailModal() {
@@ -1784,13 +1877,19 @@ function openMemberProfileModal() {
 
   pendingProfilePhotoDataUrl = null;
   const nameEl = document.getElementById('profNameInput');
+  const nickEl = document.getElementById('profNicknameInput');
   const phoneEl = document.getElementById('profPhoneInput');
+  const trustedNameEl = document.getElementById('profTrustedNameInput');
+  const trustedPhoneEl = document.getElementById('profTrustedPhoneInput');
   const zoneEl = document.getElementById('profZoneInput');
   const pinEl = document.getElementById('profPinInput');
   const previewBox = document.getElementById('profPhotoPreviewBox');
 
-  if (nameEl) nameEl.value = activeUser.name;
-  if (phoneEl) phoneEl.value = activeUser.phone;
+  if (nameEl) nameEl.value = activeUser.name || '';
+  if (nickEl) nickEl.value = activeUser.nickname || '';
+  if (phoneEl) phoneEl.value = activeUser.phone || '';
+  if (trustedNameEl) trustedNameEl.value = activeUser.trusted_contact_name || '';
+  if (trustedPhoneEl) trustedPhoneEl.value = activeUser.trusted_contact_phone || '';
   if (zoneEl) zoneEl.value = activeUser.zone || 'Casa Andrada';
   if (pinEl) pinEl.value = '';
 
@@ -1832,7 +1931,10 @@ function handleMemberProfileSave(e) {
   if (!activeUser) return;
 
   const name = document.getElementById('profNameInput').value.trim();
+  const nickname = document.getElementById('profNicknameInput') ? document.getElementById('profNicknameInput').value.trim() : '';
   const phone = document.getElementById('profPhoneInput').value.trim();
+  const trustedName = document.getElementById('profTrustedNameInput') ? document.getElementById('profTrustedNameInput').value.trim() : '';
+  const trustedPhone = document.getElementById('profTrustedPhoneInput') ? document.getElementById('profTrustedPhoneInput').value.trim() : '';
   const zone = document.getElementById('profZoneInput').value.trim();
   const newPin = document.getElementById('profPinInput').value.trim();
 
@@ -1844,7 +1946,10 @@ function handleMemberProfileSave(e) {
   const member = familyMembers.find(m => m.id === activeUser.id);
   if (member) {
     member.name = filterBadWords(name);
+    member.nickname = nickname;
     member.phone = phone;
+    member.trusted_contact_name = trustedName;
+    member.trusted_contact_phone = trustedPhone;
     member.zone = zone;
     if (newPin) member.pin = newPin;
     if (pendingProfilePhotoDataUrl) member.photo = pendingProfilePhotoDataUrl;
@@ -1852,6 +1957,24 @@ function handleMemberProfileSave(e) {
     activeUser = member;
     saveMembers();
     localStorage.setItem('andrada_active_session', JSON.stringify(activeUser));
+
+    // Sincronizar actualización con Backend
+    fetch('/api/members/' + member.id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: member.name,
+        nickname: member.nickname,
+        dni: member.dni,
+        phone: member.phone,
+        pin: member.pin,
+        role: member.role,
+        zone: member.zone,
+        trusted_contact_name: member.trusted_contact_name,
+        trusted_contact_phone: member.trusted_contact_phone
+      })
+    }).catch(() => {});
+
     updateActiveUserUI();
     renderMemberChips();
     renderDirectoryList();
@@ -3571,9 +3694,12 @@ function closeRegisterModal() {
 function handleRegisterSubmit(e) {
   e.preventDefault();
   const name = document.getElementById('regFullName').value.trim();
+  const nickname = document.getElementById('regNickname') ? document.getElementById('regNickname').value.trim() : '';
   const dni = document.getElementById('regDni').value.trim();
   const phone = document.getElementById('regPhone').value.trim();
   const role = document.getElementById('regRole').value;
+  const trustedName = document.getElementById('regTrustedName') ? document.getElementById('regTrustedName').value.trim() : '';
+  const trustedPhone = document.getElementById('regTrustedPhone') ? document.getElementById('regTrustedPhone').value.trim() : '';
   const pin = document.getElementById('regPin').value.trim();
 
   if (!name || !dni || !phone || !pin) {
@@ -3586,10 +3712,13 @@ function handleRegisterSubmit(e) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       name: name,
+      nickname: nickname,
       dni: dni,
       phone: phone,
       pin: pin,
       role: role,
+      trusted_contact_name: trustedName,
+      trusted_contact_phone: trustedPhone,
       admin_pin: '9999'
     })
   })
@@ -3605,21 +3734,24 @@ function handleRegisterSubmit(e) {
       if (typeof renderAdminTable === 'function') {
         renderAdminTable();
       }
-      notifyInPhone('👤 Nuevo Familiar Registrado', `${name} ha sido incorporado por el Administrador.`);
+      notifyInPhone('👤 Nuevo Familiar Registrado', `${name} ${nickname ? '("' + nickname + '")' : ''} ha sido incorporado por el Administrador.`);
 
-      // GENERAR MENSAJE COMPLETO DE WHATSAPP CON TODOS LOS DATOS DEL MIEMBRO NUEVO
+      // GENERAR MENSAJE COMPLETO DE WHATSAPP CON TODOS LOS DATOS DEL MIEMBRO NUEVO Y CONTACTO DE CONFIANZA
       const cleanPhone = phone.replace(/[^0-9]/g, '');
       const appUrl = 'https://appfamiliar2.onrender.com/';
       const currentSafeWord = localStorage.getItem('andrada_safe_word') || 'HALCÓN AZUL';
+      const nickStr = nickname ? ` ("${nickname}")` : '';
 
       const waMessage = data.welcome_message || (
         `🛡️ *SISTEMA DE PROTECCIÓN - FAMILIA ANDRADA* 🛡️\n\n` +
-        `¡Hola *${name}*! Has sido registrado/a en el círculo familiar por el Administrador.\n\n` +
+        `¡Hola *${name}*${nickStr}! Has sido registrado/a en el círculo familiar por el Administrador.\n\n` +
         `📋 *TUS DATOS COMPLETOS DE ACCESO:*\n` +
         `👤 *Nombre:* ${name}\n` +
+        (nickname ? `🏷️ *Apodo / Alias:* ${nickname}\n` : '') +
         `🎖️ *Rol:* ${role}\n` +
         `💳 *DNI:* ${dni}\n` +
         `📱 *Teléfono:* ${phone}\n` +
+        (trustedName ? `🛡️ *Contacto de Confianza:* ${trustedName} (${trustedPhone})\n` : '') +
         `🔐 *PIN de Acceso:* ${pin}\n` +
         `🔑 *Palabra Clave Secreta:* ${currentSafeWord}\n\n` +
         `🌐 *LINK DE INGRESO A LA APP:*\n${appUrl}\n\n` +
@@ -3714,7 +3846,7 @@ function openLoginModal() {
 
   select.innerHTML = familyMembers.map(m => `
     <option value="${m.id}" ${activeUser && activeUser.id === m.id ? 'selected' : ''}>
-      ${m.name} (${m.role})
+      ${m.name} ${m.nickname ? '("' + m.nickname + '")' : ''} (${m.role})
     </option>
   `).join('');
 
