@@ -5888,11 +5888,157 @@ function closeSosEmergencyModal() {
   if (modal) modal.classList.add('hidden');
 }
 
+// ==============================================================================
+// OPERATIVOS EN ACCESOS AL BARRIO Y NOTIFICACIONES DE CHAT FLOTANTES / PUSH
+// ==============================================================================
+
+function openNeighborhoodAccessModal() {
+  const modal = document.getElementById('neighborhoodAccessModal');
+  if (!modal) return;
+
+  const targetSelect = document.getElementById('accessTargetMemberSelect');
+  if (targetSelect) {
+    targetSelect.innerHTML = `<option value="ALL">📢 Toda la Familia Andrada (Aviso General)</option>` +
+      familyMembers.map(m => `<option value="${m.id}">👤 ${m.name} (${m.role})</option>`).join('');
+  }
+
+  const accessSelect = document.getElementById('accessPointSelect');
+  const customRow = document.getElementById('customAccessInputRow');
+  if (accessSelect && customRow) {
+    accessSelect.onchange = () => {
+      if (accessSelect.value === 'OTRO') {
+        customRow.classList.remove('hidden');
+      } else {
+        customRow.classList.add('hidden');
+      }
+    };
+  }
+
+  modal.classList.remove('hidden');
+}
+
+function closeNeighborhoodAccessModal() {
+  const modal = document.getElementById('neighborhoodAccessModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function submitNeighborhoodAccessReport() {
+  const accessSelect = document.getElementById('accessPointSelect');
+  const customInput = document.getElementById('customAccessInput');
+  const targetSelect = document.getElementById('accessTargetMemberSelect');
+  const detailsInput = document.getElementById('accessDetailsInput');
+
+  let accessName = accessSelect ? accessSelect.value : 'Acceso Principal Valle Chico';
+  if (accessName === 'OTRO' && customInput && customInput.value.trim()) {
+    accessName = customInput.value.trim();
+  }
+
+  const targetId = targetSelect ? targetSelect.value : 'ALL';
+  const targetMember = familyMembers.find(m => m.id === targetId);
+  const targetName = targetMember ? targetMember.name : 'Toda la Familia';
+  const details = detailsInput ? detailsInput.value.trim() : 'Control activo';
+
+  // Coordenadas asociadas al acceso al barrio
+  let accessLat = -28.469570;
+  let accessLng = -65.785240;
+  if (accessName.includes('Chacarita')) { accessLat = -28.476500; accessLng = -65.771200; }
+  else if (accessName.includes('Ocampo')) { accessLat = -28.463200; accessLng = -65.781100; }
+  else if (accessName.includes('Norte')) { accessLat = -28.459400; accessLng = -65.789100; }
+
+  // 1. Marcar en el mapa Leaflet con icono exclusivo rosa/púrpura de retén de barrio
+  if (map) {
+    L.marker([accessLat, accessLng], {
+      icon: L.divIcon({
+        className: 'neighborhood-access-marker',
+        html: `<div style="background:#DB2777; color:#fff; border-radius:50%; width:34px; height:34px; display:flex; align-items:center; justify-content:center; border:2px solid #fff; box-shadow:0 0 12px #DB2777; font-size:16px;"><i class="fa-solid fa-building-shield"></i></div>`
+      })
+    }).addTo(map).bindPopup(`🚨 <b>OPERATIVO EN ACCESO AL BARRIO</b><br><b>${accessName}</b><br>${details}<br><small>Aviso para: <b>${targetName}</b></small>`).openPopup();
+  }
+
+  // 2. Notificación en dispositivo móvil
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification('🚨 OPERATIVO EN ACCESO AL BARRIO', {
+      body: `Control policial en ${accessName}. ${details}`,
+      icon: 'icons/icon-192.png'
+    });
+  }
+
+  // 3. Registrar reporte en servidor Python y chat
+  fetch('/api/reports/create', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      report_type: 'NEIGHBORHOOD_ACCESS_CHECKPOINT',
+      lat: accessLat,
+      lng: accessLng,
+      description: `Operativo en ${accessName}. ${details} (Aviso para: ${targetName})`,
+      reporter_name: currentUser?.name || 'Familia Andrada'
+    })
+  }).catch(() => {});
+
+  closeNeighborhoodAccessModal();
+  if (typeof showToastAlert === 'function') {
+    showToastAlert(`🚨 Operativo en ${accessName} marcado en el mapa y notificado a ${targetName}`);
+  }
+}
+
+// MANEJO DE NOTIFICACIONES DE CHAT (NATIVAS + BANNER FLOTANTE SI ESTÁ EN OTRA SECCIÓN)
+function notifyChatMessageReceived(senderName, text) {
+  // 1. Notificación en ventana de celular (Barra del sistema)
+  if ('Notification' in window && Notification.permission === 'granted') {
+    try {
+      new Notification(`💬 ${senderName} (Chat Búscame)`, {
+        body: text,
+        icon: 'icons/icon-192.png',
+        vibrate: [200, 100, 200]
+      });
+    } catch(e) {}
+  }
+
+  // 2. Banner Flotante en Pantalla si el usuario NO está en la sección "Búscame" (tab-pickup)
+  const activePane = document.querySelector('.tab-pane.active');
+  const isCurrentlyInPickup = activePane && activePane.id === 'tab-pickup';
+
+  if (!isCurrentlyInPickup) {
+    const banner = document.getElementById('chatFloatingBanner');
+    const senderElem = document.getElementById('chatFloatSender');
+    const textElem = document.getElementById('chatFloatText');
+
+    if (banner && senderElem && textElem) {
+      senderElem.textContent = `💬 ${senderName} (Chat Búscame)`;
+      textElem.textContent = text;
+      banner.classList.remove('hidden');
+
+      // Auto ocultar después de 6 segundos
+      clearTimeout(window.chatFloatTimer);
+      window.chatFloatTimer = setTimeout(() => {
+        banner.classList.add('hidden');
+      }, 6000);
+    }
+  } else {
+    // Si ya está en la sección Búscame, ocultar banner por si estaba abierto
+    closeChatFloatingBanner();
+  }
+}
+
+function goToBusameChat() {
+  closeChatFloatingBanner();
+  if (typeof switchTab === 'function') {
+    switchTab('tab-pickup');
+  }
+}
+
+function closeChatFloatingBanner() {
+  const banner = document.getElementById('chatFloatingBanner');
+  if (banner) banner.classList.add('hidden');
+}
+
 // Inicialización de escuchas al cargar
 document.addEventListener('DOMContentLoaded', () => {
   initBatteryMonitoring();
   initHighPrecisionGPS();
 });
+
 
 
 

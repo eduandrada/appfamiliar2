@@ -53,10 +53,18 @@ async function sendMessageToPythonBot(message) {
     loading.remove();
     const reply = data?.message?.text || 'Entendido. Registro guardado en la red familiar.';
     appendMessage('assistant', reply);
+
+    if (typeof notifyChatMessageReceived === 'function') {
+      notifyChatMessageReceived('🤖 Asistente Búscame AI', reply);
+    }
   } catch (err) {
     loading.remove();
     console.warn('[AI Bot] Error conectando al servidor Python, usando fallback local:', err);
-    appendMessage('assistant', `📍 Entendido ${activeUser.name}. Tu consulta "${message}" fue procesada localmente en la app.`);
+    const fallbackText = `📍 Entendido ${activeUser.name}. Tu consulta "${message}" fue procesada localmente en la app.`;
+    appendMessage('assistant', fallbackText);
+    if (typeof notifyChatMessageReceived === 'function') {
+      notifyChatMessageReceived('🤖 Asistente Búscame AI', fallbackText);
+    }
   }
 }
 

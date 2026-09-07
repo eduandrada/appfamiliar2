@@ -135,6 +135,73 @@
   </div>
 </div>
 
+<!-- Modal: Reportar Operativo en Acceso al Barrio -->
+<div id="neighborhoodAccessModal" class="modal hidden" role="dialog" aria-modal="true" style="z-index: 99998;">
+  <div class="modal-content" style="background: #0F172A; border: 2px solid #F472B6; max-width: 400px; border-radius: 16px;">
+    <header class="modal-header" style="background: linear-gradient(135deg, #DB2777, #9333EA); color: #fff; padding: 12px 16px;">
+      <h2 style="margin: 0; font-size: 16px; font-weight: 800;"><i class="fa-solid fa-building-shield"></i> Reportar Operativo en Acceso</h2>
+      <button class="close-btn" onclick="closeNeighborhoodAccessModal()" style="color: #fff;">✖</button>
+    </header>
+    <div style="padding: 16px; text-align: left;">
+      <p style="font-size: 12px; color: #94A3B8; margin-bottom: 12px;">Notifica a un familiar o a todo el grupo sobre un control o retén policial en los accesos al barrio.</p>
+      
+      <div style="margin-bottom: 12px;">
+        <label style="font-size: 11px; font-weight: 700; color: #F472B6; display: block; margin-bottom: 4px;">Selecciona el Acceso al Barrio:</label>
+        <select id="accessPointSelect" class="mobile-select" style="width: 100%; padding: 10px; font-size: 12px; background: rgba(255,255,255,0.08); color: #fff; border: 1px solid var(--border-glass); border-radius: 8px;">
+          <option value="Acceso Principal Valle Chico (Av 27)">🏠 Acceso Principal Valle Chico (Av. 27)</option>
+          <option value="Acceso La Chacarita / Av. Recalde">🛣️ Acceso La Chacarita (Av. Recalde)</option>
+          <option value="Acceso Av. Ocampo & Circunvalación">🚦 Acceso Av. Ocampo y Circunvalación</option>
+          <option value="Acceso Norte (Av. Los Legisladores)">🏙️ Acceso Norte (Av. Los Legisladores)</option>
+          <option value="OTRO">✏️ Otro Acceso / Esquina Específica</option>
+        </select>
+      </div>
+
+      <div id="customAccessInputRow" class="hidden" style="margin-bottom: 12px;">
+        <label style="font-size: 11px; font-weight: 700; color: #fff; display: block; margin-bottom: 4px;">Nombre del Acceso o Esquina:</label>
+        <input type="text" id="customAccessInput" class="mobile-input" placeholder="Ej: Rotonda Entrada Principal" style="padding: 8px 12px; font-size: 12px; width: 100%;">
+      </div>
+
+      <div style="margin-bottom: 12px;">
+        <label style="font-size: 11px; font-weight: 700; color: #F472B6; display: block; margin-bottom: 4px;">Informar Específicamente a:</label>
+        <select id="accessTargetMemberSelect" class="mobile-select" style="width: 100%; padding: 10px; font-size: 12px; background: rgba(255,255,255,0.08); color: #fff; border: 1px solid var(--border-glass); border-radius: 8px;">
+          <option value="ALL">📢 Toda la Familia Andrada (Aviso General)</option>
+        </select>
+      </div>
+
+      <div style="margin-bottom: 14px;">
+        <label style="font-size: 11px; font-weight: 700; color: #fff; display: block; margin-bottom: 4px;">Detalle del Control / Recomendación:</label>
+        <input type="text" id="accessDetailsInput" class="mobile-input" placeholder="Ej: PIDEN CASCO Y DOCUMENTACIÓN, tránsito lento" value="Piden documentación y casco. Transitar con precaución." style="padding: 8px 12px; font-size: 12px; width: 100%;">
+      </div>
+
+      <button class="btn-mobile-submit" style="background: linear-gradient(135deg, #DB2777, #9333EA); padding: 12px; font-size: 13px; margin: 0; font-weight: 800;" onclick="submitNeighborhoodAccessReport()">
+        <i class="fa-solid fa-paper-plane"></i> Emitir Alerta de Operativo en Acceso
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Banner Flotante de Notificación de Chat Búscame (Aparece cuando el usuario está en otra sección) -->
+<div id="chatFloatingBanner" class="chat-floating-banner hidden" style="position: fixed; top: 70px; right: 14px; left: 14px; z-index: 99990; background: linear-gradient(135deg, #1E1B4B, #312E81); border: 2px solid #38BDF8; border-radius: 14px; padding: 10px 14px; box-shadow: 0 8px 25px rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: space-between; gap: 10px; animation: slideDown 0.3s ease-out;">
+  <div style="display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
+    <div style="width: 36px; height: 36px; border-radius: 50%; background: rgba(56, 189, 248, 0.2); color: #38BDF8; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;">
+      <i class="fa-solid fa-comment-dots"></i>
+    </div>
+    <div style="min-width: 0; text-align: left;">
+      <strong id="chatFloatSender" style="color: #38BDF8; font-size: 12px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">💬 Nuevo mensaje en Chat Búscame</strong>
+      <span id="chatFloatText" style="color: #fff; font-size: 11px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Eduardo: ¡Voy en camino!</span>
+    </div>
+  </div>
+  <div style="display: flex; gap: 6px; flex-shrink: 0;">
+    <button onclick="goToBusameChat()" class="btn-sm" style="background: #38BDF8; color: #000; font-weight: 800; border: none; padding: 6px 12px; border-radius: 8px; font-size: 11px; cursor: pointer;">
+      Ver Chat
+    </button>
+    <button onclick="closeChatFloatingBanner()" class="btn-sm" style="background: rgba(255,255,255,0.1); color: #94A3B8; border: none; padding: 6px 10px; border-radius: 8px; font-size: 11px; cursor: pointer;">
+      ✖
+    </button>
+  </div>
+</div>
+
+
 
     <!-- Barra de Estado de Voz (Visible mientras habla) -->
     <div id="voiceSpeechBar" class="voice-speech-bar hidden">
@@ -206,6 +273,9 @@
             <button class="btn-map-tool" id="btnToggleZones" onclick="toggleRiskZonesLayer()" title="Ver Zonas Seguras / Precaución / Peligro" style="background: rgba(245, 158, 11, 0.2); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 8px; padding: 6px 10px; font-size: 11px; font-weight: 700; white-space: nowrap; cursor: pointer; display: flex; align-items: center; gap: 4px;">
               <i class="fa-solid fa-layer-group"></i> Capa Zonas
             </button>
+            <button class="btn-map-tool" onclick="openNeighborhoodAccessModal()" title="Reportar Operativo en Acceso al Barrio" style="background: rgba(236, 72, 153, 0.2); color: #F472B6; border: 1px solid rgba(236, 72, 153, 0.4); border-radius: 8px; padding: 6px 10px; font-size: 11px; font-weight: 700; white-space: nowrap; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+              <i class="fa-solid fa-building-shield"></i> Acceso Barrio
+            </button>
             <button class="btn-map-tool" onclick="reportPoliceOperation()" title="Reportar Operativo Policial" style="background: rgba(99, 102, 241, 0.2); color: #818CF8; border: 1px solid rgba(99, 102, 241, 0.4); border-radius: 8px; padding: 6px 10px; font-size: 11px; font-weight: 700; white-space: nowrap; cursor: pointer; display: flex; align-items: center; gap: 4px;">
               <i class="fa-solid fa-shield-cat"></i> Operativo Policial
             </button>
@@ -213,6 +283,7 @@
               <i class="fa-solid fa-car-burst"></i> Accidente
             </button>
           </div>
+
 
           <!-- Contenedor del Mapa Leaflet -->
           <div class="mobile-map-container" style="min-height: 280px; height: 280px; flex: none; position: relative;">
