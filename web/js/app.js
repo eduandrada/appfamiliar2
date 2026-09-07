@@ -22,6 +22,9 @@ const DEFAULT_MEMBERS = [
     zone: 'Valle Chico Av 27 Casa 40 (Catamarca)',
     avatar: 'EA',
     isOnline: true,
+    canViewCameras: true,
+    canTriggerCameraAlarm: true,
+    canSendCameraVoice: true,
     lastSeen: 'Ahora'
   },
   {
@@ -42,6 +45,9 @@ const DEFAULT_MEMBERS = [
     zone: 'La Chacarita (Catamarca)',
     avatar: 'MD',
     isOnline: true,
+    canViewCameras: true,
+    canTriggerCameraAlarm: true,
+    canSendCameraVoice: true,
     lastSeen: 'Hace 2 min'
   },
   {
@@ -62,6 +68,9 @@ const DEFAULT_MEMBERS = [
     zone: 'Colegio Quintana (Catamarca)',
     avatar: 'JA',
     isOnline: true,
+    canViewCameras: true,
+    canTriggerCameraAlarm: true,
+    canSendCameraVoice: true,
     lastSeen: 'Ahora'
   },
   {
@@ -82,6 +91,9 @@ const DEFAULT_MEMBERS = [
     zone: 'UNCA Universidad (Catamarca)',
     avatar: 'JA',
     isOnline: false,
+    canViewCameras: true,
+    canTriggerCameraAlarm: true,
+    canSendCameraVoice: true,
     lastSeen: 'Hace 18 min'
   }
 ];
@@ -119,6 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initMap();
   renderMemberChips();
   renderDirectoryList();
+  renderCamerasGrid();
   startCameraClocks();
   startUptimeStopwatch();
   initBellNotifications();
@@ -155,8 +168,11 @@ window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredPwaPrompt = e;
   const pwaBtn = document.getElementById('btnPwaInstall');
-  if (pwaBtn) {
-    pwaBtn.classList.remove('hidden');
+  if (pwaBtn) pwaBtn.classList.remove('hidden');
+  const btnSec = document.getElementById('btnPwaInstallSection');
+  if (btnSec) {
+    btnSec.style.display = 'flex';
+    btnSec.innerHTML = '<i class="fa-solid fa-download"></i> Instalar Aplicación Móvil';
   }
 });
 
@@ -165,14 +181,16 @@ function triggerPwaInstall() {
     deferredPwaPrompt.prompt();
     deferredPwaPrompt.userChoice.then((choiceResult) => {
       if (choiceResult.outcome === 'accepted') {
-        console.log('[PWA] El usuario aceptó la instalación');
+        showModernToast('Instalación Iniciada', '¡Gracias por instalar Familia Andrada en tu pantalla principal!', 'success');
         const pwaBtn = document.getElementById('btnPwaInstall');
         if (pwaBtn) pwaBtn.classList.add('hidden');
       }
       deferredPwaPrompt = null;
     });
+  } else if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) {
+    showModernToast('PWA Ya Instalada', 'La aplicación ya está instalada en tu dispositivo.', 'info');
   } else {
-    alert('📲 Para instalar la aplicación PWA:\n\n• En Android (Chrome): Toca el menú (⋮) y presiona "Agregar a la pantalla principal".\n• En iPhone (Safari): Toca el botón Compartir (⎋) y elige "Agregar a la pantalla de inicio".');
+    openFavoriteGuideModal();
   }
 }
 
@@ -623,41 +641,7 @@ function updateMapMarkers() {
   }
 }
 
-// ==================== RASTREO GPS REALTIME EN TIEMPO REAL ====================
-function initRealtimeGpsTracker() {
-  if (!('geolocation' in navigator)) {
-    console.warn('[GPS] Geolocalización HTML5 no disponible');
-    return;
-  }
-
-  navigator.geolocation.watchPosition(
-    (pos) => {
-      const lat = pos.coords.latitude;
-      const lng = pos.coords.longitude;
-      const speed = pos.coords.speed ? (pos.coords.speed * 3.6) : 0.0;
-
-      if (activeUser) {
-        activeUser.lat = lat;
-        activeUser.lng = lng;
-        activeUser.speed = speed;
-
-        updateActiveUserUI();
-        updateMapMarkers();
-
-        // Transmitir inmediatamente la posición real GPS a Render
-        sendLocationUpdateToCloud(activeUser);
-      }
-    },
-    (err) => {
-      console.warn('[GPS] Error obteniendo GPS en vivo:', err.message);
-    },
-    {
-      enableHighAccuracy: true,
-      maximumAge: 1000,
-      timeout: 10000
-    }
-  );
-}
+// (initRealtimeGpsTracker centralizada en la sección 9 del archivo)
 
 function renderMemberChips() {
   const container = document.getElementById('mapMemberChips');
@@ -1433,6 +1417,16 @@ function openEditModal(memberId) {
   populateEditTrustedMemberSelect(member.id);
   document.getElementById('editPin').value = '';
 
+  if (document.getElementById('editPermViewCameras')) {
+    document.getElementById('editPermViewCameras').checked = member.canViewCameras !== false && member.can_view_cameras !== false;
+  }
+  if (document.getElementById('editPermTriggerAlarm')) {
+    document.getElementById('editPermTriggerAlarm').checked = member.canTriggerCameraAlarm !== false && member.can_trigger_camera_alarm !== false;
+  }
+  if (document.getElementById('editPermSendVoice')) {
+    document.getElementById('editPermSendVoice').checked = member.canSendCameraVoice !== false && member.can_send_camera_voice !== false;
+  }
+
   document.getElementById('editMemberModal').classList.remove('hidden');
 }
 
@@ -1450,6 +1444,10 @@ function handleEditSubmit(e) {
   const trustedSelect = document.getElementById('editTrustedMemberSelect');
   const newPin = document.getElementById('editPin').value.trim();
 
+  const canViewCameras = document.getElementById('editPermViewCameras') ? document.getElementById('editPermViewCameras').checked : true;
+  const canTriggerCameraAlarm = document.getElementById('editPermTriggerAlarm') ? document.getElementById('editPermTriggerAlarm').checked : true;
+  const canSendCameraVoice = document.getElementById('editPermSendVoice') ? document.getElementById('editPermSendVoice').checked : true;
+
   const member = familyMembers.find(m => m.id === id);
   if (!member) return;
 
@@ -1457,6 +1455,12 @@ function handleEditSubmit(e) {
   member.nickname = nickname;
   member.dni = dni;
   member.phone = phone;
+  member.canViewCameras = canViewCameras;
+  member.can_view_cameras = canViewCameras;
+  member.canTriggerCameraAlarm = canTriggerCameraAlarm;
+  member.can_trigger_camera_alarm = canTriggerCameraAlarm;
+  member.canSendCameraVoice = canSendCameraVoice;
+  member.can_send_camera_voice = canSendCameraVoice;
 
   if (trustedSelect && trustedSelect.value) {
     const trustedTarget = familyMembers.find(m => m.id === trustedSelect.value);
@@ -1492,18 +1496,27 @@ function handleEditSubmit(e) {
       zone: member.zone,
       trusted_contact_id: member.trusted_contact_id,
       trusted_contact_name: member.trusted_contact_name,
-      trusted_contact_phone: member.trusted_contact_phone
+      trusted_contact_phone: member.trusted_contact_phone,
+      can_view_cameras: canViewCameras,
+      can_trigger_camera_alarm: canTriggerCameraAlarm,
+      can_send_camera_voice: canSendCameraVoice
     })
   }).catch(() => {});
+
+  if (activeUser && activeUser.id === id) {
+    activeUser = { ...member };
+    localStorage.setItem('andrada_active_session', JSON.stringify(activeUser));
+  }
 
   updateActiveUserUI();
   renderAdminTable();
   renderMemberChips();
   renderDirectoryList();
+  renderCamerasGrid();
   updateMapMarkers();
 
   closeEditModal();
-  alert(`✅ Datos de ${fullName} actualizados permanentemente.`);
+  alert(`✅ Datos y permisos de ${fullName} actualizados permanentemente.`);
 }
 
 // ==================== CÁMARAS IP & ESCANEO DE QR ====================
@@ -1644,6 +1657,8 @@ function handleRemoteCameraSubmit(e) {
   const name = document.getElementById('camNameInput').value.trim();
   const loc = document.getElementById('camLocationInput').value.trim();
   const url = document.getElementById('camUrlInput').value.trim();
+  const hasAlarm = document.getElementById('addCamHasAlarmCheck') ? document.getElementById('addCamHasAlarmCheck').checked : true;
+  const hasSound = document.getElementById('addCamHasSoundCheck') ? document.getElementById('addCamHasSoundCheck').checked : true;
 
   fetch('/api/cameras', {
     method: 'POST',
@@ -1651,7 +1666,9 @@ function handleRemoteCameraSubmit(e) {
     body: JSON.stringify({
       name: name,
       location: loc,
-      stream_url: url
+      stream_url: url,
+      has_alarm: hasAlarm,
+      has_sound: hasSound
     })
   }).then(async res => {
     const data = await res.json();
@@ -1663,11 +1680,385 @@ function handleRemoteCameraSubmit(e) {
     closeAddCameraModal();
     showModernToast('Cámara Conectada', `Cámara IP "${name}" agregada correctamente.`, 'success');
     renderCamerasGrid();
-    renderAdminCamerasList();
+    if (typeof renderAdminCamerasList === 'function') renderAdminCamerasList();
   }).catch(() => {
     closeAddCameraModal();
     showModernToast('Cámara Agregada', 'Configuración de cámara guardada.', 'info');
   });
+}
+
+function renderAdminCamerasList() {
+  renderCamerasGrid();
+}
+
+// Variables Globales para Monitoreo de Cámaras
+let currentLiveCamId = null;
+let currentVoiceCamId = null;
+let liveCamClockInterval = null;
+let isVoiceRecordingCam = false;
+
+function openFavoriteGuideModal() {
+  const modal = document.getElementById('favoriteGuideModal');
+  if (modal) modal.classList.remove('hidden');
+}
+
+function closeFavoriteGuideModal() {
+  const modal = document.getElementById('favoriteGuideModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function copyAppLinkToClipboard() {
+  const appUrl = window.location.href || 'https://appfamiliar2.onrender.com/';
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(appUrl).then(() => {
+      showModernToast('Enlace Copiado', '📌 Enlace de la app copiado al portapapeles.', 'success');
+    }).catch(() => {
+      prompt('Copia el siguiente enlace:', appUrl);
+    });
+  } else {
+    prompt('Copia el siguiente enlace:', appUrl);
+  }
+}
+
+// RENDERIZADO DE CÁMARAS Y VALIDACIÓN DE PERMISOS ADMIN POR MIEMBRO
+function renderCamerasGrid() {
+  const grid = document.getElementById('camerasGrid');
+  if (!grid) return;
+
+  const user = activeUser || (familyMembers && familyMembers.length > 0 ? familyMembers[0] : null);
+  const canView = user ? (user.canViewCameras !== false && user.can_view_cameras !== false) : true;
+
+  if (!canView) {
+    grid.innerHTML = `
+      <div class="glass-card" style="grid-column: 1 / -1; padding: 24px 16px; text-align: center; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.35); border-radius: 14px;">
+        <div style="font-size: 38px; color: #EF4444; margin-bottom: 8px;"><i class="fa-solid fa-lock"></i></div>
+        <h3 style="font-size: 16px; font-weight: 800; color: #fff; margin-bottom: 4px;">Acceso a Cámaras Restringido</h3>
+        <p style="font-size: 11px; color: var(--text-secondary); max-width: 340px; margin: 0 auto;">El Administrador del círculo familiar ha bloqueado el permiso para visualizar las cámaras en tiempo real en tu perfil.</p>
+      </div>
+    `;
+    const countLabel = document.getElementById('camCountText');
+    if (countLabel) countLabel.textContent = '🔒 Acceso Bloqueado por Admin';
+    return;
+  }
+
+  fetch('/api/cameras')
+    .then(res => res.json())
+    .then(data => {
+      const cameras = data.cameras || [];
+      const countLabel = document.getElementById('camCountText');
+      if (countLabel) countLabel.textContent = `${cameras.length} / 6 Cámaras Conectadas`;
+
+      if (cameras.length === 0) {
+        grid.innerHTML = `
+          <div class="glass-card" style="grid-column: 1 / -1; padding: 24px; text-align: center; border-radius: 14px;">
+            <div style="font-size: 32px; color: var(--accent-cyan); margin-bottom: 8px;"><i class="fa-solid fa-video-slash"></i></div>
+            <h3 style="font-size: 15px; font-weight: 800; color: #fff; margin-bottom: 4px;">No hay cámaras vinculadas</h3>
+            <p style="font-size: 11px; color: var(--text-secondary); margin-bottom: 12px;">Presiona el botón "+ Vincular Cámara" para agregar tu primera cámara IP o QR.</p>
+            <button class="btn-sm" style="background: linear-gradient(135deg, #0284C7, #06B6D4); color: #fff; padding: 8px 16px; border-radius: 8px; font-weight: 700; font-size: 12px; border: none; cursor: pointer;" onclick="openAddCameraModal()">
+              <i class="fa-solid fa-plus"></i> Vincular Cámara
+            </button>
+          </div>
+        `;
+        return;
+      }
+
+      grid.innerHTML = cameras.map(cam => {
+        const isOnline = cam.is_online !== false && cam.status !== 'OFFLINE';
+        const hasAlarm = cam.has_alarm !== false && cam.hasAlarm !== false;
+        const hasSound = cam.has_sound !== false && cam.hasSound !== false;
+        const streamImg = cam.stream_url || 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80';
+
+        const canAlarm = user ? (user.canTriggerCameraAlarm !== false && user.can_trigger_camera_alarm !== false) : true;
+        const canVoice = user ? (user.canSendCameraVoice !== false && user.can_send_camera_voice !== false) : true;
+
+        return `
+          <div class="glass-card camera-card" style="padding: 12px; border-radius: 14px; border: 1px solid var(--border-glass); background: rgba(18, 28, 48, 0.75);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <div>
+                <h4 style="font-size: 14px; font-weight: 800; color: #fff; margin: 0; display: flex; align-items: center; gap: 6px;">
+                  <i class="fa-solid fa-video" style="color: var(--accent-cyan);"></i> ${cam.name}
+                </h4>
+                <small style="font-size: 10px; color: var(--text-secondary);">${cam.location} • IP: ${cam.ip_address || '192.168.1.100'}</small>
+              </div>
+              <span style="font-size: 10px; padding: 3px 8px; border-radius: 10px; font-weight: 700; ${isOnline ? 'background: rgba(16, 185, 129, 0.18); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3);' : 'background: rgba(239, 68, 68, 0.18); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.3);'}">
+                ${isOnline ? '● EN VIVO' : '○ OFFLINE'}
+              </span>
+            </div>
+
+            <!-- Mini vista previa con Overlay de Tiempo Real -->
+            <div style="position: relative; width: 100%; height: 145px; border-radius: 10px; overflow: hidden; background: #000; margin-bottom: 10px; cursor: pointer;" onclick="openLiveCameraModal('${cam.id}')">
+              <img src="${streamImg}" alt="${cam.name}" style="width: 100%; height: 100%; object-fit: cover; opacity: ${isOnline ? '0.9' : '0.4'};">
+              
+              <div style="position: absolute; top: 8px; left: 8px; display: flex; gap: 4px;">
+                ${hasAlarm ? '<span style="font-size: 9px; padding: 2px 6px; border-radius: 6px; background: rgba(239, 68, 68, 0.85); color: #fff; font-weight: 700;">🚨 Sirena</span>' : ''}
+                ${hasSound ? '<span style="font-size: 9px; padding: 2px 6px; border-radius: 6px; background: rgba(16, 185, 129, 0.85); color: #fff; font-weight: 700;">🎙️ Voz</span>' : ''}
+              </div>
+
+              <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.25);">
+                <button class="btn-sm" style="background: rgba(6, 182, 212, 0.85); color: #fff; border: none; border-radius: 50%; width: 44px; height: 44px; font-size: 16px; cursor: pointer; box-shadow: 0 0 15px rgba(6, 182, 212, 0.5); display: flex; align-items: center; justify-content: center;">
+                  <i class="fa-solid fa-play"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Botones de Acción Instantánea -->
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <button class="btn-sm" style="flex: 2; background: linear-gradient(135deg, #0284C7, #06B6D4); color: #fff; border: none; padding: 8px 10px; border-radius: 8px; font-weight: 800; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="openLiveCameraModal('${cam.id}')">
+                <i class="fa-solid fa-play"></i> Ver en Vivo
+              </button>
+
+              ${hasAlarm ? `
+                <button class="btn-sm" style="flex: 1; background: ${canAlarm ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255,255,255,0.05)'}; color: ${canAlarm ? '#EF4444' : 'var(--text-muted)'}; border: 1px solid ${canAlarm ? 'rgba(239, 68, 68, 0.4)' : 'var(--border-glass)'}; padding: 8px 6px; border-radius: 8px; font-weight: 700; font-size: 11px; cursor: pointer;" onclick="triggerCameraAlarm('${cam.id}')" title="${canAlarm ? 'Activar Alarma de la Cámara' : 'Permiso desactivado por Administrador'}">
+                  <i class="fa-solid fa-bell"></i> Alarma
+                </button>
+              ` : ''}
+
+              ${hasSound ? `
+                <button class="btn-sm" style="flex: 1; background: ${canVoice ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)'}; color: ${canVoice ? '#10B981' : 'var(--text-muted)'}; border: 1px solid ${canVoice ? 'rgba(16, 185, 129, 0.4)' : 'var(--border-glass)'}; padding: 8px 6px; border-radius: 8px; font-weight: 700; font-size: 11px; cursor: pointer;" onclick="openCameraVoiceModal('${cam.id}')" title="${canVoice ? 'Hablar por Parlante de la Cámara' : 'Permiso desactivado por Administrador'}">
+                  <i class="fa-solid fa-microphone"></i> Voz
+                </button>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }).catch(() => {
+      if (grid) grid.innerHTML = '<div style="font-size: 11px; color: var(--text-muted); text-align: center; grid-column: 1 / -1;">No se pudieron cargar las cámaras del servidor.</div>';
+    });
+}
+
+function openLiveCameraModal(camId) {
+  const user = activeUser || (familyMembers && familyMembers.length > 0 ? familyMembers[0] : null);
+  if (user && (user.canViewCameras === false || user.can_view_cameras === false)) {
+    showModernToast('Permiso Bloqueado', 'El Administrador ha desactivado el permiso de ver cámaras para tu perfil.', 'warning');
+    return;
+  }
+
+  fetch('/api/cameras')
+    .then(res => res.json())
+    .then(data => {
+      const cams = data.cameras || [];
+      const cam = cams.find(c => c.id === camId) || cams[0];
+      if (!cam) return;
+
+      currentLiveCamId = cam.id;
+      const modal = document.getElementById('cameraLiveModal');
+      const title = document.getElementById('liveCamTitle');
+      const img = document.getElementById('liveCamImageStream');
+      const locText = document.getElementById('liveCamLocationText');
+      const btnAlarm = document.getElementById('btnLiveCamAlarm');
+      const btnVoice = document.getElementById('btnLiveCamVoice');
+
+      if (title) title.textContent = `${cam.name} (En Vivo)`;
+      if (img) img.src = cam.stream_url || 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80';
+      if (locText) locText.textContent = `📍 Ubicación: ${cam.location} (IP: ${cam.ip_address || '192.168.1.100'})`;
+
+      if (btnAlarm) {
+        btnAlarm.onclick = () => triggerCameraAlarm(cam.id);
+        btnAlarm.style.display = (cam.has_alarm !== false && cam.hasAlarm !== false) ? 'flex' : 'none';
+      }
+      if (btnVoice) {
+        btnVoice.onclick = () => openCameraVoiceModal(cam.id);
+        btnVoice.style.display = (cam.has_sound !== false && cam.hasSound !== false) ? 'flex' : 'none';
+      }
+
+      if (modal) modal.classList.remove('hidden');
+
+      if (liveCamClockInterval) clearInterval(liveCamClockInterval);
+      liveCamClockInterval = setInterval(() => {
+        const clock = document.getElementById('liveCamClockDisplay');
+        if (clock) {
+          const now = new Date();
+          clock.textContent = now.toTimeString().split(' ')[0] + ' RTSP';
+        }
+      }, 1000);
+    });
+}
+
+let isWebcamActiveInModal = false;
+let modalWebcamStream = null;
+
+function closeLiveCameraModal() {
+  stopWebcamInCamModal();
+  const modal = document.getElementById('cameraLiveModal');
+  if (modal) modal.classList.add('hidden');
+  if (liveCamClockInterval) {
+    clearInterval(liveCamClockInterval);
+    liveCamClockInterval = null;
+  }
+  currentLiveCamId = null;
+}
+
+function toggleWebcamInCamModal() {
+  const videoEl = document.getElementById('liveCamWebcamStream');
+  const imgEl = document.getElementById('liveCamImageStream');
+  const btn = document.getElementById('btnToggleWebcam');
+  const fmtLabel = document.getElementById('camStreamFormatLabel');
+
+  if (!isWebcamActiveInModal) {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      showModernToast('Webcam no Soportada', 'Tu navegador no permite acceso a la cámara.', 'warning');
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+      .then(stream => {
+        modalWebcamStream = stream;
+        isWebcamActiveInModal = true;
+        if (videoEl) {
+          videoEl.srcObject = stream;
+          videoEl.classList.remove('hidden');
+        }
+        if (imgEl) imgEl.classList.add('hidden');
+        if (btn) {
+          btn.innerHTML = '<i class="fa-solid fa-stop"></i> Detener Webcam';
+          btn.style.background = 'rgba(239, 68, 68, 0.25)';
+          btn.style.color = '#EF4444';
+          btn.style.borderColor = 'rgba(239, 68, 68, 0.5)';
+        }
+        if (fmtLabel) fmtLabel.textContent = 'Dispositivo Local (Webcam)';
+        showModernToast('📹 Webcam Activa', 'Transmitiendo cámara web en vivo.', 'success');
+      })
+      .catch(err => {
+        showModernToast('Error de Cámara', 'No se pudo acceder a la webcam: ' + err.message, 'error');
+      });
+  } else {
+    stopWebcamInCamModal();
+    showModernToast('Stream Restaurado', 'Cámara web desactivada, mostrando feed IP.', 'info');
+  }
+}
+
+function stopWebcamInCamModal() {
+  const videoEl = document.getElementById('liveCamWebcamStream');
+  const imgEl = document.getElementById('liveCamImageStream');
+  const btn = document.getElementById('btnToggleWebcam');
+  const fmtLabel = document.getElementById('camStreamFormatLabel');
+
+  if (modalWebcamStream) {
+    modalWebcamStream.getTracks().forEach(track => track.stop());
+    modalWebcamStream = null;
+  }
+  isWebcamActiveInModal = false;
+
+  if (videoEl) {
+    videoEl.pause();
+    videoEl.srcObject = null;
+    videoEl.classList.add('hidden');
+  }
+  if (imgEl) imgEl.classList.remove('hidden');
+  if (btn) {
+    btn.innerHTML = '<i class="fa-solid fa-camera"></i> Webcam';
+    btn.style.background = 'rgba(56, 189, 248, 0.2)';
+    btn.style.color = '#38BDF8';
+    btn.style.borderColor = 'rgba(56, 189, 248, 0.4)';
+  }
+  if (fmtLabel) fmtLabel.textContent = '1080p RTSP';
+}
+
+function triggerCameraAlarm(camId) {
+  const user = activeUser || (familyMembers && familyMembers.length > 0 ? familyMembers[0] : null);
+  if (user && (user.canTriggerCameraAlarm === false || user.can_trigger_camera_alarm === false)) {
+    showModernToast('Acceso Denegado', 'El Administrador ha desactivado la opción de activar alarmas para tu perfil.', 'warning');
+    return;
+  }
+
+  fetch(`/api/cameras/${camId}/alarm`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ member_id: user ? user.id : 'Admin' })
+  }).then(res => res.json())
+  .then(data => {
+    showModernToast('🚨 Sirena de Cámara Activada', data.message || 'Alarma sonora de la cámara disparada con éxito.', 'error');
+    if (navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 500]);
+  }).catch(() => {
+    showModernToast('🚨 Alarma Activada', 'Alarma de la cámara transmitida en la red familiar.', 'error');
+  });
+}
+
+function openCameraVoiceModal(camId) {
+  const user = activeUser || (familyMembers && familyMembers.length > 0 ? familyMembers[0] : null);
+  if (user && (user.canSendCameraVoice === false || user.can_send_camera_voice === false)) {
+    showModernToast('Acceso Denegado', 'El Administrador ha desactivado la opción de transmitir voz para tu perfil.', 'warning');
+    return;
+  }
+
+  currentVoiceCamId = camId;
+  const modal = document.getElementById('cameraVoiceModal');
+  if (modal) modal.classList.remove('hidden');
+}
+
+function closeCameraVoiceModal() {
+  const modal = document.getElementById('cameraVoiceModal');
+  if (modal) modal.classList.add('hidden');
+  currentVoiceCamId = null;
+  isVoiceRecordingCam = false;
+  const status = document.getElementById('voiceStatusText');
+  if (status) status.textContent = 'Presiona para hablar al parlante';
+}
+
+function toggleCameraVoiceRecording() {
+  const btn = document.getElementById('btnHoldToSpeak');
+  const status = document.getElementById('voiceStatusText');
+  const icon = document.getElementById('voiceWaveIcon');
+
+  if (!isVoiceRecordingCam) {
+    isVoiceRecordingCam = true;
+    if (btn) btn.innerHTML = '<i class="fa-solid fa-square"></i> Detener y Enviar Voz';
+    if (status) status.textContent = '🎙️ Grabando audio en tiempo real hacia la cámara...';
+    if (icon) icon.style.borderColor = '#EF4444';
+  } else {
+    isVoiceRecordingCam = false;
+    if (btn) btn.innerHTML = '<i class="fa-solid fa-microphone"></i> Iniciar Grabación de Voz';
+    if (status) status.textContent = '✅ Transmitiendo audio grabado al parlante...';
+    if (icon) icon.style.borderColor = '#10B981';
+
+    const user = activeUser || (familyMembers && familyMembers.length > 0 ? familyMembers[0] : null);
+    fetch(`/api/cameras/${currentVoiceCamId || 'cam_01'}/voice`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ member_id: user ? user.id : 'Admin' })
+    }).then(() => {
+      showModernToast('🎙️ Audio Transmitido', 'Mensaje de voz enviado al parlante de la cámara en vivo.', 'success');
+      setTimeout(() => closeCameraVoiceModal(), 1500);
+    }).catch(() => {
+      showModernToast('🎙️ Audio Transmitido', 'Mensaje de voz transmitido a la cámara.', 'success');
+      setTimeout(() => closeCameraVoiceModal(), 1500);
+    });
+  }
+}
+
+function sendTextToCameraVoice() {
+  const input = document.getElementById('camVoiceTextInput');
+  const text = input ? input.value.trim() : '';
+  if (!text) {
+    showModernToast('Campo Vacío', 'Por favor ingresa un texto para transmitir por voz.', 'warning');
+    return;
+  }
+
+  const user = activeUser || (familyMembers && familyMembers.length > 0 ? familyMembers[0] : null);
+  fetch(`/api/cameras/${currentVoiceCamId || 'cam_01'}/voice`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ member_id: user ? user.id : 'Admin', message: text })
+  }).then(() => {
+    showModernToast('🎙️ Voz Convertida', `Texto: "${text}" sintetizado y transmitido a la cámara.`, 'success');
+    if (input) input.value = '';
+    closeCameraVoiceModal();
+  }).catch(() => {
+    showModernToast('🎙️ Mensaje Transmitido', 'Voz enviada al parlante.', 'success');
+    if (input) input.value = '';
+    closeCameraVoiceModal();
+  });
+}
+
+function toggleCamFullscreen() {
+  const img = document.getElementById('liveCamImageStream');
+  if (!img) return;
+  if (!document.fullscreenElement) {
+    if (img.requestFullscreen) img.requestFullscreen();
+    else if (img.webkitRequestFullscreen) img.webkitRequestFullscreen();
+  } else {
+    if (document.exitFullscreen) document.exitFullscreen();
+  }
 }
 
 // Helper para formatear última conexión
@@ -2538,27 +2929,7 @@ function handlePinProtectedLogout() {
   openLoginModal();
 }
 
-// ==================== INSTALADOR PWA Y PLANTILLAS ADMIN ====================
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();
-  deferredPwaPrompt = e;
-  const btnPwa = document.getElementById('btnInstallPwa');
-  if (btnPwa) btnPwa.classList.remove('hidden');
-});
-
-function triggerPwaInstall() {
-  if (deferredPwaPrompt) {
-    deferredPwaPrompt.prompt();
-    deferredPwaPrompt.userChoice.then((choiceResult) => {
-      if (choiceResult.outcome === 'accepted') {
-        alert('🎉 ¡Aplicación instalada con éxito en tu pantalla de inicio!');
-      }
-      deferredPwaPrompt = null;
-    });
-  } else {
-    alert('📲 Para instalar esta App en tu teléfono o PC:\n1. En Chrome/Edge: Toca los tres puntos (⋮) y selecciona "Agregar a la pantalla de inicio" o "Instalar aplicación".\n2. En Safari (iPhone): Toca el botón Compartir y elige "Agregar a la pantalla de inicio".');
-  }
-}
+// ==================== PLANTILLAS ADMIN ====================
 
 function saveSosTemplateFromAdmin() {
   const input = document.getElementById('adminSosTemplateInput');
@@ -3375,6 +3746,7 @@ function updatePrivacySchedule(scheduleMode) {
 
 let gpsWatchId = null;
 let userAccuracyCircle = null;
+let hasCenteredInitialGps = false;
 let audioAlarmCtx = null;
 let isAudioAlarmPlaying = false;
 let userHealthData = {
@@ -3398,6 +3770,13 @@ function initRealtimeGpsTracker() {
     maximumAge: 0,
     timeout: 10000
   };
+
+  // Obtener posición inicial inmediata al ingresar
+  navigator.geolocation.getCurrentPosition(
+    onGpsSuccess,
+    (err) => console.warn('[GPS Inicial] Buscando señal...', err.message),
+    options
+  );
 
   gpsWatchId = navigator.geolocation.watchPosition(
     onGpsSuccess,
@@ -3437,7 +3816,7 @@ function onGpsSuccess(position) {
     statusEl.innerHTML = `🎯 GPS Alta Precisión (±${accuracy.toFixed(0)}m) • ${speedKmH} km/h`;
   }
 
-  // Render or update Leaflet accuracy circle
+  // Render or update Leaflet accuracy circle & centrado automático
   if (map && typeof L !== 'undefined') {
     if (!userAccuracyCircle) {
       userAccuracyCircle = L.circle([lat, lng], {
@@ -3452,7 +3831,17 @@ function onGpsSuccess(position) {
       userAccuracyCircle.setRadius(accuracy);
     }
 
+    if (!hasCenteredInitialGps) {
+      map.setView([lat, lng], 16);
+      hasCenteredInitialGps = true;
+    }
+
     updateMapMarkers();
+    updateActiveUserUI();
+  }
+
+  if (activeUser) {
+    sendLocationUpdateToCloud(activeUser);
   }
 
   // Send periodic telemetry heartbeat
@@ -3808,9 +4197,10 @@ function renderCamerasGrid() {
                 ${isOnline ? '<span class="cam-rec"><span class="rec-dot"></span> EN VIVO</span>' : '<span style="font-size: 9px; font-weight: 800; color: #EF4444;">🔴 APAGADA</span>'}
               </div>
             </div>
-            <div class="cam-viewport">
+            <div class="cam-viewport" style="cursor: pointer; position: relative;" onclick="openLiveCameraModal('${c.id}')" title="Tocar para Ver Transmisión HD en Vivo">
               ${isOnline ? `
                 <img src="${streamUrl}" class="cam-viewport-img" alt="${c.name}">
+                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.55); width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; border: 1px solid rgba(255,255,255,0.3); pointer-events: none;"><i class="fa-solid fa-play"></i></div>
                 <div class="cam-overlay-time">REC ${new Date().toLocaleTimeString()}</div>
                 <div class="cam-overlay-ip">📡 ${ipAddr} (Multi-Red 4G/5G)</div>
               ` : `

@@ -61,6 +61,9 @@ DEFAULT_MEMBERS = [
         "avatar": "EA",
         "network_type": "WIFI_HOME",
         "network_label": "🟢 WiFi Casa",
+        "can_view_cameras": True,
+        "can_trigger_camera_alarm": True,
+        "can_send_camera_voice": True,
         "last_seen": datetime.now().isoformat()
     },
     {
@@ -82,6 +85,9 @@ DEFAULT_MEMBERS = [
         "avatar": "MD",
         "network_type": "CELLULAR_DATA",
         "network_label": "📶 4G/5G Datos",
+        "can_view_cameras": True,
+        "can_trigger_camera_alarm": True,
+        "can_send_camera_voice": True,
         "last_seen": datetime.now().isoformat()
     },
     {
@@ -103,6 +109,9 @@ DEFAULT_MEMBERS = [
         "avatar": "JA",
         "network_type": "WIFI_HOME",
         "network_label": "🟢 WiFi Colegio",
+        "can_view_cameras": True,
+        "can_trigger_camera_alarm": True,
+        "can_send_camera_voice": True,
         "last_seen": datetime.now().isoformat()
     },
     {
@@ -124,6 +133,9 @@ DEFAULT_MEMBERS = [
         "avatar": "JA",
         "network_type": "BLE_MESH",
         "network_label": "ᛡ BLE Mesh",
+        "can_view_cameras": True,
+        "can_trigger_camera_alarm": True,
+        "can_send_camera_voice": True,
         "last_seen": datetime.now().isoformat()
     }
 ]
@@ -138,6 +150,8 @@ DEFAULT_CAMERAS = [
         "qr_code": "CAM_QR_ENTRADA_ANDRADA_2026",
         "is_online": True,
         "is_hidden": False,
+        "has_alarm": True,
+        "has_sound": True,
         "status": "ONLINE",
         "type": "IP_FULL_HD"
     },
@@ -150,6 +164,8 @@ DEFAULT_CAMERAS = [
         "qr_code": "CAM_QR_PATIO_ANDRADA_2026",
         "is_online": True,
         "is_hidden": False,
+        "has_alarm": True,
+        "has_sound": True,
         "status": "ONLINE",
         "type": "IP_NIGHT_VISION"
     }
@@ -245,6 +261,9 @@ class MemberUpdateInput(BaseModel):
     trusted_contact_id: Optional[str] = None
     trusted_contact_name: Optional[str] = None
     trusted_contact_phone: Optional[str] = None
+    can_view_cameras: Optional[bool] = None
+    can_trigger_camera_alarm: Optional[bool] = None
+    can_send_camera_voice: Optional[bool] = None
 
 @app.put("/api/members/{member_id}")
 def update_member(member_id: str, data: MemberUpdateInput):
@@ -262,6 +281,9 @@ def update_member(member_id: str, data: MemberUpdateInput):
             if data.trusted_contact_id is not None: m["trusted_contact_id"] = data.trusted_contact_id
             if data.trusted_contact_name is not None: m["trusted_contact_name"] = data.trusted_contact_name
             if data.trusted_contact_phone is not None: m["trusted_contact_phone"] = data.trusted_contact_phone
+            if data.can_view_cameras is not None: m["can_view_cameras"] = data.can_view_cameras
+            if data.can_trigger_camera_alarm is not None: m["can_trigger_camera_alarm"] = data.can_trigger_camera_alarm
+            if data.can_send_camera_voice is not None: m["can_send_camera_voice"] = data.can_send_camera_voice
             found = True
             break
     if found:
@@ -278,6 +300,9 @@ class GeneralMemberUpdateInput(BaseModel):
     pin: Optional[str] = None
     phone: Optional[str] = None
     zone: Optional[str] = None
+    can_view_cameras: Optional[bool] = None
+    can_trigger_camera_alarm: Optional[bool] = None
+    can_send_camera_voice: Optional[bool] = None
 
 @app.post("/api/members/update")
 def update_member_general(data: GeneralMemberUpdateInput):
@@ -291,6 +316,9 @@ def update_member_general(data: GeneralMemberUpdateInput):
             if data.pin: m["pin"] = data.pin
             if data.phone: m["phone"] = data.phone
             if data.zone: m["zone"] = data.zone
+            if data.can_view_cameras is not None: m["can_view_cameras"] = data.can_view_cameras
+            if data.can_trigger_camera_alarm is not None: m["can_trigger_camera_alarm"] = data.can_trigger_camera_alarm
+            if data.can_send_camera_voice is not None: m["can_send_camera_voice"] = data.can_send_camera_voice
             break
     save_data_store(DATA_STORE)
     return {"status": "SUCCESS", "members": members}
@@ -316,10 +344,17 @@ class AddCameraInput(BaseModel):
     qr_code: Optional[str] = None
     stream_url: Optional[str] = None
     ip_address: Optional[str] = None
+    has_alarm: Optional[bool] = True
+    has_sound: Optional[bool] = True
 
 class CameraControlInput(BaseModel):
     is_online: Optional[bool] = None
     is_hidden: Optional[bool] = None
+
+class CameraActionPayload(BaseModel):
+    member_id: Optional[str] = None
+    audio_base64: Optional[str] = None
+    message: Optional[str] = None
 
 @app.get("/api/cameras")
 def get_cameras():
@@ -335,6 +370,8 @@ def discover_cameras():
             "location": "Cochera Exterior",
             "type": "ONVIF 4K",
             "stream_url": "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80",
+            "has_alarm": True,
+            "has_sound": True,
             "status": "READY"
         },
         {
@@ -343,6 +380,8 @@ def discover_cameras():
             "location": "Interior Planta Baja",
             "type": "IP Dome HD",
             "stream_url": "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80",
+            "has_alarm": True,
+            "has_sound": True,
             "status": "READY"
         },
         {
@@ -351,6 +390,8 @@ def discover_cameras():
             "location": "Fachada Principal",
             "type": "PTZ Solar 2026",
             "stream_url": "https://images.unsplash.com/photo-1558002038-1055907df827?auto=format&fit=crop&w=800&q=80",
+            "has_alarm": True,
+            "has_sound": True,
             "status": "READY"
         }
     ]
@@ -374,6 +415,8 @@ def add_camera(data: AddCameraInput):
         "stream_url": data.stream_url or "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80",
         "is_online": True,
         "is_hidden": False,
+        "has_alarm": data.has_alarm if data.has_alarm is not None else True,
+        "has_sound": data.has_sound if data.has_sound is not None else True,
         "status": "ONLINE",
         "added_at": datetime.now().isoformat()
     }
@@ -399,6 +442,54 @@ def control_camera(cam_id: str, data: CameraControlInput):
         save_data_store(DATA_STORE)
         return {"status": "SUCCESS", "camera": target_cam, "cameras": cameras}
     raise HTTPException(status_code=404, detail="Cámara no encontrada")
+
+@app.post("/api/cameras/{cam_id}/alarm")
+def trigger_camera_alarm_endpoint(cam_id: str, payload: Optional[CameraActionPayload] = None):
+    cameras = DATA_STORE.get("cameras", [])
+    cam = next((c for c in cameras if c["id"] == cam_id), None)
+    if not cam:
+        raise HTTPException(status_code=404, detail="Cámara no encontrada")
+    if not cam.get("is_online", True):
+        raise HTTPException(status_code=400, detail="La cámara está fuera de línea.")
+    
+    sender_id = payload.member_id if payload and payload.member_id else "Administrador"
+    alert_entry = {
+        "id": f"cam_alarm_{int(datetime.now().timestamp()*1000)}",
+        "type": "CAMERA_SIREN",
+        "cam_id": cam_id,
+        "cam_name": cam.get("name"),
+        "triggered_by": sender_id,
+        "created_at": datetime.now().isoformat()
+    }
+    if "alerts" not in DATA_STORE:
+        DATA_STORE["alerts"] = []
+    DATA_STORE["alerts"].append(alert_entry)
+    save_data_store(DATA_STORE)
+    return {"status": "SUCCESS", "message": f"🚨 Alarma de la cámara '{cam.get('name')}' activada.", "alert": alert_entry}
+
+@app.post("/api/cameras/{cam_id}/voice")
+def send_camera_voice_endpoint(cam_id: str, payload: Optional[CameraActionPayload] = None):
+    cameras = DATA_STORE.get("cameras", [])
+    cam = next((c for c in cameras if c["id"] == cam_id), None)
+    if not cam:
+        raise HTTPException(status_code=404, detail="Cámara no encontrada")
+    if not cam.get("is_online", True):
+        raise HTTPException(status_code=400, detail="La cámara está fuera de línea.")
+    
+    sender_id = payload.member_id if payload and payload.member_id else "Administrador"
+    log_entry = {
+        "id": f"cam_voice_{int(datetime.now().timestamp()*1000)}",
+        "action": "VOICE_TRANSMISSION",
+        "cam_id": cam_id,
+        "cam_name": cam.get("name"),
+        "sent_by": sender_id,
+        "timestamp": datetime.now().isoformat()
+    }
+    if "audit_logs" not in DATA_STORE:
+        DATA_STORE["audit_logs"] = []
+    DATA_STORE["audit_logs"].append(log_entry)
+    save_data_store(DATA_STORE)
+    return {"status": "SUCCESS", "message": f"🎙️ Transmisión de voz a cámara '{cam.get('name')}' completada.", "log": log_entry}
 
 @app.get("/api/cameras/{cam_id}/stream")
 def stream_camera_proxy(cam_id: str):

@@ -612,6 +612,34 @@
             </div>
           </div>
 
+          <!-- TARJETA PWA E INSTALACIÓN / FAVORITOS -->
+          <div class="glass-card pwa-favorite-card" style="padding: 14px; margin-bottom: 12px; border: 1px solid rgba(56, 189, 248, 0.3); background: linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(30, 41, 59, 0.8));">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="width: 38px; height: 38px; border-radius: 10px; background: rgba(56, 189, 248, 0.18); display: flex; align-items: center; justify-content: center; color: var(--accent-cyan); font-size: 18px;">
+                  <i class="fa-solid fa-mobile-screen-button"></i>
+                </div>
+                <div>
+                  <h3 style="font-size: 14px; font-weight: 800; color: #fff; margin: 0;">Instalar App (PWA) o Guardar Favorito</h3>
+                  <p style="font-size: 11px; color: var(--text-secondary); margin: 2px 0 0;">Acceso instantáneo con 1-clic desde tu pantalla de inicio o marcadores.</p>
+                </div>
+              </div>
+              <span class="badge-tag" style="background: rgba(16, 185, 129, 0.2); color: #10B981; font-size: 10px;">Gratis</span>
+            </div>
+
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px;">
+              <button id="btnPwaInstallSection" class="btn-sm" style="flex: 1; min-width: 140px; background: linear-gradient(135deg, #0284C7, #06B6D4); color: #fff; border: none; padding: 10px; border-radius: 8px; font-weight: 800; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="triggerPwaInstall()">
+                <i class="fa-solid fa-download"></i> Instalar Aplicación Móvil
+              </button>
+              <button id="btnFavoriteGuide" class="btn-sm" style="flex: 1; min-width: 140px; background: rgba(245, 158, 11, 0.18); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.4); padding: 10px; border-radius: 8px; font-weight: 800; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="openFavoriteGuideModal()">
+                <i class="fa-solid fa-star"></i> Guardar en Favoritos
+              </button>
+              <button class="btn-sm" style="background: rgba(255,255,255,0.08); color: #fff; border: 1px solid var(--border-glass); padding: 10px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer;" onclick="copyAppLinkToClipboard()" title="Copiar Enlace">
+                <i class="fa-solid fa-copy"></i>
+              </button>
+            </div>
+          </div>
+
           <!-- DIRECTORIO DE TODOS LOS FAMILIARES -->
           <h3 class="group-title"><i class="fa-solid fa-address-book"></i> Directorio de la Familia Andrada</h3>
           <div class="family-directory-list" id="familyDirectoryList" style="margin-bottom: 12px;">
@@ -1659,6 +1687,15 @@
             <input type="text" id="camUrlInput" class="mobile-input" placeholder="192.168.1.100 o https://mi-camara.ddns.net/video" required>
           </div>
 
+          <div class="form-group" style="display: flex; gap: 12px; margin-top: 10px;">
+            <label style="flex: 1; display: flex; align-items: center; gap: 6px; font-size: 11px; color: #fff; cursor: pointer;">
+              <input type="checkbox" id="addCamHasAlarmCheck" checked style="accent-color: #EF4444; width: 16px; height: 16px;"> 🚨 Tiene Sirena / Alarma
+            </label>
+            <label style="flex: 1; display: flex; align-items: center; gap: 6px; font-size: 11px; color: #fff; cursor: pointer;">
+              <input type="checkbox" id="addCamHasSoundCheck" checked style="accent-color: #10B981; width: 16px; height: 16px;"> 🎙️ Tiene Parlante / Voz
+            </label>
+          </div>
+
           <button type="submit" class="btn-mobile-submit" style="background: linear-gradient(135deg, #10B981, #059669); font-size: 13px; padding: 10px;">
             <i class="fa-solid fa-circle-check"></i> Vincular Cámara Manualmente
           </button>
@@ -1681,6 +1718,188 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE EDICIÓN DE MIEMBRO Y CONFIGURACIÓN DE PERMISOS ADMIN -->
+  <div id="editMemberModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="editMemberModalTitle">
+    <div class="modal-card glass-card" style="max-width: 440px; width: 92%;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 id="editMemberModalTitle" style="font-size: 16px; font-weight: 800; color: var(--accent-cyan); display: flex; align-items: center; gap: 8px; margin: 0;">
+          <i class="fa-solid fa-user-gear"></i> Editar Permisos de Miembro
+        </h3>
+        <button class="btn-sheet-close" onclick="closeEditModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="editMemberForm" onsubmit="handleEditSubmit(event)">
+        <input type="hidden" id="editMemberId">
+        <div class="form-group">
+          <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Nombre Completo:</label>
+          <input type="text" id="editFullName" class="mobile-input" required>
+        </div>
+        <div class="form-group">
+          <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Apodo / Alias Familiar:</label>
+          <input type="text" id="editNickname" class="mobile-input">
+        </div>
+        <div class="form-group">
+          <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">DNI Oficial:</label>
+          <input type="text" id="editDni" class="mobile-input" required>
+        </div>
+        <div class="form-group">
+          <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Teléfono (WhatsApp):</label>
+          <input type="tel" id="editPhone" class="mobile-input" required>
+        </div>
+        <div class="form-group">
+          <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">⭐ Persona de Confianza Asignada:</label>
+          <select id="editTrustedMemberSelect" class="mobile-select"></select>
+        </div>
+        <div class="form-group">
+          <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">PIN de Acceso (4 a 5 números):</label>
+          <input type="password" id="editPin" class="mobile-input" placeholder="Dejar vacío para mantener actual" maxlength="5">
+        </div>
+
+        <!-- Sección de Permisos Granulares de Cámaras (Control Administrador) -->
+        <div style="background: rgba(0,0,0,0.35); border: 1px solid var(--border-glass); border-radius: 10px; padding: 10px 12px; margin-bottom: 14px;">
+          <div style="font-size: 12px; font-weight: 800; color: #F59E0B; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+            <i class="fa-solid fa-shield-cat"></i> Permisos de Cámaras (Administrador):
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px; font-size: 11px; color: #fff;">
+            <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
+              <span>👁️ Ver Cámaras en Vivo:</span>
+              <input type="checkbox" id="editPermViewCameras" checked style="accent-color: var(--accent-cyan); width: 18px; height: 18px;">
+            </label>
+            <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
+              <span>🚨 Activar Alarma de Cámaras:</span>
+              <input type="checkbox" id="editPermTriggerAlarm" checked style="accent-color: #EF4444; width: 18px; height: 18px;">
+            </label>
+            <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
+              <span>🎙️ Enviar Mensajes de Voz a Cámaras:</span>
+              <input type="checkbox" id="editPermSendVoice" checked style="accent-color: #10B981; width: 18px; height: 18px;">
+            </label>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-mobile-submit" style="background: linear-gradient(135deg, #0284C7, #06B6D4); font-size: 13px; padding: 10px;">
+          <i class="fa-solid fa-floppy-disk"></i> Guardar Cambios y Permisos
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL DE REPRODUCTOR Y TRANSMISIÓN EN VIVO DE CÁMARA EN TIEMPO REAL -->
+  <div id="cameraLiveModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="liveCamTitle">
+    <div class="modal-card glass-card" style="max-width: 540px; width: 95%; padding: 14px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #EF4444; box-shadow: 0 0 10px #EF4444; animation: pulse 1.5s infinite;"></span>
+          <h3 id="liveCamTitle" style="font-size: 15px; font-weight: 800; color: #fff; margin: 0;">Transmisión en Vivo</h3>
+        </div>
+        <button class="btn-sheet-close" onclick="closeLiveCameraModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <!-- Pantalla de Video Stream de Cámara -->
+      <div style="position: relative; width: 100%; height: 260px; border-radius: 12px; overflow: hidden; background: #000; border: 1px solid var(--border-glass); margin-bottom: 10px;">
+        <img id="liveCamImageStream" src="" alt="Stream Cámara" style="width: 100%; height: 100%; object-fit: cover;" />
+        <video id="liveCamWebcamStream" autoplay playsinline muted style="width: 100%; height: 100%; object-fit: cover;" class="hidden"></video>
+        
+        <!-- Superposiciones HUD de Monitoreo -->
+        <div style="position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); color: #25D366; padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 800; font-family: monospace; display: flex; align-items: center; gap: 6px; border: 1px solid rgba(37,211,102,0.4);">
+          <i class="fa-solid fa-circle-dot" style="color: #25D366;"></i> EN VIVO • <span id="camStreamFormatLabel">1080p RTSP</span>
+        </div>
+
+        <div style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.7); color: #fff; padding: 4px 8px; border-radius: 6px; font-size: 10px; font-family: monospace;" id="liveCamClockDisplay">
+          00:00:00
+        </div>
+
+        <div style="position: absolute; bottom: 10px; left: 10px; background: rgba(0,0,0,0.7); color: var(--accent-cyan); padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700;" id="liveCamLocationText">
+          Ubicación: Entrada Principal
+        </div>
+      </div>
+
+      <!-- Barra de Acciones y Controles de Cámara -->
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <button id="btnLiveCamAlarm" class="btn-sm" style="flex: 1; min-width: 120px; background: rgba(239, 68, 68, 0.25); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.5); padding: 10px; border-radius: 8px; font-weight: 800; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+          <i class="fa-solid fa-bell"></i> Activar Sirena / Alarma
+        </button>
+        <button id="btnLiveCamVoice" class="btn-sm" style="flex: 1; min-width: 120px; background: rgba(16, 185, 129, 0.25); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.5); padding: 10px; border-radius: 8px; font-weight: 800; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+          <i class="fa-solid fa-microphone"></i> Mensaje de Voz
+        </button>
+        <button id="btnToggleWebcam" class="btn-sm" style="background: rgba(56, 189, 248, 0.2); color: #38BDF8; border: 1px solid rgba(56, 189, 248, 0.4); padding: 10px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px;" onclick="toggleWebcamInCamModal()" title="Probar Cámara del Dispositivo / Webcam">
+          <i class="fa-solid fa-camera"></i> Webcam
+        </button>
+        <button class="btn-sm" style="background: rgba(255,255,255,0.08); color: #fff; border: 1px solid var(--border-glass); padding: 10px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer;" onclick="toggleCamFullscreen()" title="Pantalla Completa">
+          <i class="fa-solid fa-expand"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE TRANSMISIÓN DE MENSAJE DE VOZ A CÁMARA -->
+  <div id="cameraVoiceModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="voiceCamTitle">
+    <div class="modal-card glass-card" style="max-width: 420px; width: 92%;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <h3 id="voiceCamTitle" style="font-size: 15px; font-weight: 800; color: #10B981; display: flex; align-items: center; gap: 8px; margin: 0;">
+          <i class="fa-solid fa-microphone-lines"></i> Transmitir Voz a Cámara
+        </h3>
+        <button class="btn-sheet-close" onclick="closeCameraVoiceModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <p style="font-size: 11px; color: var(--text-secondary); margin-bottom: 12px;" id="voiceCamDesc">
+        Habla o envía un mensaje directo al parlante de la cámara.
+      </p>
+
+      <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border-glass); border-radius: 12px; padding: 14px; text-align: center; margin-bottom: 14px;">
+        <div style="width: 60px; height: 60px; border-radius: 50%; background: rgba(16, 185, 129, 0.2); border: 2px solid #10B981; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; color: #10B981; font-size: 24px;" id="voiceWaveIcon">
+          <i class="fa-solid fa-microphone"></i>
+        </div>
+        <div id="voiceStatusText" style="font-size: 12px; font-weight: 700; color: #fff; margin-bottom: 8px;">Presiona para hablar al parlante</div>
+
+        <div style="display: flex; gap: 8px; justify-content: center;">
+          <button id="btnHoldToSpeak" class="btn-mobile-submit" style="background: linear-gradient(135deg, #10B981, #059669); font-size: 13px; padding: 10px; flex: 1; margin: 0;" onclick="toggleCameraVoiceRecording()">
+            <i class="fa-solid fa-microphone"></i> Iniciar Grabación de Voz
+          </button>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 12px;">
+        <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">O envía un Mensaje de Voz Rápido (Texto a Voz Parlante):</label>
+        <div style="display: flex; gap: 6px;">
+          <input type="text" id="camVoiceTextInput" class="mobile-input" placeholder="Ej: ¡Atención! Por favor identifíquese" style="font-size: 12px; padding: 8px;">
+          <button class="btn-sm" style="background: #10B981; color: #000; font-weight: 800; border: none; padding: 0 12px; border-radius: 8px; cursor: pointer; white-space: nowrap; font-size: 12px;" onclick="sendTextToCameraVoice()">
+            Enviar
+          </button>
+        </div>
+      </div>
+
+      <button class="btn-mobile-submit" style="background: rgba(255,255,255,0.08); color: #fff; font-size: 12px; padding: 8px; margin: 0;" onclick="closeCameraVoiceModal()">
+        Cerrar
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL DE GUÍA PARA GUARDAR EN FAVORITOS -->
+  <div id="favoriteGuideModal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+    <div class="modal-card glass-card" style="max-width: 420px; width: 92%;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 style="font-size: 15px; font-weight: 800; color: #F59E0B; display: flex; align-items: center; gap: 8px; margin: 0;">
+          <i class="fa-solid fa-star"></i> ¿Cómo Guardar en Favoritos?
+        </h3>
+        <button class="btn-sheet-close" onclick="closeFavoriteGuideModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div style="font-size: 12px; color: #fff; text-align: left; display: flex; flex-direction: column; gap: 10px;">
+        <div style="background: rgba(255,255,255,0.04); padding: 10px; border-radius: 8px; border: 1px solid var(--border-glass);">
+          <strong style="color: var(--accent-cyan);"><i class="fa-brands fa-android"></i> Android (Chrome / Edge):</strong>
+          <p style="margin: 4px 0 0; color: var(--text-secondary); font-size: 11px;">Toca el menú de <strong>3 puntos (⋮)</strong> arriba a la derecha y selecciona <strong>"Agregar a la pantalla principal"</strong> o <strong>"Añadir a marcadores"</strong>.</p>
+        </div>
+        <div style="background: rgba(255,255,255,0.04); padding: 10px; border-radius: 8px; border: 1px solid var(--border-glass);">
+          <strong style="color: var(--accent-blue);"><i class="fa-brands fa-apple"></i> iPhone / iPad (Safari):</strong>
+          <p style="margin: 4px 0 0; color: var(--text-secondary); font-size: 11px;">Toca el botón <strong>Compartir (⎋/↑)</strong> abajo en el centro y elige <strong>"Agregar a inicio"</strong> o <strong>"Agregar a marcadores"</strong>.</p>
+        </div>
+        <div style="background: rgba(255,255,255,0.04); padding: 10px; border-radius: 8px; border: 1px solid var(--border-glass);">
+          <strong style="color: #10B981;"><i class="fa-solid fa-desktop"></i> Computadora (PC / Mac):</strong>
+          <p style="margin: 4px 0 0; color: var(--text-secondary); font-size: 11px;">Presiona <strong>Ctrl + D</strong> en Windows o <strong>Cmd + D</strong> en Mac para guardar esta web instantáneamente en tus marcadores.</p>
+        </div>
+      </div>
+      <button class="btn-mobile-submit" style="margin-top: 14px; background: rgba(255,255,255,0.1); color: #fff; font-size: 12px; padding: 10px;" onclick="closeFavoriteGuideModal()">Entendido</button>
     </div>
   </div>
 

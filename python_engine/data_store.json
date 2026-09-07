@@ -19,7 +19,7 @@
       "avatar": "CA",
       "network_type": "WIFI_HOME",
       "network_label": "🟢 WiFi Casa",
-      "last_seen": "2026-09-07T09:48:10.801074",
+      "last_seen": "2026-09-07T10:50:10.490275",
       "active_session_token": "token_carlos_andrada_1788783859785",
       "last_ip": "127.0.0.1"
     },
@@ -89,22 +89,40 @@
   ],
   "cameras": [
     {
-      "id": "cam_01",
-      "name": "Cámara Entrada Principal",
-      "location": "Entrada / Porche",
+      "id": "cam_1788788501645",
+      "name": "Cámara IP Cochera / Garage",
+      "location": "Cochera Exterior",
+      "ip_address": "192.168.1.105",
+      "qr_code": "CAM_QR_1788788501",
       "stream_url": "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80",
-      "qr_code": "CAM_QR_ENTRADA_ANDRADA_2026",
       "is_online": true,
-      "type": "IP_FULL_HD"
+      "is_hidden": true,
+      "status": "ONLINE",
+      "added_at": "2026-09-07T10:41:41.645912"
     },
     {
-      "id": "cam_02",
-      "name": "Cámara Patio / Jardín",
-      "location": "Patio Trasero",
+      "id": "cam_1788788504762",
+      "name": "Cámara IP Cocina / Comedor",
+      "location": "Interior Planta Baja",
+      "ip_address": "192.168.1.112",
+      "qr_code": "CAM_QR_1788788504",
       "stream_url": "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80",
-      "qr_code": "CAM_QR_PATIO_ANDRADA_2026",
       "is_online": true,
-      "type": "IP_NIGHT_VISION"
+      "is_hidden": true,
+      "status": "ONLINE",
+      "added_at": "2026-09-07T10:41:44.762262"
+    },
+    {
+      "id": "cam_1788788506426",
+      "name": "Cámara IP Frente / Portón",
+      "location": "Fachada Principal",
+      "ip_address": "192.168.1.120",
+      "qr_code": "CAM_QR_1788788506",
+      "stream_url": "https://images.unsplash.com/photo-1558002038-1055907df827?auto=format&fit=crop&w=800&q=80",
+      "is_online": true,
+      "is_hidden": true,
+      "status": "ONLINE",
+      "added_at": "2026-09-07T10:41:46.426422"
     }
   ],
   "check_ins": [],
