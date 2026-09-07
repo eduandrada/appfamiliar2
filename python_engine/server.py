@@ -1026,6 +1026,101 @@ def receive_silent_sos(data: SilentSosInput):
         "evaluation": evaluation
     }
 
+# ==============================================================================
+# ENDPOINTS GESTIÓN DE CÁMARAS DE SEGURIDAD Y TRANSMISIÓN EN VIVO 2026
+# ==============================================================================
+
+DEFAULT_CAMERAS = [
+    {
+        "id": "cam_01",
+        "name": "Cámara Entrada Principal",
+        "location": "Puerta Principal Av 27",
+        "ip_address": "192.168.1.101",
+        "stream_url": "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80",
+        "has_alarm": True,
+        "has_sound": True
+    },
+    {
+        "id": "cam_02",
+        "name": "Cámara Patio Trasero",
+        "location": "Jardín y Garaje",
+        "ip_address": "192.168.1.102",
+        "stream_url": "https://images.unsplash.com/photo-1580894732444-8ecded7900cd?auto=format&fit=crop&w=800&q=80",
+        "has_alarm": True,
+        "has_sound": True
+    }
+]
+
+@app.get("/api/cameras")
+def get_cameras():
+    cameras = DATA_STORE.get("cameras", DEFAULT_CAMERAS)
+    return {"cameras": cameras}
+
+class AddCameraInput(BaseModel):
+    id: Optional[str] = None
+    name: str
+    location: Optional[str] = "Acceso Exterior"
+    ip_address: str
+    stream_url: Optional[str] = "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80"
+    has_alarm: Optional[bool] = True
+    has_sound: Optional[bool] = True
+
+@app.post("/api/cameras/add")
+def add_camera(data: AddCameraInput):
+    cameras = DATA_STORE.get("cameras", DEFAULT_CAMERAS)
+    
+    # Comprobar si ya existe por IP o ID
+    existing = next((c for c in cameras if c["id"] == data.id or c["ip_address"] == data.ip_address), None)
+    if existing:
+        return JSONResponse(status_code=409, content={"status": "EXISTS", "message": f"La cámara '{existing['name']}' ya está instalada.", "camera": existing})
+    
+    cam_id = data.id or f"cam_{int(datetime.now().timestamp()*1000)}"
+    new_cam = {
+        "id": cam_id,
+        "name": data.name,
+        "location": data.location,
+        "ip_address": data.ip_address,
+        "stream_url": data.stream_url,
+        "has_alarm": data.has_alarm,
+        "has_sound": data.has_sound,
+        "created_at": datetime.now().isoformat()
+    }
+    cameras.append(new_cam)
+    DATA_STORE["cameras"] = cameras
+    save_data_store(DATA_STORE)
+    return {"status": "SUCCESS", "camera": new_cam}
+
+@app.delete("/api/cameras/{cam_id}")
+def delete_camera(cam_id: str):
+    cameras = DATA_STORE.get("cameras", DEFAULT_CAMERAS)
+    filtered = [c for c in cameras if c["id"] != cam_id]
+    DATA_STORE["cameras"] = filtered
+    save_data_store(DATA_STORE)
+    return {"status": "DELETED", "cam_id": cam_id}
+
+class CameraActionInput(BaseModel):
+    member_id: Optional[str] = "Admin"
+    message: Optional[str] = None
+
+@app.post("/api/cameras/{cam_id}/alarm")
+def trigger_camera_alarm(cam_id: str, data: CameraActionInput):
+    return {
+        "status": "ALARM_TRIGGERED",
+        "cam_id": cam_id,
+        "triggered_by": data.member_id,
+        "message": "Sirena acústica de la cámara activada en vivo a 110dB."
+    }
+
+@app.post("/api/cameras/{cam_id}/voice")
+def transmit_camera_voice(cam_id: str, data: CameraActionInput):
+    return {
+        "status": "VOICE_TRANSMITTED",
+        "cam_id": cam_id,
+        "transmitted_by": data.member_id,
+        "message": data.message or "Audio bidireccional transmitido al parlante de la cámara en vivo."
+    }
+
+
 class TelemetryInput(BaseModel):
     user_id: Optional[str] = "andrada_01"
     user_name: Optional[str] = "Carlos Andrada"
