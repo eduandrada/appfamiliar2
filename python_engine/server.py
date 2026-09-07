@@ -50,7 +50,6 @@ DEFAULT_MEMBERS = [
     {
         "id": "carlos_andrada",
         "name": "Eduardo Andrada",
-        "nickname": "Papá / Admin",
         "dni": "35388342",
         "phone": "+54 9 383 4772960",
         "pin": "1234",
@@ -74,7 +73,6 @@ DEFAULT_MEMBERS = [
     {
         "id": "lucia_andrada",
         "name": "Maira Deldado",
-        "nickname": "Mamá",
         "dni": "35501054",
         "phone": "+54 9 383 4017252",
         "pin": "1234",
@@ -98,7 +96,6 @@ DEFAULT_MEMBERS = [
     {
         "id": "mateo_andrada",
         "name": "Jere Andrada",
-        "nickname": "Bro",
         "dni": "45.123.456",
         "phone": "+54 9 383 478-9012",
         "pin": "1234",
@@ -122,7 +119,6 @@ DEFAULT_MEMBERS = [
     {
         "id": "sofia_andrada",
         "name": "Josefina Andrada",
-        "nickname": "Hija",
         "dni": "48.987.654",
         "phone": "+54 9 383 489-0123",
         "pin": "1234",
@@ -282,7 +278,6 @@ class MemberUpdateInput(BaseModel):
     pin: Optional[str] = None
     role: Optional[str] = None
     zone: Optional[str] = None
-    nickname: Optional[str] = None
     trusted_contact_id: Optional[str] = None
     trusted_contact_name: Optional[str] = None
     trusted_contact_phone: Optional[str] = None
@@ -302,7 +297,6 @@ def update_member(member_id: str, data: MemberUpdateInput):
             if data.pin: m["pin"] = data.pin
             if data.role: m["role"] = data.role
             if data.zone: m["zone"] = data.zone
-            if data.nickname is not None: m["nickname"] = data.nickname
             if data.trusted_contact_id is not None: m["trusted_contact_id"] = data.trusted_contact_id
             if data.trusted_contact_name is not None: m["trusted_contact_name"] = data.trusted_contact_name
             if data.trusted_contact_phone is not None: m["trusted_contact_phone"] = data.trusted_contact_phone
@@ -321,7 +315,6 @@ class GeneralMemberUpdateInput(BaseModel):
     trusted_contact_id: Optional[str] = None
     trusted_contact_name: Optional[str] = None
     trusted_contact_phone: Optional[str] = None
-    nickname: Optional[str] = None
     pin: Optional[str] = None
     phone: Optional[str] = None
     zone: Optional[str] = None
@@ -337,7 +330,6 @@ def update_member_general(data: GeneralMemberUpdateInput):
             if data.trusted_contact_id is not None: m["trusted_contact_id"] = data.trusted_contact_id
             if data.trusted_contact_name is not None: m["trusted_contact_name"] = data.trusted_contact_name
             if data.trusted_contact_phone is not None: m["trusted_contact_phone"] = data.trusted_contact_phone
-            if data.nickname is not None: m["nickname"] = data.nickname
             if data.pin: m["pin"] = data.pin
             if data.phone: m["phone"] = data.phone
             if data.zone: m["zone"] = data.zone
@@ -1041,7 +1033,6 @@ class RegisterMemberInput(BaseModel):
     pin: str
     role: Optional[str] = "Familiar"
     admin_pin: Optional[str] = None
-    nickname: Optional[str] = None
     trusted_contact_id: Optional[str] = None
 
 @app.post("/api/register")
@@ -1058,7 +1049,6 @@ def register_member(data: RegisterMemberInput):
     new_member = {
         "id": f"member_{int(datetime.now().timestamp()*1000)}",
         "name": data.name,
-        "nickname": data.nickname or "",
         "dni": data.dni,
         "phone": data.phone,
         "pin": data.pin,
@@ -1430,13 +1420,13 @@ def get_bot_reply(data: BotReplyInput):
     # 1. Búsqueda de ubicación de familiares
     found_member = None
     for m in members:
-        if m.get("name", "").lower() in query or m.get("nickname", "").lower() in query or m.get("id", "").lower() in query:
+        if m.get("name", "").lower() in query or m.get("id", "").lower() in query:
             found_member = m
             break
 
     if "donde" in query or "dónde" in query or "ubicacion" in query or "ubicación" in query:
         if found_member:
-            reply_text = f"📍 {found_member['name']} ({found_member.get('nickname','Familia')}) está en: {found_member.get('zone','Ubicación activa')}. Batería: {found_member.get('battery',100)}% 🔋. Velocidad: {found_member.get('speed',0)} km/h."
+            reply_text = f"📍 {found_member['name']} ({found_member.get('role','Familia')}) está en: {found_member.get('zone','Ubicación activa')}. Batería: {found_member.get('battery',100)}% 🔋. Velocidad: {found_member.get('speed',0)} km/h."
         else:
             locations = [f"{m['name']}: {m.get('zone','En línea')}" for m in members]
             reply_text = "📍 Ubicación actual del grupo familiar:\n• " + "\n• ".join(locations)
