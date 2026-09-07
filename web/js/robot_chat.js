@@ -22,37 +22,87 @@ function getChatInput() {
 }
 
 function openAiAssistantModal() {
-  const modal = getAiModal();
-  if (!modal) return;
-  modal.classList.remove('hidden');
-  modal.style.display = 'flex';
-  modal.setAttribute('aria-hidden', 'false');
-
-  const history = getChatHistory();
-  if (history && history.children.length === 0) {
-    appendChatMessage('incoming', '🤖 <strong>Asistente Búscame AI:</strong> ¡Hola! Soy el Asistente de la Familia Andrada. Puedes preguntarme dónde está cualquier familiar, nivel de baterías, estado de las cámaras o solicitar auxilio SOS.');
+  if (typeof switchTab === 'function') {
+    switchTab('tab-pickup');
   }
-
   const input = getChatInput();
   if (input) input.focus();
 }
 
 function closeAiAssistantModal() {
-  const modal = getAiModal();
-  if (!modal) return;
-  modal.classList.add('hidden');
-  modal.style.display = 'none';
-  modal.setAttribute('aria-hidden', 'true');
+  // Modal desestimado; chat unificado en la pestaña Búscame
 }
 
-function appendChatMessage(type, text, senderName = '', timestamp = '') {
-  const containers = [getChatHistory(), getChatMessagesTab()].filter(Boolean);
-  if (containers.length === 0) return;
+function selectUberDest(destName) {
+  const input = document.getElementById('uberDestInput');
+  if (input) input.value = destName;
+}
+
+function triggerUberRequest(customDestName = '') {
+  const user = (typeof activeUser !== 'undefined' && activeUser) 
+    ? activeUser 
+    : ((typeof currentUser !== 'undefined' && currentUser) ? currentUser : { name: 'Familiar', lat: -28.46957, lng: -65.78524 });
+    
+  const lat = user.lat || -28.46957;
+  const lng = user.lng || -65.78524;
+
+  let destName = customDestName;
+  if (!destName) {
+    const input = document.getElementById('uberDestInput');
+    destName = input ? input.value.trim() : '';
+  }
+  if (!destName) destName = 'Casa Andrada';
+
+  let destLat = -28.46957;
+  let destLng = -65.78524;
+  if (destName.toLowerCase().includes('unca') || destName.toLowerCase().includes('facultad') || destName.toLowerCase().includes('trabajo')) {
+    destLat = -28.45940;
+    destLng = -65.78910;
+  } else if (destName.toLowerCase().includes('colegio') || destName.toLowerCase().includes('escuela')) {
+    destLat = -28.46320;
+    destLng = -65.78110;
+  }
+
+  const mapsUrl = `https://www.google.com/maps?q=${lat.toFixed(6)},${lng.toFixed(6)}`;
+  const uberUrl = `https://m.uber.com/ul/?action=setPickup&pickup[latitude]=${lat.toFixed(6)}&pickup[longitude]=${lng.toFixed(6)}&dropoff[latitude]=${destLat.toFixed(6)}&dropoff[longitude]=${destLng.toFixed(6)}&dropoff[nickname]=${encodeURIComponent(destName)}`;
+
+  window.open(uberUrl, '_blank');
+
+  sendMessageToPythonBot(`🚖 Solicitando Uber/Taxi hacia "${destName}" desde posición GPS (${lat.toFixed(5)}, ${lng.toFixed(5)}). Ver posición: ${mapsUrl}`);
+}
+
+function sendPhoneQuickShare() {
+  const user = (typeof activeUser !== 'undefined' && activeUser) 
+    ? activeUser 
+    : ((typeof currentUser !== 'undefined' && currentUser) ? currentUser : { name: 'Familiar', phone: '+54 9 383 412-3456' });
+  const phone = user.phone || '+54 9 383 412-3456';
+  sendMessageToPythonBot(`📞 Mi número de teléfono de contacto es: ${phone}`);
+}
+
+function sendLocationQuickShare() {
+  const user = (typeof activeUser !== 'undefined' && activeUser) 
+    ? activeUser 
+    : ((typeof currentUser !== 'undefined' && currentUser) ? currentUser : { name: 'Familiar', lat: -28.46957, lng: -65.78524, battery: 90 });
+  const lat = (user.lat || -28.46957).toFixed(6);
+  const lng = (user.lng || -65.78524).toFixed(6);
+  const batt = user.battery || 90;
+  const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+  sendMessageToPythonBot(`📍 Compartiendo mi ubicación actual en vivo: ${mapsUrl} (Batería: ${batt}%)`);
+}
+
+function broadcastSystemAlertToChat(title, detail, type = 'warning', member = null) {
+  const u = member || ((typeof activeUser !== 'undefined' && activeUser) ? activeUser : { name: 'Familiar', role: 'Usuario', lat: -28.46957, lng: -65.78524, battery: 90 });
+  const mapsUrl = `https://www.google.com/maps?q=${(u.lat||-28.46957).toFixed(6)},${(u.lng||-65.78524).toFixed(6)}`;
+  sendMessageToPythonBot(`🚨 [ALERTA SISTEMA] ${title} - ${u.name}: ${detail}. Ver posición: ${mapsUrl}`);
+}
+
+appendChatMessage = function(type, text, senderName = '', timestamp = '') {
+  const container = getChatMessagesTab();
+  if (!container) return;
 
   const now = new Date();
   const timeStr = timestamp || `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
 
-  // Map type to valid CSS classes
   let typeClass = 'msg-incoming';
   let bubbleClass = 'assistant';
   if (type === 'outgoing' || type === 'user') {
@@ -63,21 +113,23 @@ function appendChatMessage(type, text, senderName = '', timestamp = '') {
     bubbleClass = 'system';
   }
 
-  containers.forEach(container => {
-    const msgDiv = document.createElement('div');
-    msgDiv.className = `chat-msg ${typeClass} chat-bubble ${bubbleClass}`;
-    
-    let senderHeader = '';
-    if (senderName && typeClass === 'msg-incoming') {
-      senderHeader = `<small style="font-size:10px; font-weight:800; color:#38BDF8; display:block; margin-bottom:2px;">${senderName}</small>`;
-    }
-    
-    msgDiv.innerHTML = `${senderHeader}<div>${text.replace(/\n/g, '<br>')}</div><span class="msg-time">${timeStr}</span>`;
-    
-    container.appendChild(msgDiv);
-    container.scrollTop = container.scrollHeight;
-  });
-}
+  const msgDiv = document.createElement('div');
+  msgDiv.className = `chat-msg ${typeClass} chat-bubble ${bubbleClass}`;
+  
+  let senderHeader = '';
+  if (senderName && typeClass === 'msg-incoming') {
+    senderHeader = `<small style="font-size:10px; font-weight:800; color:#38BDF8; display:block; margin-bottom:2px;">${senderName}</small>`;
+  }
+
+  // Formatear enlaces de Google Maps y alertas si existen en el texto
+  let formattedText = text.replace(/(https:\/\/www\.google\.com\/maps\?q=[^\s<]+)/g, '<a href="$1" target="_blank" style="color:#34D399; font-weight:800; text-decoration:underline;">🗺️ Ver en Mapa</a>');
+  formattedText = formattedText.replace(/(https:\/\/m\.uber\.com\/ul\?=[^\s<]+)/g, '<a href="$1" target="_blank" style="color:#F59E0B; font-weight:800; text-decoration:underline;">🚖 Abrir Uber App</a>');
+
+  msgDiv.innerHTML = `${senderHeader}<div>${formattedText.replace(/\n/g, '<br>')}</div><span class="msg-time">${timeStr}</span>`;
+  
+  container.appendChild(msgDiv);
+  container.scrollTop = container.scrollHeight;
+};
 
 async function sendMessageToPythonBot(messageText) {
   if (!messageText || !messageText.trim()) return;
@@ -180,9 +232,6 @@ function handleSendMessage(event) {
 
 // Inicialización de Listeners al cargar el DOM
 document.addEventListener('DOMContentLoaded', () => {
-  const form = document.getElementById('chatForm');
-  if (form) form.addEventListener('submit', handleSendMessage);
-
   const customForm = document.querySelector('.chat-input-row');
   if (customForm) customForm.addEventListener('submit', handleSendMessage);
 
@@ -197,3 +246,9 @@ window.sendMessage = handleSendMessage;
 window.handleSendCustomMessage = handleSendMessage;
 window.sendQuickReply = function(text) { sendMessageToPythonBot(text); };
 window.sendQuickCheckIn = function(statusText) { sendMessageToPythonBot(`📍 Check-in Rápido: ${statusText}`); };
+window.selectUberDest = selectUberDest;
+window.triggerUberRequest = triggerUberRequest;
+window.sendPhoneQuickShare = sendPhoneQuickShare;
+window.sendLocationQuickShare = sendLocationQuickShare;
+window.broadcastSystemAlertToChat = broadcastSystemAlertToChat;
+

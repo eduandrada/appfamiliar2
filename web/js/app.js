@@ -1000,6 +1000,9 @@ function triggerDomesticAlert(type) {
   }
 
   notifyInPhone(title, msg);
+  if (typeof broadcastSystemAlertToChat === 'function') {
+    broadcastSystemAlertToChat(title, msg, 'error');
+  }
   showWhatsAppModal(title, msg, activeUser ? activeUser.lat : -28.46957, activeUser ? activeUser.lng : -65.78524);
 }
 

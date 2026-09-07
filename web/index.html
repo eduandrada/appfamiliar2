@@ -78,20 +78,6 @@
         </button>
       </div>
     </header>
-<!-- AI Assistant Modal -->
-<div id="aiAssistantModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="aiAssistantTitle">
-  <div class="modal-content">
-    <header class="modal-header">
-      <h2 id="aiAssistantTitle">Asistente Virtual</h2>
-      <button class="close-btn" onclick="closeAiAssistantModal()" aria-label="Cerrar asistente">✖</button>
-    </header>
-    <div id="chatHistory" class="chat-history" aria-live="polite"></div>
-    <form id="chatForm" onsubmit="event.preventDefault(); sendMessage();">
-      <input type="text" id="chatInput" placeholder="Escribe tu pregunta..." autocomplete="off" required />
-      <button type="submit" class="send-btn"><i class="fa-solid fa-paper-plane"></i></button>
-    </form>
-  </div>
-</div>
 
 <!-- Modal de Emergencia SOS Extremo -->
 <div id="sosEmergencyModal" class="modal hidden" role="dialog" aria-modal="true" style="z-index: 99999;">
@@ -563,33 +549,63 @@
             </div>
           </div>
 
-          <!-- VENTANA DE CHAT EN TIEMPO REAL -->
+          <!-- TARJETA DE SOLICITUD DE UBER / TAXI INSTANTÁNEO -->
+          <div class="glass-card uber-request-card" style="padding: 14px; margin-bottom: 12px; border: 1px solid rgba(245, 158, 11, 0.4); background: linear-gradient(135deg, rgba(30, 20, 10, 0.85), rgba(15, 23, 42, 0.95)); border-radius: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <div style="width: 36px; height: 36px; border-radius: 10px; background: rgba(245, 158, 11, 0.2); display: flex; align-items: center; justify-content: center; color: #F59E0B; font-size: 18px;">
+                  <i class="fa-solid fa-taxi"></i>
+                </div>
+                <div>
+                  <h3 style="font-size: 14px; font-weight: 800; color: #fff; margin: 0;">Solicitar Uber / Taxi de Auxilio</h3>
+                  <p style="font-size: 11px; color: var(--text-secondary); margin: 2px 0 0;">Pedir un vehículo hacia tu posición GPS en 1-clic.</p>
+                </div>
+              </div>
+              <span class="badge-tag" style="background: rgba(245, 158, 11, 0.2); color: #F59E0B; font-size: 10px; font-weight: 800;">🚖 Uber Express</span>
+            </div>
+
+            <div style="margin-bottom: 10px;">
+              <label style="font-size: 11px; font-weight: 700; color: #F59E0B; display: block; margin-bottom: 4px;">Puntos de Destino Frecuentes:</label>
+              <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px;">
+                <button type="button" class="btn-sm" style="background: rgba(255,255,255,0.08); color: #fff; border: 1px solid var(--border-glass); border-radius: 8px; padding: 6px 10px; font-size: 11px; cursor: pointer;" onclick="selectUberDest('Casa Andrada')">🏠 Casa Andrada</button>
+                <button type="button" class="btn-sm" style="background: rgba(255,255,255,0.08); color: #fff; border: 1px solid var(--border-glass); border-radius: 8px; padding: 6px 10px; font-size: 11px; cursor: pointer;" onclick="selectUberDest('UNCA / Facultad')">🎓 UNCA Facultad</button>
+                <button type="button" class="btn-sm" style="background: rgba(255,255,255,0.08); color: #fff; border: 1px solid var(--border-glass); border-radius: 8px; padding: 6px 10px; font-size: 11px; cursor: pointer;" onclick="selectUberDest('Colegio / Escuela')">🏫 Colegio</button>
+              </div>
+              <input type="text" id="uberDestInput" class="mobile-input" placeholder="O ingresa un destino personalizado (ej: Av. Italia 450)..." style="width: 100%; padding: 8px 12px; font-size: 12px; border-radius: 8px;" />
+            </div>
+
+            <button type="button" class="btn-mobile-submit" style="background: linear-gradient(135deg, #F59E0B, #D97706); color: #000; font-weight: 800; font-size: 13px; padding: 10px; margin: 0; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;" onclick="triggerUberRequest()">
+              <i class="fa-solid fa-car-side"></i> <span>Pedir Uber a Mi Ubicación GPS (1-Clic)</span>
+            </button>
+          </div>
+
+          <!-- VENTANA DE CHAT UNIFICADO Y EN TIEMPO REAL -->
           <div class="glass-card chat-container">
             <div class="chat-header">
               <div class="chat-title">
-                <i class="fa-solid fa-comments"></i>
-                <span>Chat de Auxilio Familiar</span>
+                <i class="fa-solid fa-comments" style="color: var(--accent-cyan);"></i>
+                <span>Chat Familiar & Asistente IA</span>
               </div>
-              <span class="chat-online-badge"><span class="mini-dot"></span> En Vivo</span>
+              <span class="chat-online-badge"><span class="mini-dot"></span> En Vivo 24/7</span>
             </div>
 
             <div class="chat-messages" id="chatMessages">
               <div class="chat-msg msg-system">
-                <span>Canal seguro activo para la Familia Andrada.</span>
+                <span>Canal inteligente seguro activo para la Familia Andrada. Respuestas en vivo y registro de alertas.</span>
               </div>
             </div>
 
-            <!-- Respuestas Rápidas de 1 toque -->
-            <div class="quick-replies-bar">
-              <button class="quick-reply-pill" onclick="sendQuickReply('🚗 ¡Voy en camino!')">🚗 Voy en camino</button>
-              <button class="quick-reply-pill" onclick="sendQuickReply('📍 Ya estoy cerca del lugar')">📍 Estoy cerca</button>
-              <button class="quick-reply-pill" onclick="sendQuickReply('🚕 Te pedí un Uber/Taxi')">🚕 Te pedí un auto</button>
-              <button class="quick-reply-pill" onclick="sendQuickReply('⏳ Esperame ahí, no te muevas')">⏳ Esperame ahí</button>
+            <!-- Respuestas Rápidas Requeridas de 1-toque -->
+            <div class="quick-replies-bar" style="display: flex; gap: 6px; overflow-x: auto; padding: 6px 0;">
+              <button type="button" class="quick-reply-pill" style="background: rgba(56, 189, 248, 0.2); color: #38BDF8; border: 1px solid rgba(56, 189, 248, 0.4);" onclick="sendPhoneQuickShare()">📞 Enviar N° Teléfono</button>
+              <button type="button" class="quick-reply-pill" style="background: rgba(245, 158, 11, 0.2); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.4);" onclick="sendQuickReply('📍 ¡Hola a todos! Por favor envíen su ubicación actual en el mapa.')">📍 Pedir Ubicación</button>
+              <button type="button" class="quick-reply-pill" style="background: rgba(16, 185, 129, 0.2); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.4);" onclick="sendLocationQuickShare()">🗺️ Enviar mi Ubicación</button>
+              <button type="button" class="quick-reply-pill" style="background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.4);" onclick="triggerUberRequest()">🚖 Necesito Taxi / Uber</button>
             </div>
 
             <!-- Campo de Texto para Chatear -->
             <form class="chat-input-row" onsubmit="handleSendCustomMessage(event)">
-              <input type="text" id="customChatInput" placeholder="Escribe un mensaje urgente..." autocomplete="off">
+              <input type="text" id="customChatInput" placeholder="Escribe un mensaje o pregunta al Asistente IA..." autocomplete="off">
               <button type="submit" class="btn-chat-send"><i class="fa-solid fa-paper-plane"></i></button>
             </form>
           </div>
