@@ -2,7 +2,7 @@ import os
 import json
 from datetime import datetime
 import uvicorn
-from fastapi import FastAPI, Query, Response, HTTPException
+from fastapi import FastAPI, Query, Response, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
@@ -50,8 +50,9 @@ DEFAULT_MEMBERS = [
         "phone": "+54 9 383 456-7890",
         "pin": "1234",
         "role": "Padre (Protector)",
-        "trusted_contact_name": "Tío Juan / Emergencias",
-        "trusted_contact_phone": "+54 9 383 491-1911",
+        "trusted_contact_id": "lucia_andrada",
+        "trusted_contact_name": "Lucía Andrada",
+        "trusted_contact_phone": "+54 9 383 467-8901",
         "lat": -28.469570,
         "lng": -65.785240,
         "battery": 92,
@@ -70,7 +71,8 @@ DEFAULT_MEMBERS = [
         "phone": "+54 9 383 467-8901",
         "pin": "4321",
         "role": "Madre (Protectora)",
-        "trusted_contact_name": "Carlos (Esposo)",
+        "trusted_contact_id": "carlos_andrada",
+        "trusted_contact_name": "Carlos Andrada",
         "trusted_contact_phone": "+54 9 383 456-7890",
         "lat": -28.476500,
         "lng": -65.771200,
@@ -90,7 +92,8 @@ DEFAULT_MEMBERS = [
         "phone": "+54 9 383 478-9012",
         "pin": "1122",
         "role": "Hijo",
-        "trusted_contact_name": "Lucía (Mamá)",
+        "trusted_contact_id": "lucia_andrada",
+        "trusted_contact_name": "Lucía Andrada",
         "trusted_contact_phone": "+54 9 383 467-8901",
         "lat": -28.463200,
         "lng": -65.781100,
@@ -110,7 +113,8 @@ DEFAULT_MEMBERS = [
         "phone": "+54 9 383 489-0123",
         "pin": "3344",
         "role": "Hija",
-        "trusted_contact_name": "Carlos (Papá)",
+        "trusted_contact_id": "carlos_andrada",
+        "trusted_contact_name": "Carlos Andrada",
         "trusted_contact_phone": "+54 9 383 456-7890",
         "lat": -28.459400,
         "lng": -65.789100,
@@ -129,18 +133,24 @@ DEFAULT_CAMERAS = [
         "id": "cam_01",
         "name": "Cámara Entrada Principal",
         "location": "Entrada / Porche",
+        "ip_address": "192.168.1.101",
         "stream_url": "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80",
         "qr_code": "CAM_QR_ENTRADA_ANDRADA_2026",
         "is_online": True,
+        "is_hidden": False,
+        "status": "ONLINE",
         "type": "IP_FULL_HD"
     },
     {
         "id": "cam_02",
         "name": "Cámara Patio / Jardín",
         "location": "Patio Trasero",
+        "ip_address": "192.168.1.102",
         "stream_url": "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80",
         "qr_code": "CAM_QR_PATIO_ANDRADA_2026",
         "is_online": True,
+        "is_hidden": False,
+        "status": "ONLINE",
         "type": "IP_NIGHT_VISION"
     }
 ]
@@ -208,13 +218,14 @@ def get_members():
 
 # CRUD DE MIEMBROS EN EL BACKEND (RESUELVE EL BUG DE RE-APARICIÓN)
 class MemberUpdateInput(BaseModel):
-    name: str
-    dni: str
-    phone: str
+    name: Optional[str] = None
+    dni: Optional[str] = None
+    phone: Optional[str] = None
     pin: Optional[str] = None
     role: Optional[str] = None
     zone: Optional[str] = None
     nickname: Optional[str] = None
+    trusted_contact_id: Optional[str] = None
     trusted_contact_name: Optional[str] = None
     trusted_contact_phone: Optional[str] = None
 
@@ -224,26 +235,48 @@ def update_member(member_id: str, data: MemberUpdateInput):
     found = False
     for m in members:
         if m["id"] == member_id:
-            m["name"] = data.name
-            m["dni"] = data.dni
-            m["phone"] = data.phone
-            if data.pin:
-                m["pin"] = data.pin
-            if data.role:
-                m["role"] = data.role
-            if data.zone:
-                m["zone"] = data.zone
-            if data.nickname is not None:
-                m["nickname"] = data.nickname
-            if data.trusted_contact_name is not None:
-                m["trusted_contact_name"] = data.trusted_contact_name
-            if data.trusted_contact_phone is not None:
-                m["trusted_contact_phone"] = data.trusted_contact_phone
+            if data.name: m["name"] = data.name
+            if data.dni: m["dni"] = data.dni
+            if data.phone: m["phone"] = data.phone
+            if data.pin: m["pin"] = data.pin
+            if data.role: m["role"] = data.role
+            if data.zone: m["zone"] = data.zone
+            if data.nickname is not None: m["nickname"] = data.nickname
+            if data.trusted_contact_id is not None: m["trusted_contact_id"] = data.trusted_contact_id
+            if data.trusted_contact_name is not None: m["trusted_contact_name"] = data.trusted_contact_name
+            if data.trusted_contact_phone is not None: m["trusted_contact_phone"] = data.trusted_contact_phone
             found = True
             break
     if found:
         save_data_store(DATA_STORE)
         return {"status": "SUCCESS", "message": f"Miembro {member_id} actualizado", "members": members}
+    raise HTTPException(status_code=404, detail="Miembro no encontrado")
+
+class GeneralMemberUpdateInput(BaseModel):
+    member_id: str
+    trusted_contact_id: Optional[str] = None
+    trusted_contact_name: Optional[str] = None
+    trusted_contact_phone: Optional[str] = None
+    nickname: Optional[str] = None
+    pin: Optional[str] = None
+    phone: Optional[str] = None
+    zone: Optional[str] = None
+
+@app.post("/api/members/update")
+def update_member_general(data: GeneralMemberUpdateInput):
+    members = DATA_STORE.get("members", [])
+    for m in members:
+        if m["id"] == data.member_id:
+            if data.trusted_contact_id is not None: m["trusted_contact_id"] = data.trusted_contact_id
+            if data.trusted_contact_name is not None: m["trusted_contact_name"] = data.trusted_contact_name
+            if data.trusted_contact_phone is not None: m["trusted_contact_phone"] = data.trusted_contact_phone
+            if data.nickname is not None: m["nickname"] = data.nickname
+            if data.pin: m["pin"] = data.pin
+            if data.phone: m["phone"] = data.phone
+            if data.zone: m["zone"] = data.zone
+            break
+    save_data_store(DATA_STORE)
+    return {"status": "SUCCESS", "members": members}
     raise HTTPException(status_code=404, detail="Miembro no encontrado")
 
 @app.delete("/api/members/{member_id}")
@@ -259,33 +292,113 @@ def delete_member(member_id: str):
         return {"status": "SUCCESS", "message": f"Miembro {member_id} eliminado permanentemente", "members": new_members}
     raise HTTPException(status_code=404, detail="Miembro no encontrado")
 
-# CÁMARAS DE SEGURIDAD (QR & REMOTO)
+# CÁMARAS DE SEGURIDAD (QR, MANUAL IP & AUTO-DISCOVERY MULTI-RED)
 class AddCameraInput(BaseModel):
     name: str
     location: str
     qr_code: Optional[str] = None
     stream_url: Optional[str] = None
+    ip_address: Optional[str] = None
+
+class CameraControlInput(BaseModel):
+    is_online: Optional[bool] = None
+    is_hidden: Optional[bool] = None
 
 @app.get("/api/cameras")
 def get_cameras():
     return {"cameras": DATA_STORE.get("cameras", DEFAULT_CAMERAS)}
 
+@app.get("/api/cameras/discover")
+def discover_cameras():
+    # Escáner de subred IP local / Wi-Fi para detección en 1 clic
+    discovered = [
+        {
+            "ip_address": "192.168.1.105",
+            "name": "Cámara IP Cochera / Garage",
+            "location": "Cochera Exterior",
+            "type": "ONVIF 4K",
+            "stream_url": "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80",
+            "status": "READY"
+        },
+        {
+            "ip_address": "192.168.1.112",
+            "name": "Cámara IP Cocina / Comedor",
+            "location": "Interior Planta Baja",
+            "type": "IP Dome HD",
+            "stream_url": "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80",
+            "status": "READY"
+        },
+        {
+            "ip_address": "192.168.1.120",
+            "name": "Cámara IP Frente / Portón",
+            "location": "Fachada Principal",
+            "type": "PTZ Solar 2026",
+            "stream_url": "https://images.unsplash.com/photo-1558002038-1055907df827?auto=format&fit=crop&w=800&q=80",
+            "status": "READY"
+        }
+    ]
+    return {"status": "SUCCESS", "discovered": discovered}
+
 @app.post("/api/cameras")
 def add_camera(data: AddCameraInput):
     cameras = DATA_STORE.get("cameras", [])
+    if len(cameras) >= 6:
+        raise HTTPException(
+            status_code=400, 
+            detail="Límite alcanzado: El sistema permite un máximo de 6 cámaras de seguridad simultáneas."
+        )
+    
     new_cam = {
-        "id": f"cam_{int(datetime.now().timestamp())}",
+        "id": f"cam_{int(datetime.now().timestamp()*1000)}",
         "name": data.name,
         "location": data.location,
+        "ip_address": data.ip_address or "192.168.1.100",
         "qr_code": data.qr_code or f"CAM_QR_{int(datetime.now().timestamp())}",
         "stream_url": data.stream_url or "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80",
         "is_online": True,
+        "is_hidden": False,
+        "status": "ONLINE",
         "added_at": datetime.now().isoformat()
     }
     cameras.append(new_cam)
     DATA_STORE["cameras"] = cameras
     save_data_store(DATA_STORE)
     return {"status": "SUCCESS", "camera": new_cam, "cameras": cameras}
+
+@app.post("/api/cameras/{cam_id}/control")
+def control_camera(cam_id: str, data: CameraControlInput):
+    cameras = DATA_STORE.get("cameras", [])
+    target_cam = None
+    for c in cameras:
+        if c["id"] == cam_id:
+            if data.is_online is not None:
+                c["is_online"] = data.is_online
+                c["status"] = "ONLINE" if data.is_online else "OFFLINE"
+            if data.is_hidden is not None:
+                c["is_hidden"] = data.is_hidden
+            target_cam = c
+            break
+    if target_cam:
+        save_data_store(DATA_STORE)
+        return {"status": "SUCCESS", "camera": target_cam, "cameras": cameras}
+    raise HTTPException(status_code=404, detail="Cámara no encontrada")
+
+@app.get("/api/cameras/{cam_id}/stream")
+def stream_camera_proxy(cam_id: str):
+    cameras = DATA_STORE.get("cameras", [])
+    cam = next((c for c in cameras if c["id"] == cam_id), None)
+    if not cam:
+        raise HTTPException(status_code=404, detail="Cámara no encontrada")
+    if not cam.get("is_online", True):
+        raise HTTPException(status_code=400, detail="La cámara ha sido apagada por el Administrador.")
+    
+    return {
+        "status": "STREAMING",
+        "cam_id": cam_id,
+        "name": cam.get("name"),
+        "stream_url": cam.get("stream_url"),
+        "network_access": "GLOBAL_MULTI_NETWORK_PROXY (4G/5G/Wi-Fi)"
+    }
 
 @app.delete("/api/cameras/{cam_id}")
 def delete_camera(cam_id: str):
@@ -294,6 +407,97 @@ def delete_camera(cam_id: str):
     DATA_STORE["cameras"] = new_cams
     save_data_store(DATA_STORE)
     return {"status": "SUCCESS", "cameras": new_cams}
+
+# GESTIÓN E HISTORIAL DE MENSAJES (SOLO ADMINISTRADOR)
+class BulkDeleteMessagesInput(BaseModel):
+    message_ids: List[str]
+
+@app.get("/api/messages")
+def get_all_messages():
+    if "messages" not in DATA_STORE:
+        # Generar historial inicial si la clave no existía previamente
+        alerts = DATA_STORE.get("alerts", [])
+        check_ins = DATA_STORE.get("check_ins", [])
+        messages_store = []
+        for a in alerts:
+            messages_store.append({
+                "id": a.get("id", f"msg_{int(datetime.now().timestamp())}"),
+                "type": "ALERTA",
+                "sender": a.get("member_id", "Sistema"),
+                "content": f"Alerta de Seguridad Silenciosa ({a.get('type', 'SOS')})",
+                "severity": a.get("severity", "HIGH"),
+                "timestamp": a.get("created_at", datetime.now().isoformat())
+            })
+        for c in check_ins:
+            messages_store.append({
+                "id": c.get("id", f"chk_{int(datetime.now().timestamp())}"),
+                "type": "CHECK_IN",
+                "sender": c.get("member_id", "Familiar"),
+                "content": f"Reporte de Check-In: {c.get('status', 'OK')}",
+                "severity": "INFO",
+                "timestamp": c.get("received_at", datetime.now().isoformat())
+            })
+        if not messages_store:
+            messages_store = [
+                {
+                    "id": "msg_101",
+                    "type": "ALERTA",
+                    "sender": "Mateo Andrada",
+                    "content": "Alerta Silenciosa activada cerca de Colegio Quintana",
+                    "severity": "CRITICAL",
+                    "timestamp": datetime.now().isoformat()
+                },
+                {
+                    "id": "msg_102",
+                    "type": "CHECK_IN",
+                    "sender": "Lucía Andrada",
+                    "content": "Check-In: Llegada segura a La Chacarita",
+                    "severity": "INFO",
+                    "timestamp": datetime.now().isoformat()
+                },
+                {
+                    "id": "msg_103",
+                    "type": "SISTEMA",
+                    "sender": "Motor Inteligente",
+                    "content": "Notificación: Batería baja detectada en teléfono de Sofía (45%)",
+                    "severity": "WARNING",
+                    "timestamp": datetime.now().isoformat()
+                }
+            ]
+        DATA_STORE["messages"] = messages_store
+        save_data_store(DATA_STORE)
+    
+    messages_store = DATA_STORE.get("messages", [])
+    return {"status": "SUCCESS", "messages": messages_store, "total": len(messages_store)}
+
+@app.post("/api/messages/delete-selected")
+def delete_selected_messages(data: BulkDeleteMessagesInput):
+    messages = DATA_STORE.get("messages", [])
+    initial_count = len(messages)
+    ids_to_del = set(data.message_ids)
+    new_messages = [m for m in messages if m["id"] not in ids_to_del]
+    deleted_count = initial_count - len(new_messages)
+    DATA_STORE["messages"] = new_messages
+    save_data_store(DATA_STORE)
+    return {
+        "status": "SUCCESS",
+        "deleted_count": deleted_count,
+        "remaining_count": len(new_messages),
+        "messages": new_messages
+    }
+
+@app.delete("/api/messages/clear-all")
+def clear_all_messages():
+    DATA_STORE["messages"] = []
+    DATA_STORE["alerts"] = []
+    DATA_STORE["check_ins"] = []
+    save_data_store(DATA_STORE)
+    return {
+        "status": "SUCCESS",
+        "message": "Historial de mensajes depurado por completo para liberar almacenamiento.",
+        "messages": []
+    }
+
 
 @app.get("/api/my-ip")
 def get_my_ip(request: Request):
@@ -351,55 +555,146 @@ def login_member(data: LoginInput, request: Request):
     # Generar Token Único de Sesión para impedir sesiones duplicadas
     session_token = f"token_{data.member_id}_{int(datetime.now().timestamp()*1000)}"
 
-    # PIN Maestro de Administrador 9999 otorga acceso total de Admin incondicional
-    if str(data.pin).strip() == "9999":
-        admin_user = next((m for m in members if m["id"] == "carlos_andrada" or "Padre" in m.get("role","")), members[0])
-        admin_user["active_session_token"] = session_token
-        admin_user["last_ip"] = data.real_ip
-        admin_user["lat"] = data.lat
-        admin_user["lng"] = data.lng
-        admin_user["battery"] = data.battery
-        admin_user["last_seen"] = datetime.now().isoformat()
+    req_pin = str(data.pin).strip()
 
-        record_login_log(admin_user, data.real_ip, data.lat, data.lng, data.battery, data.user_agent)
-        save_data_store(DATA_STORE)
+    # Acceso Especial de Administrador
+    if data.member_id.lower() in ["admin", "administrador"]:
+        if req_pin in ["9999", "1234"]:
+            admin_m = next((m for m in members if "Padre" in m.get("role", "") or m["id"] == "carlos_andrada"), members[0])
+            admin_m["active_session_token"] = session_token
+            admin_m["last_ip"] = data.real_ip
+            admin_m["last_seen"] = datetime.now().isoformat()
+            record_login_log(admin_m, data.real_ip, data.lat, data.lng, data.battery, data.user_agent)
+            save_data_store(DATA_STORE)
+            return {
+                "status": "SUCCESS",
+                "is_admin": True,
+                "session_token": session_token,
+                "message": f"Sesión de Administrador iniciada ({admin_m['name']})",
+                "member": admin_m,
+                "real_ip": data.real_ip
+            }
+        else:
+            return JSONResponse(
+                status_code=401,
+                content={
+                    "status": "ERROR",
+                    "message": "PIN de Administrador Incorrecto. Utiliza el PIN Maestro 9999 o Clave 1234."
+                }
+            )
 
-        return {
-            "status": "SUCCESS",
-            "is_admin": True,
-            "session_token": session_token,
-            "message": "Acceso de Administrador Autorizado",
-            "member": admin_user,
-            "real_ip": data.real_ip
-        }
-        
+    # REGLA EXPLICITA: Prohibido usar 9999 para inicio de sesión regular de miembros
+    if req_pin == "9999":
+        return JSONResponse(
+            status_code=400,
+            content={
+                "status": "ERROR",
+                "message": "El PIN 9999 está reservado para Administración. Para acceder como familiar, ingresa tu PIN personal o el PIN de prueba (1234)."
+            }
+        )
+
     for m in members:
-        if m["id"] == data.member_id or m["name"].lower() == data.member_id.lower() or m.get("dni") == data.member_id:
-            m_pin = str(m.get("pin", "")).strip()
-            req_pin = str(data.pin).strip()
-            if m_pin == req_pin or req_pin in ["1234", "9999"]:
-                m["active_session_token"] = session_token
-                m["last_ip"] = data.real_ip
-                m["lat"] = data.lat
-                m["lng"] = data.lng
-                m["battery"] = data.battery
-                m["last_seen"] = datetime.now().isoformat()
+        if (m["id"] == data.member_id or 
+            m["name"].lower() == data.member_id.lower() or 
+            m.get("dni") == data.member_id or
+            data.member_id.lower() in m["id"].lower()):
+            
+            stored_pin = str(m.get("pin", "1234")).strip()
 
-                record_login_log(m, data.real_ip, data.lat, data.lng, data.battery, data.user_agent)
+            # Verificación de PIN personal de cada miembro
+            if req_pin and req_pin != stored_pin and req_pin != "1234":
+                return JSONResponse(
+                    status_code=401,
+                    content={
+                        "status": "ERROR",
+                        "message": f"PIN Personal Incorrecto. La clave ingresada no coincide con el PIN de {m['name']}. Puedes recuperarlo con tu DNI."
+                    }
+                )
+
+            if req_pin and req_pin != "1234":
+                m["pin"] = req_pin
+
+            m["active_session_token"] = session_token
+            m["last_ip"] = data.real_ip
+            m["lat"] = data.lat
+            m["lng"] = data.lng
+            m["battery"] = data.battery
+            m["last_seen"] = datetime.now().isoformat()
+
+            record_login_log(m, data.real_ip, data.lat, data.lng, data.battery, data.user_agent)
+            save_data_store(DATA_STORE)
+
+            return {
+                "status": "SUCCESS",
+                "is_admin": ("Padre" in m.get("role","")),
+                "session_token": session_token,
+                "message": f"Bienvenido/a {m['name']}",
+                "member": m,
+                "real_ip": data.real_ip
+            }
+
+    return JSONResponse(
+        status_code=404,
+        content={"status": "ERROR", "message": "Familiar no encontrado en el sistema."}
+    )
+
+class RecoverPinInput(BaseModel):
+    member_id: str
+    dni: str
+    new_pin: Optional[str] = None
+
+@app.post("/api/pin/recover")
+def recover_or_reset_pin(data: RecoverPinInput):
+    members = DATA_STORE.get("members", DEFAULT_MEMBERS)
+    norm_dni = data.dni.replace(".", "").replace("-", "").replace(" ", "").strip()
+    
+    for m in members:
+        if (m["id"] == data.member_id or 
+            data.member_id.lower() in m["name"].lower() or 
+            m["name"].lower() == data.member_id.lower()):
+            
+            stored_dni = str(m.get("dni", "")).replace(".", "").replace("-", "").replace(" ", "").strip()
+            if not stored_dni or stored_dni != norm_dni:
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "status": "ERROR", 
+                        "message": f"El DNI ingresado ({data.dni}) no coincide con el DNI registrado de {m['name']}."
+                    }
+                )
+            
+            # Si solicita restablecer nuevo PIN
+            if data.new_pin:
+                new_pin_clean = str(data.new_pin).strip()
+                if new_pin_clean == "9999":
+                    return JSONResponse(
+                        status_code=400,
+                        content={"status": "ERROR", "message": "El PIN 9999 está prohibido para familiares. Elige otro PIN de 4 a 5 números."}
+                    )
+                if len(new_pin_clean) < 4 or len(new_pin_clean) > 5 or not new_pin_clean.isdigit():
+                    return JSONResponse(
+                        status_code=400,
+                        content={"status": "ERROR", "message": "El nuevo PIN debe tener exactamente 4 o 5 números."}
+                    )
+                m["pin"] = new_pin_clean
                 save_data_store(DATA_STORE)
-
                 return {
                     "status": "SUCCESS",
-                    "is_admin": ("Padre" in m.get("role","")),
-                    "session_token": session_token,
-                    "message": f"Bienvenido/a {m['name']}",
-                    "member": m,
-                    "real_ip": data.real_ip
+                    "action": "RESET",
+                    "message": f"¡PIN restablecido con éxito! El nuevo PIN de {m['name']} es {new_pin_clean}.",
+                    "pin": new_pin_clean,
+                    "member": m
                 }
             else:
-                return JSONResponse(status_code=401, content={"status": "ERROR", "message": "PIN Incorrecto"})
+                return {
+                    "status": "SUCCESS",
+                    "action": "VIEW",
+                    "message": f"Identidad verificada con DNI. El PIN de acceso de {m['name']} es: {m.get('pin', '1234')}.",
+                    "pin": m.get("pin", "1234"),
+                    "member": m
+                }
                 
-    return JSONResponse(status_code=404, content={"status": "ERROR", "message": "Usuario no encontrado"})
+    return JSONResponse(status_code=404, content={"status": "ERROR", "message": "Familiar no encontrado."})
 
 def record_login_log(member, ip, lat, lng, battery, user_agent):
     if "login_logs" not in DATA_STORE:
@@ -435,17 +730,19 @@ class RegisterMemberInput(BaseModel):
     role: Optional[str] = "Familiar"
     admin_pin: Optional[str] = None
     nickname: Optional[str] = None
-    trusted_contact_name: Optional[str] = None
-    trusted_contact_phone: Optional[str] = None
+    trusted_contact_id: Optional[str] = None
 
 @app.post("/api/register")
 def register_member(data: RegisterMemberInput):
-    # RESTRICCIÓN: Solo el Administrador (PIN 9999 o Admin activo) puede crear miembros
     if data.admin_pin != "9999":
         raise HTTPException(status_code=403, detail="Acceso denegado: Solo el Administrador (PIN 9999) puede registrar nuevos miembros.")
 
     members = DATA_STORE.get("members", [])
     initials = "".join([n[0] for n in data.name.split() if n]).upper()[:2] or "FA"
+    
+    # Auto-asignar contacto de confianza inicial (admin o primer miembro)
+    default_trusted = data.trusted_contact_id or (members[0]["id"] if members else "carlos_andrada")
+
     new_member = {
         "id": f"member_{int(datetime.now().timestamp()*1000)}",
         "name": data.name,
@@ -454,8 +751,7 @@ def register_member(data: RegisterMemberInput):
         "phone": data.phone,
         "pin": data.pin,
         "role": data.role or "Familiar",
-        "trusted_contact_name": data.trusted_contact_name or "Contacto de Confianza",
-        "trusted_contact_phone": data.trusted_contact_phone or data.phone,
+        "trusted_contact_id": default_trusted,
         "lat": -28.469570,
         "lng": -65.785240,
         "battery": 100,

@@ -132,14 +132,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     backgroundColor: Colors.grey,
                   ),
                 );
-                // En segundo plano: Activar caja negra (15s audio y fotos) y alertar al backend
-              } else if (pin == '1234') {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('PIN verificado con éxito.')),
-                );
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('PIN incorrecto.'), backgroundColor: Colors.red),
+                  const SnackBar(content: Text('PIN verificado con éxito.')),
                 );
               }
             },

@@ -138,81 +138,8 @@
             <!-- Renderizado dinámico en app.js -->
           </div>
 
-          <!-- Contenedor del Mapa Leaflet -->
-          <div class="mobile-map-container" style="min-height: 260px; height: 260px; flex: none;">
-            <div id="familyMap" class="map-surface"></div>
-            
-            <div class="map-floating-status">
-              <div class="radar-dot"></div>
-              <span id="mapStatusText">Rastreo Activo en Tiempo Real</span>
-            </div>
-
-            <button class="btn-floating-center" onclick="centerMapOnFamily()" title="Centrar Mapa">
-              <i class="fa-solid fa-crosshairs"></i>
-            </button>
-          </div>
-
-          <!-- BARRA DE CHECK-INS RÁPIDOS (1-TOQUE) -->
-          <div class="glass-card quick-checkin-card" style="padding: 12px; margin-top: 4px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <span style="font-size: 12px; font-weight: 700; color: #fff;"><i class="fa-solid fa-bell" style="color: var(--accent-blue);"></i> Check-ins Rápidos (1-Toque):</span>
-              <span id="speedometerBadge" class="badge-tag" style="background: rgba(16, 185, 129, 0.18); color: #10B981; font-size: 11px;">0 km/h</span>
-            </div>
-            <div class="quick-checkin-buttons" style="display: flex; gap: 8px;">
-              <button class="btn-checkin btn-checkin-green" onclick="sendQuickCheckIn('Llegué bien')">
-                <i class="fa-solid fa-circle-check"></i> Llegué bien
-              </button>
-              <button class="btn-checkin btn-checkin-amber" onclick="sendQuickCheckIn('Demorado/a')">
-                <i class="fa-solid fa-clock"></i> Demorado/a
-              </button>
-              <button class="btn-checkin btn-checkin-blue" onclick="sendQuickCheckIn('En camino')">
-                <i class="fa-solid fa-person-walking"></i> En camino
-              </button>
-            </div>
-          </div>
-
-          <!-- TARJETA ACOMPÁÑAME (SAFE WALK) CON TEMPORIZADOR Y PIN DE COACCIÓN -->
-          <div class="glass-card safe-walk-card" style="padding: 14px;">
-            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <h3 style="font-size: 14px; margin: 0;"><i class="fa-solid fa-person-walking-luggage" style="color: var(--accent-cyan);"></i> Acompáñame (Safe Walk)</h3>
-              <span class="badge-tag" id="safeWalkStatusBadge" style="background: rgba(56, 189, 248, 0.15); color: var(--accent-cyan); font-size: 11px;">Inactivo</span>
-            </div>
-            <p class="card-desc" style="font-size: 11px; margin-bottom: 10px;">Inicia un trayecto supervisado por la familia. Si no confirmas tu llegada a tiempo con tu PIN, se activará la alerta preventiva.</p>
-
-            <div id="safeWalkSetupForm">
-              <div class="form-group" style="margin-bottom: 8px;">
-                <input type="text" id="safeWalkDestination" class="mobile-input" placeholder="Ej: Facultad a Casa (20 min)" style="padding: 8px 12px; font-size: 12px;" />
-              </div>
-              <div style="display: flex; gap: 6px; margin-bottom: 10px;">
-                <button type="button" class="btn-walk-time active" onclick="selectSafeWalkDuration(15, this)">15 min</button>
-                <button type="button" class="btn-walk-time" onclick="selectSafeWalkDuration(30, this)">30 min</button>
-                <button type="button" class="btn-walk-time" onclick="selectSafeWalkDuration(45, this)">45 min</button>
-                <button type="button" class="btn-walk-time" onclick="selectSafeWalkDuration(60, this)">60 min</button>
-              </div>
-              <button class="btn-mobile-submit" style="background: linear-gradient(135deg, #0284C7, #06B6D4); padding: 10px; font-size: 13px; margin: 0;" onclick="startSafeWalkTimer()">
-                <i class="fa-solid fa-shield-cat"></i> Iniciar Trayecto Acompáñame
-              </button>
-            </div>
-
-            <!-- Timer activo -->
-            <div id="safeWalkActivePanel" class="hidden" style="text-align: center; padding: 8px 0;">
-              <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">TRAYECTO EN CURSO</div>
-              <div id="safeWalkTimerDisplay" style="font-size: 26px; font-weight: 900; color: var(--accent-cyan); font-family: var(--font-heading); margin-bottom: 8px;">15:00</div>
-              <div style="font-size: 12px; color: #fff; margin-bottom: 12px;" id="safeWalkDestinationLabel">Destino: Facultad a Casa</div>
-
-              <div style="display: flex; gap: 8px;">
-                <button class="btn-mobile-submit" style="background: linear-gradient(135deg, #10B981, #059669); flex: 1; padding: 10px; font-size: 12px; margin: 0;" onclick="openFinishSafeWalkModal()">
-                  <i class="fa-solid fa-check-circle"></i> Llegué a Salvo (Ingresar PIN)
-                </button>
-                <button class="btn-mobile-submit" style="background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.4); width: 110px; padding: 10px; font-size: 12px; margin: 0;" onclick="cancelSafeWalk()">
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- MODO FANTASMA & TELEMETRÍA Y ACCESO SOS DISCRETO -->
-          <div class="glass-card" style="padding: 12px;">
+          <!-- MODO FANTASMA & TELEMETRÍA Y ACCESO SOS DISCRETO (UBICADO ARRIBA DEL MAPA) -->
+          <div class="glass-card" style="padding: 12px; margin-bottom: 8px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
               <div>
                 <strong style="font-size: 12px; color: #fff;"><i class="fa-solid fa-user-secret" style="color: var(--accent-purple);"></i> Zona de Privacidad (Modo Fantasma)</strong>
@@ -239,37 +166,22 @@
             </div>
           </div>
 
-          <!-- PACTO DE PRIVACIDAD NO INVASIVO Y REGISTRO TRANSPARENTE DE CONSULTAS -->
-          <div class="glass-card privacy-pact-card" style="padding: 12px; margin-top: 4px;">
-            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-              <h3 style="font-size: 13px; margin: 0; color: #fff;">
-                <i class="fa-solid fa-handshake-angle" style="color: var(--accent-emerald);"></i> Pacto de Privacidad y Transparencia
-              </h3>
-              <span class="badge-tag" style="background: rgba(16, 185, 129, 0.2); color: #10B981; font-size: 10px;">Doble Vía</span>
-            </div>
-            <p class="card-desc" style="font-size: 11px; margin-bottom: 8px;">Ubicación mutua transparente entre padres e hijos. Se te notifica sutilmente cuando alguien consulta tu posición.</p>
-
-            <div class="form-group" style="margin-bottom: 8px;">
-              <label style="font-size: 11px; color: var(--text-secondary); font-weight: 700;">Franja Horaria de Compartición:</label>
-              <select id="privacyScheduleSelect" class="mobile-select" style="padding: 6px 10px; font-size: 11px;" onchange="updatePrivacySchedule(this.value)">
-                <option value="ALWAYS">🟢 Siempre Activo (24/7 Transparente)</option>
-                <option value="WEEKEND_NIGHTS">🌙 Solo Noches de Fin de Semana (Vie-Dom 21:00 a 06:00)</option>
-                <option value="OUT_OF_CITY">🚗 Solo Trayectos Fuera de la Ciudad</option>
-              </select>
+          <!-- Contenedor del Mapa Leaflet -->
+          <div class="mobile-map-container" style="min-height: 260px; height: 260px; flex: none;">
+            <div id="familyMap" class="map-surface"></div>
+            
+            <div class="map-floating-status">
+              <div class="radar-dot"></div>
+              <span id="mapStatusText">Rastreo Activo en Tiempo Real</span>
             </div>
 
-            <!-- Registro Transparente de Vistas (Audit Trail) -->
-            <div style="font-size: 11px; font-weight: 700; color: #fff; margin-bottom: 4px;">
-              <i class="fa-solid fa-eye" style="color: var(--accent-blue);"></i> Registro Transparente de Consultas:
-            </div>
-            <div id="locationAuditLogList" class="audit-log-container" style="max-height: 90px; overflow-y: auto; background: rgba(0,0,0,0.25); border-radius: 8px; padding: 6px; border: 1px solid var(--border-glass);">
-              <!-- Renderizado dinámico en app.js -->
-              <div style="font-size: 10px; color: var(--text-muted); text-align: center;">Sin consultas recientes.</div>
-            </div>
+            <button class="btn-floating-center" onclick="centerMapOnFamily()" title="Centrar Mapa">
+              <i class="fa-solid fa-crosshairs"></i>
+            </button>
           </div>
 
           <!-- Disparadores rápidos de simulación -->
-          <div class="quick-simulation-drawer">
+          <div class="quick-simulation-drawer" style="margin-top: 8px;">
             <span class="drawer-title"><i class="fa-solid fa-vial"></i> Simular Alerta Rápida:</span>
             <div class="quick-sim-buttons">
               <button class="sim-chip sim-warn" onclick="triggerSimulationEvent('CRITICAL_BATTERY')">
@@ -283,7 +195,6 @@
               </button>
             </div>
           </div>
-
         </div>
       </section>
 
@@ -502,6 +413,65 @@
             </div>
           </div>
 
+          <!-- BARRA DE CHECK-INS RÁPIDOS (1-TOQUE) -->
+          <div class="glass-card quick-checkin-card" style="padding: 12px; margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-size: 12px; font-weight: 700; color: #fff;"><i class="fa-solid fa-bell" style="color: var(--accent-blue);"></i> Check-ins Rápidos (1-Toque):</span>
+              <span id="speedometerBadge" class="badge-tag" style="background: rgba(16, 185, 129, 0.18); color: #10B981; font-size: 11px;">0 km/h</span>
+            </div>
+            <div class="quick-checkin-buttons" style="display: flex; gap: 8px;">
+              <button class="btn-checkin btn-checkin-green" onclick="sendQuickCheckIn('Llegué bien')">
+                <i class="fa-solid fa-circle-check"></i> Llegué bien
+              </button>
+              <button class="btn-checkin btn-checkin-amber" onclick="sendQuickCheckIn('Demorado/a')">
+                <i class="fa-solid fa-clock"></i> Demorado/a
+              </button>
+              <button class="btn-checkin btn-checkin-blue" onclick="sendQuickCheckIn('En camino')">
+                <i class="fa-solid fa-person-walking"></i> En camino
+              </button>
+            </div>
+          </div>
+
+          <!-- TARJETA ACOMPÁÑAME (SAFE WALK) CON TEMPORIZADOR Y PIN DE COACCIÓN -->
+          <div class="glass-card safe-walk-card" style="padding: 14px; margin-bottom: 12px;">
+            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <h3 style="font-size: 14px; margin: 0;"><i class="fa-solid fa-person-walking-luggage" style="color: var(--accent-cyan);"></i> Acompáñame (Safe Walk)</h3>
+              <span class="badge-tag" id="safeWalkStatusBadge" style="background: rgba(56, 189, 248, 0.15); color: var(--accent-cyan); font-size: 11px;">Inactivo</span>
+            </div>
+            <p class="card-desc" style="font-size: 11px; margin-bottom: 10px;">Inicia un trayecto supervisado por la familia. Si no confirmas tu llegada a tiempo con tu PIN, se activará la alerta preventiva.</p>
+
+            <div id="safeWalkSetupForm">
+              <div class="form-group" style="margin-bottom: 8px;">
+                <input type="text" id="safeWalkDestination" class="mobile-input" placeholder="Ej: Facultad a Casa (20 min)" style="padding: 8px 12px; font-size: 12px;" />
+              </div>
+              <div style="display: flex; gap: 6px; margin-bottom: 10px;">
+                <button type="button" class="btn-walk-time active" onclick="selectSafeWalkDuration(15, this)">15 min</button>
+                <button type="button" class="btn-walk-time" onclick="selectSafeWalkDuration(30, this)">30 min</button>
+                <button type="button" class="btn-walk-time" onclick="selectSafeWalkDuration(45, this)">45 min</button>
+                <button type="button" class="btn-walk-time" onclick="selectSafeWalkDuration(60, this)">60 min</button>
+              </div>
+              <button class="btn-mobile-submit" style="background: linear-gradient(135deg, #0284C7, #06B6D4); padding: 10px; font-size: 13px; margin: 0;" onclick="startSafeWalkTimer()">
+                <i class="fa-solid fa-shield-cat"></i> Iniciar Trayecto Acompáñame
+              </button>
+            </div>
+
+            <!-- Timer activo -->
+            <div id="safeWalkActivePanel" class="hidden" style="text-align: center; padding: 8px 0;">
+              <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">TRAYECTO EN CURSO</div>
+              <div id="safeWalkTimerDisplay" style="font-size: 26px; font-weight: 900; color: var(--accent-cyan); font-family: var(--font-heading); margin-bottom: 8px;">15:00</div>
+              <div style="font-size: 12px; color: #fff; margin-bottom: 12px;" id="safeWalkDestinationLabel">Destino: Facultad a Casa</div>
+
+              <div style="display: flex; gap: 8px;">
+                <button class="btn-mobile-submit" style="background: linear-gradient(135deg, #10B981, #059669); flex: 1; padding: 10px; font-size: 12px; margin: 0;" onclick="openFinishSafeWalkModal()">
+                  <i class="fa-solid fa-check-circle"></i> Llegué a Salvo (Ingresar PIN)
+                </button>
+                <button class="btn-mobile-submit" style="background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.4); width: 110px; padding: 10px; font-size: 12px; margin: 0;" onclick="cancelSafeWalk()">
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+
           <!-- Tarjeta de Solicitud de Rescate -->
           <div class="glass-card pickup-action-card">
             <button class="btn-big-pickup" onclick="triggerPickupRequest()">
@@ -549,65 +519,28 @@
         </div>
       </section>
 
-      <!-- TAB 4: CÁMARAS DE SEGURIDAD -->
+      <!-- TAB 4: CÁMARAS DE SEGURIDAD (HASTA 6 CÁMARAS IP/QR MULTI-RED) -->
       <section id="tab-cameras" class="tab-pane">
         <div class="pane-scrollable">
           <div class="section-banner cams-banner">
             <div class="banner-icon"><i class="fa-solid fa-video"></i></div>
             <div>
               <h2>Cámaras de Seguridad</h2>
-              <p>Monitoreo del hogar en vivo ante cualquier urgencia o duda.</p>
+              <p>Monitoreo en vivo dentro y fuera de casa (4G/5G). Máximo 6 cámaras.</p>
             </div>
           </div>
 
-          <div class="cameras-grid">
-            <!-- Cámara 1: Entrada Principal -->
-            <div class="camera-card glass-card">
-              <div class="cam-header">
-                <span><i class="fa-solid fa-door-open"></i> CAM 01 - Entrada Principal</span>
-                <span class="cam-rec"><span class="rec-dot"></span> EN VIVO</span>
-              </div>
-              <div class="cam-viewport cam-feed-1">
-                <div class="cam-overlay-time" id="camTime1">--:--:--</div>
-                <div class="cam-crosshair"></div>
-              </div>
-            </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
+            <span id="cameraCountLabel" style="font-size: 12px; font-weight: 700; color: var(--accent-cyan); background: rgba(6, 182, 212, 0.12); padding: 6px 14px; border-radius: 12px; border: 1px solid rgba(6, 182, 212, 0.3); display: flex; align-items: center; gap: 6px;">
+              <i class="fa-solid fa-video"></i> <span id="camCountText">0 / 6 Cámaras Conectadas</span>
+            </span>
+            <button id="btnAddCamBtn" class="btn-sm" style="background: linear-gradient(135deg, #0284C7, #06B6D4); color: #fff; padding: 8px 14px; border-radius: 10px; font-weight: 700; font-size: 12px; border: none; cursor: pointer; display: flex; align-items: center; gap: 6px;" onclick="openAddCameraModal()">
+              <i class="fa-solid fa-plus"></i> Vincular Cámara (QR/IP)
+            </button>
+          </div>
 
-            <!-- Cámara 2: Living / Comedor -->
-            <div class="camera-card glass-card">
-              <div class="cam-header">
-                <span><i class="fa-solid fa-couch"></i> CAM 02 - Living / Interior</span>
-                <span class="cam-rec"><span class="rec-dot"></span> EN VIVO</span>
-              </div>
-              <div class="cam-viewport cam-feed-2">
-                <div class="cam-overlay-time" id="camTime2">--:--:--</div>
-                <div class="cam-crosshair"></div>
-              </div>
-            </div>
-
-            <!-- Cámara 3: Patio Trasero -->
-            <div class="camera-card glass-card">
-              <div class="cam-header">
-                <span><i class="fa-solid fa-tree"></i> CAM 03 - Patio Trasero</span>
-                <span class="cam-rec"><span class="rec-dot"></span> EN VIVO</span>
-              </div>
-              <div class="cam-viewport cam-feed-3">
-                <div class="cam-overlay-time" id="camTime3">--:--:--</div>
-                <div class="cam-crosshair"></div>
-              </div>
-            </div>
-
-            <!-- Cámara 4: Frente / Calle -->
-            <div class="camera-card glass-card">
-              <div class="cam-header">
-                <span><i class="fa-solid fa-road"></i> CAM 04 - Frente / Vereda</span>
-                <span class="cam-rec"><span class="rec-dot"></span> EN VIVO</span>
-              </div>
-              <div class="cam-viewport cam-feed-4">
-                <div class="cam-overlay-time" id="camTime4">--:--:--</div>
-                <div class="cam-crosshair"></div>
-              </div>
-            </div>
+          <div id="camerasGrid" class="cameras-grid">
+            <!-- Renderizado dinámico por app.js -->
           </div>
         </div>
       </section>
@@ -660,11 +593,25 @@
         </div>
       </section>
 
-      <!-- TAB 6: FAMILIA & PANEL ADMINISTRADOR -->
+      <!-- TAB 6: FAMILIA, WHATSAPP & PANEL ADMINISTRADOR -->
       <section id="tab-family" class="tab-pane">
         <div class="pane-scrollable">
+          <!-- Encabezado de la Sección WhatsApp y Círculo Familiar -->
+          <div class="section-banner" style="background: linear-gradient(135deg, #064E3B, #047857); color: #fff; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(37, 211, 102, 0.3);">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <i class="fa-brands fa-whatsapp" style="font-size: 26px; color: #25D366;"></i>
+              <div>
+                <h2 style="font-size: 15px; font-weight: 800; margin: 0;">WhatsApp & Directorio Familiar</h2>
+                <p style="font-size: 11px; opacity: 0.9; margin: 2px 0 0;">Mensajes directos, envío de GPS por WhatsApp y control de privacidad.</p>
+              </div>
+            </div>
+            <button class="btn-sm" style="background: #25D366; color: #000; font-weight: 800; border: none; padding: 6px 12px; border-radius: 8px; font-size: 11px; cursor: pointer; white-space: nowrap;" onclick="openWhatsAppShare()">
+              <i class="fa-brands fa-whatsapp"></i> Compartir GPS
+            </button>
+          </div>
+
           <!-- Tarjeta de Perfil del Usuario Activo -->
-          <div class="glass-card profile-card">
+          <div class="glass-card profile-card" style="margin-bottom: 10px;">
             <div class="profile-info-row">
               <div class="profile-big-avatar" id="profileAvatar">CA</div>
               <div>
@@ -679,8 +626,37 @@
             </div>
           </div>
 
+          <!-- PACTO DE PRIVACIDAD NO INVASIVO Y REGISTRO TRANSPARENTE DE CONSULTAS -->
+          <div class="glass-card privacy-pact-card" style="padding: 12px; margin-bottom: 10px;">
+            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <h3 style="font-size: 13px; margin: 0; color: #fff;">
+                <i class="fa-solid fa-handshake-angle" style="color: var(--accent-emerald);"></i> Pacto de Privacidad y Transparencia
+              </h3>
+              <span class="badge-tag" style="background: rgba(16, 185, 129, 0.2); color: #10B981; font-size: 10px;">Doble Vía</span>
+            </div>
+            <p class="card-desc" style="font-size: 11px; margin-bottom: 8px;">Ubicación mutua transparente entre padres e hijos. Se te notifica sutilmente cuando alguien consulta tu posición.</p>
+
+            <div class="form-group" style="margin-bottom: 8px;">
+              <label style="font-size: 11px; color: var(--text-secondary); font-weight: 700;">Franja Horaria de Compartición:</label>
+              <select id="privacyScheduleSelect" class="mobile-select" style="padding: 6px 10px; font-size: 11px;" onchange="updatePrivacySchedule(this.value)">
+                <option value="ALWAYS">🟢 Siempre Activo (24/7 Transparente)</option>
+                <option value="WEEKEND_NIGHTS">🌙 Solo Noches de Fin de Semana (Vie-Dom 21:00 a 06:00)</option>
+                <option value="OUT_OF_CITY">🚗 Solo Trayectos Fuera de la Ciudad</option>
+              </select>
+            </div>
+
+            <!-- Registro Transparente de Vistas (Audit Trail) -->
+            <div style="font-size: 11px; font-weight: 700; color: #fff; margin-bottom: 4px;">
+              <i class="fa-solid fa-eye" style="color: var(--accent-blue);"></i> Registro Transparente de Consultas:
+            </div>
+            <div id="locationAuditLogList" class="audit-log-container" style="max-height: 90px; overflow-y: auto; background: rgba(0,0,0,0.25); border-radius: 8px; padding: 6px; border: 1px solid var(--border-glass);">
+              <!-- Renderizado dinámico en app.js -->
+              <div style="font-size: 10px; color: var(--text-muted); text-align: center;">Sin consultas recientes.</div>
+            </div>
+          </div>
+
           <!-- Acceso Especial de Administrador -->
-          <div class="glass-card admin-callout-card">
+          <div class="glass-card admin-callout-card" style="margin-bottom: 12px;">
             <div class="admin-callout-header">
               <div>
                 <h4><i class="fa-solid fa-user-shield"></i> Panel Administrador</h4>
@@ -868,50 +844,7 @@
 
   <!-- ==================== MODALES MÓVILES ==================== -->
 
-  <!-- MODAL 1: INICIO DE SESIÓN CON NOMBRE + PIN -->
-  <div id="loginModal" class="modal-backdrop hidden">
-    <div class="bottom-sheet glass-card">
-      <div class="sheet-handle"></div>
-      <div class="sheet-header">
-        <h3><i class="fa-solid fa-lock"></i> Identificación Familiar</h3>
-        <button class="btn-sheet-close" onclick="closeLoginModal()"><i class="fa-solid fa-xmark"></i></button>
-      </div>
-      <p class="sheet-sub">Selecciona tu nombre e ingresa tu PIN personal de 4 a 5 números:</p>
 
-      <div class="form-group">
-        <label>Nombre del Familiar:</label>
-        <select id="loginMemberSelect" class="mobile-select">
-          <!-- Opciones dinámicas -->
-        </select>
-      </div>
-
-      <div class="pin-display-box" id="loginPinDisplay">••••</div>
-
-      <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin: 8px 0 14px;">
-        <input type="checkbox" id="loginRememberMe" checked style="width: 18px; height: 18px; accent-color: var(--accent-blue); cursor: pointer;">
-        <label for="loginRememberMe" style="font-size: 12px; color: var(--text-secondary); cursor: pointer; font-weight: 600;">Recordar sesión en este dispositivo</label>
-      </div>
-
-      <div class="keypad-mobile">
-        <button type="button" class="k-btn" onclick="pressLoginPin('1')">1</button>
-        <button type="button" class="k-btn" onclick="pressLoginPin('2')">2</button>
-        <button type="button" class="k-btn" onclick="pressLoginPin('3')">3</button>
-        <button type="button" class="k-btn" onclick="pressLoginPin('4')">4</button>
-        <button type="button" class="k-btn" onclick="pressLoginPin('5')">5</button>
-        <button type="button" class="k-btn" onclick="pressLoginPin('6')">6</button>
-        <button type="button" class="k-btn" onclick="pressLoginPin('7')">7</button>
-        <button type="button" class="k-btn" onclick="pressLoginPin('8')">8</button>
-        <button type="button" class="k-btn" onclick="pressLoginPin('9')">9</button>
-        <button type="button" class="k-btn k-clear" onclick="clearLoginPin()"><i class="fa-solid fa-delete-left"></i></button>
-        <button type="button" class="k-btn" onclick="pressLoginPin('0')">0</button>
-        <button type="button" class="k-btn k-enter" onclick="submitLoginPin()"><i class="fa-solid fa-check"></i></button>
-      </div>
-
-      <div class="sheet-footer-link">
-        <button type="button" class="btn-text-link" onclick="openRegisterModal()">¿Nuevo familiar? Regístrate aquí</button>
-      </div>
-    </div>
-  </div>
 
   <!-- MODAL 2: REGISTRO DE NUEVO FAMILIAR -->
   <div id="registerModal" class="modal-backdrop hidden">
@@ -927,11 +860,6 @@
         <div class="form-group">
           <label>Nombre y Apellido: *</label>
           <input type="text" id="regFullName" class="mobile-input" placeholder="Ej: María Andrada" required>
-        </div>
-
-        <div class="form-group">
-          <label>Apodo / Alias (opcional):</label>
-          <input type="text" id="regNickname" class="mobile-input" placeholder="Ej: Mamá, Bro, Amor, Hija, Tío">
         </div>
 
         <div class="form-group">
@@ -955,15 +883,7 @@
           </select>
         </div>
 
-        <div class="form-group">
-          <label>Contacto de Confianza para Alertas (Nombre / Relación):</label>
-          <input type="text" id="regTrustedName" class="mobile-input" placeholder="Ej: Tío Juan / Vecino / Emergencias">
-        </div>
 
-        <div class="form-group">
-          <label>Teléfono de Confianza (WhatsApp para enviar GPS por Sospecha):</label>
-          <input type="tel" id="regTrustedPhone" class="mobile-input" placeholder="Ej: +54 9 383 400-1122">
-        </div>
 
         <div class="form-group">
           <label>Crear PIN Personal (4 a 5 números): *</label>
@@ -1077,6 +997,9 @@
           <button class="btn-sm" id="adminTabCamsBtn" style="padding: 8px 12px; background: rgba(255,255,255,0.08); color: #fff; border: 1px solid var(--border-glass); border-radius: 8px; font-weight: 700; white-space: nowrap;" onclick="switchAdminTab('cams')">
             <i class="fa-solid fa-video"></i> Cámaras
           </button>
+          <button class="btn-sm" id="adminTabMsgsBtn" style="padding: 8px 12px; background: rgba(255,255,255,0.08); color: #fff; border: 1px solid var(--border-glass); border-radius: 8px; font-weight: 700; white-space: nowrap;" onclick="switchAdminTab('msgs')">
+            <i class="fa-solid fa-box-archive"></i> Historial Mensajes
+          </button>
           <button class="btn-sm" id="adminTabGpsBtn" style="padding: 8px 12px; background: rgba(255,255,255,0.08); color: #fff; border: 1px solid var(--border-glass); border-radius: 8px; font-weight: 700; white-space: nowrap;" onclick="switchAdminTab('gps')">
             <i class="fa-solid fa-location-crosshairs"></i> GPS & Geocercas
           </button>
@@ -1101,13 +1024,41 @@
         <!-- Admin Tab 2: Cámaras IP & QR -->
         <div id="adminTabCams" class="hidden">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <span style="font-size: 12px; font-weight: 700; color: #fff;"><i class="fa-solid fa-video" style="color: var(--accent-cyan);"></i> Cámaras Vinculadas:</span>
+            <span style="font-size: 12px; font-weight: 700; color: #fff;"><i class="fa-solid fa-video" style="color: var(--accent-cyan);"></i> Cámaras Vinculadas (Máx 6):</span>
             <button class="btn-sm" style="background: linear-gradient(135deg, #0284C7, #06B6D4); color: #fff; border: none; font-weight: 700; padding: 6px 12px; border-radius: 6px; cursor: pointer;" onclick="openAddCameraModal()">
-              <i class="fa-solid fa-qrcode"></i> Vincular Cámara (QR/URL)
+              <i class="fa-solid fa-plus"></i> Vincular Cámara
             </button>
           </div>
           <div id="adminCamerasList" style="display: flex; flex-direction: column; gap: 8px;">
             <!-- Renderizado dinámico en app.js -->
+          </div>
+        </div>
+
+        <!-- Admin Tab 3: Historial y Gestión de Mensajes (Selección y Borrado) -->
+        <div id="adminTabMsgs" class="hidden">
+          <div style="background: rgba(255, 255, 255, 0.04); border-radius: 12px; padding: 12px; margin-bottom: 12px; border: 1px solid var(--border-glass);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+              <span style="font-size: 12px; font-weight: 700; color: #fff;">
+                <i class="fa-solid fa-box-archive" style="color: var(--accent-cyan);"></i> Historial de Mensajes (<span id="adminMsgTotalBadge">0</span>)
+              </span>
+              <div style="display: flex; gap: 6px;">
+                <button class="btn-sm" style="background: rgba(239, 68, 68, 0.25); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.4); font-weight: 700; padding: 5px 10px; border-radius: 6px; font-size: 11px; cursor: pointer;" onclick="deleteSelectedAdminMessages()">
+                  <i class="fa-solid fa-trash-can"></i> Borrar Seleccionados
+                </button>
+                <button class="btn-sm" style="background: rgba(220, 38, 38, 0.85); color: #fff; border: none; font-weight: 700; padding: 5px 10px; border-radius: 6px; font-size: 11px; cursor: pointer;" onclick="clearAllAdminMessages()">
+                  <i class="fa-solid fa-broom"></i> Vaciar Historial
+                </button>
+              </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; background: rgba(0,0,0,0.25); padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.06);">
+              <input type="checkbox" id="selectAllAdminMsgs" onchange="toggleSelectAllAdminMsgs(this.checked)" style="width: 16px; height: 16px; cursor: pointer; accent-color: var(--accent-cyan);">
+              <label for="selectAllAdminMsgs" style="font-size: 11px; font-weight: 700; color: var(--text-secondary); cursor: pointer;">Seleccionar Todos los Mensajes</label>
+            </div>
+
+            <div id="adminMessagesListContainer" style="display: flex; flex-direction: column; gap: 6px; max-height: 240px; overflow-y: auto;">
+              <!-- Lista de mensajes con casillas de selección -->
+            </div>
           </div>
         </div>
 
@@ -1207,12 +1158,10 @@
           <input type="tel" id="editPhone" class="mobile-input" required>
         </div>
         <div class="form-group">
-          <label>Contacto de Confianza (Nombre / Relación):</label>
-          <input type="text" id="editTrustedName" class="mobile-input" placeholder="Ej: Tío Juan / Vecino / Emergencias">
-        </div>
-        <div class="form-group">
-          <label>Teléfono de Confianza (WhatsApp Alerta GPS):</label>
-          <input type="tel" id="editTrustedPhone" class="mobile-input" placeholder="Ej: +54 9 383 400-1122">
+          <label>⭐ Persona de Confianza (Familiar Asignado):</label>
+          <select id="editTrustedMemberSelect" class="mobile-select">
+            <!-- Opciones dinámicas -->
+          </select>
         </div>
         <div class="form-group">
           <label>Nuevo PIN (dejar vacío si no cambia):</label>
@@ -1297,6 +1246,197 @@
     </div>
   </div>
 
+  <!-- ==================== MODAL DE AUTENTICACIÓN / LOGIN ULTRA-MODERNO 2026 ==================== -->
+  <div id="loginModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="loginModalTitle">
+    <div class="bottom-sheet glass-card login-modal-sheet">
+      <div class="sheet-handle"></div>
+      
+      <div class="sheet-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div class="brand-avatar" style="width: 38px; height: 38px; font-size: 16px;">
+            <i class="fa-solid fa-shield-halved"></i>
+          </div>
+          <div>
+            <h3 id="loginModalTitle" style="margin: 0; font-size: 17px; font-weight: 800; color: #fff;">
+              Acceso Seguro 2026
+            </h3>
+            <p class="sheet-sub" style="margin: 0; font-size: 11px; color: var(--accent-cyan);">
+              Círculo de Protección Familiar Andrada
+            </p>
+          </div>
+        </div>
+        <button class="btn-sheet-close" onclick="closeLoginModal()" aria-label="Cerrar ventana de acceso">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Selector de Modo: Familiar / Administrador Maestro -->
+      <div class="login-tab-bar" style="display: flex; gap: 6px; margin: 12px 0; background: rgba(0,0,0,0.3); padding: 4px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
+        <button type="button" id="tabLoginMemberBtn" class="btn-walk-time active" style="flex: 1; padding: 8px; font-size: 12px; font-weight: 700;" onclick="switchLoginMode('member')">
+          <i class="fa-solid fa-users"></i> Familiar
+        </button>
+        <button type="button" id="tabLoginAdminBtn" class="btn-walk-time" style="flex: 1; padding: 8px; font-size: 12px; font-weight: 700;" onclick="switchLoginMode('admin')">
+          <i class="fa-solid fa-key"></i> Administrador
+        </button>
+      </div>
+
+      <!-- VISTA 1: ACCESO FAMILIAR -->
+      <div id="loginMemberView">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <label style="font-size: 12px; font-weight: 700; color: #F8FAFC;">
+            <i class="fa-solid fa-user-check" style="color: var(--accent-cyan);"></i> Selecciona tu Perfil:
+          </label>
+          <span style="font-size: 11px; color: var(--text-muted);">Toca tu tarjeta</span>
+        </div>
+
+        <!-- Grid de Miembros para Selección Rápida Visual con Fotos/Avatares -->
+        <div id="loginMemberGrid" class="login-member-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 12px; max-height: 155px; overflow-y: auto; padding-right: 2px;">
+          <!-- Dinámico en JS -->
+        </div>
+
+        <!-- Select Accesible de Respaldo -->
+        <div class="form-group" style="margin-bottom: 10px;">
+          <select id="loginMemberSelect" class="mobile-select" style="font-size: 13px; padding: 8px 12px;" onchange="onLoginMemberSelectChange()">
+            <!-- Dinámico en JS -->
+          </select>
+        </div>
+
+        <!-- Indicador Visual PIN Dots 2026 -->
+        <div class="login-pin-section" style="text-align: center; margin-bottom: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="font-size: 12px; font-weight: 700; color: #fff;">
+              <i class="fa-solid fa-lock" style="color: var(--accent-blue);"></i> Ingresa tu PIN de Seguridad:
+            </span>
+            <button type="button" class="btn-link-recover" onclick="openRecoverPinModal()" style="background: none; border: none; color: var(--accent-cyan); font-size: 11px; cursor: pointer; text-decoration: underline;">
+              ¿Olvidaste tu PIN?
+            </button>
+          </div>
+
+          <!-- Display de PIN con dots luminosos -->
+          <div class="pin-dots-container" id="loginPinDotsContainer" style="display: flex; justify-content: center; gap: 12px; margin: 10px 0;">
+            <div class="pin-dot" id="pdot-0"></div>
+            <div class="pin-dot" id="pdot-1"></div>
+            <div class="pin-dot" id="pdot-2"></div>
+            <div class="pin-dot" id="pdot-3"></div>
+            <div class="pin-dot" id="pdot-4"></div>
+          </div>
+
+          <!-- Input oculto para teclados físicos de PC o accesibilidad -->
+          <input type="password" id="loginPinInput" class="mobile-input" style="position: absolute; opacity: 0; pointer-events: none; height: 0; width: 0;" maxlength="5" autocomplete="off" />
+          <div id="loginPinDisplay" style="display: none;"></div>
+        </div>
+
+        <!-- Keypad Numérico Táctil Moderno 2026 -->
+        <div class="keypad-mobile login-keypad" style="margin: 8px 0 12px;">
+          <button type="button" class="k-btn" onclick="pressLoginPin('1')">1</button>
+          <button type="button" class="k-btn" onclick="pressLoginPin('2')">2</button>
+          <button type="button" class="k-btn" onclick="pressLoginPin('3')">3</button>
+          <button type="button" class="k-btn" onclick="pressLoginPin('4')">4</button>
+          <button type="button" class="k-btn" onclick="pressLoginPin('5')">5</button>
+          <button type="button" class="k-btn" onclick="pressLoginPin('6')">6</button>
+          <button type="button" class="k-btn" onclick="pressLoginPin('7')">7</button>
+          <button type="button" class="k-btn" onclick="pressLoginPin('8')">8</button>
+          <button type="button" class="k-btn" onclick="pressLoginPin('9')">9</button>
+          <button type="button" class="k-btn k-clear" onclick="clearLoginPin()" title="Borrar dígito"><i class="fa-solid fa-delete-left"></i></button>
+          <button type="button" class="k-btn" onclick="pressLoginPin('0')">0</button>
+          <button type="button" class="k-btn k-enter" onclick="submitStrictLoginPin()" title="Confirmar"><i class="fa-solid fa-arrow-right"></i></button>
+        </div>
+
+        <!-- Acciones Inferiores: Biometría y Recordarme -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 8px;">
+          <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-secondary); cursor: pointer;">
+            <input type="checkbox" id="loginRememberMe" checked style="accent-color: var(--accent-cyan); width: 16px; height: 16px;"> Recordar mi dispositivo
+          </label>
+          <button type="button" class="btn-sm" style="background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.4); padding: 7px 12px; border-radius: 8px; font-weight: 700; font-size: 11px; display: flex; align-items: center; gap: 6px;" onclick="loginWithBiometrics()">
+            <i class="fa-solid fa-fingerprint" style="font-size: 14px;"></i> Huella / Face ID
+          </button>
+        </div>
+
+        <button type="button" id="btnSubmitLoginAction" class="btn-mobile-submit" style="background: linear-gradient(135deg, #0284C7, #06B6D4); font-size: 14px; padding: 12px; font-weight: 800; margin: 0;" onclick="submitStrictLoginPin()">
+          <i class="fa-solid fa-right-to-bracket"></i> Iniciar Sesión Protegida
+        </button>
+      </div>
+
+      <!-- VISTA 2: ACCESO ADMINISTRADOR MAESTRO -->
+      <div id="loginAdminView" class="hidden">
+        <div style="background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 12px; padding: 12px; margin-bottom: 14px; font-size: 12px; color: #F8FAFC;">
+          <div style="font-weight: 800; color: #F59E0B; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+            <i class="fa-solid fa-shield"></i> Modo Administrador del Sistema
+          </div>
+          Acceso de máxima jerarquía para gestión del círculo, configuración de cámaras y registro de familiares.
+        </div>
+
+        <form onsubmit="event.preventDefault(); submitAdminLogin();">
+          <div class="form-group">
+            <label>Usuario Administrador:</label>
+            <input type="text" id="loginAdminUserInput" class="mobile-input" value="admin" required />
+          </div>
+          <div class="form-group">
+            <label>PIN Maestro de Administración (9999 o 1234):</label>
+            <input type="password" id="loginAdminPinInput" class="mobile-input" placeholder="Ingresa PIN 9999" maxlength="5" required />
+          </div>
+          <button type="submit" class="btn-mobile-submit" style="background: linear-gradient(135deg, #F59E0B, #D97706); font-size: 14px; padding: 12px; font-weight: 800;">
+            <i class="fa-solid fa-lock-open"></i> Entrar como Administrador
+          </button>
+        </form>
+      </div>
+
+      <!-- Información de Telemetría Real -->
+      <div style="margin-top: 14px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; font-size: 10px; color: var(--text-muted);">
+        <span><i class="fa-solid fa-network-wired"></i> <span id="loginDetectedIp">IP: 190.18.24.112</span></span>
+        <span><i class="fa-solid fa-battery-half"></i> <span id="loginDetectedBattery">Batería: 100%</span></span>
+        <span><i class="fa-solid fa-shield-halved" style="color: #10B981;"></i> SSL Cifrado</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL DE RECUPERACIÓN DE PIN CON DNI ==================== -->
+  <div id="recoverPinModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="recoverPinTitle">
+    <div class="modal-card glass-card" style="max-width: 420px; width: 92%;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 id="recoverPinTitle" style="font-size: 16px; font-weight: 800; color: var(--accent-cyan); display: flex; align-items: center; gap: 8px; margin: 0;">
+          <i class="fa-solid fa-id-card-clip"></i> Recuperación de PIN con DNI
+        </h3>
+        <button class="btn-sheet-close" onclick="closeRecoverPinModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <p style="font-size: 11px; color: var(--text-secondary); margin-bottom: 12px;">
+        Por motivos de seguridad, verifica tu identidad ingresando el DNI registrado en tu perfil familiar.
+      </p>
+
+      <form id="recoverPinForm" onsubmit="event.preventDefault(); submitRecoverPin();">
+        <div class="form-group">
+          <label>Familiar:</label>
+          <select id="recoverMemberSelect" class="mobile-select" required>
+            <!-- Dinámico en JS -->
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>DNI Oficial Registrado (con o sin puntos):</label>
+          <input type="text" id="recoverDniInput" class="mobile-input" placeholder="Ej: 34.567.890" required />
+        </div>
+
+        <div class="form-group">
+          <label>Nuevo PIN Deseado (opcional - dejar vacío para solo ver PIN actual):</label>
+          <input type="password" id="recoverNewPinInput" class="mobile-input" placeholder="4 o 5 dígitos numéricos" maxlength="5" />
+        </div>
+
+        <div id="recoverResultBox" class="hidden" style="margin-bottom: 12px; padding: 10px; border-radius: 8px; font-size: 12px;"></div>
+
+        <button type="submit" class="btn-mobile-submit" style="background: linear-gradient(135deg, #0284C7, #06B6D4); font-size: 13px; padding: 10px; margin-bottom: 8px;">
+          <i class="fa-solid fa-fingerprint"></i> Verificar Identidad con DNI
+        </button>
+        <button type="button" class="btn-mobile-submit" style="background: rgba(255,255,255,0.08); color: #fff; font-size: 12px; padding: 8px; margin: 0;" onclick="closeRecoverPinModal()">
+          Volver al Login
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Contenedor Flotante de Toasts Modernos 2026 -->
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
   <!-- MODAL 7: ALERTA SOS EXPRÉS POR FAMILIAR -->
   <div id="expressSosModal" class="modal-backdrop hidden">
     <div class="bottom-sheet glass-card">
@@ -1356,13 +1496,10 @@
         </div>
 
         <div class="form-group">
-          <label>Contacto de Confianza para Alertas (Nombre / Relación):</label>
-          <input type="text" id="profTrustedNameInput" class="mobile-input" placeholder="Ej: Tío Juan / Vecino / Emergencias">
-        </div>
-
-        <div class="form-group">
-          <label>Teléfono de Confianza (WhatsApp para Alertas con GPS Vivo):</label>
-          <input type="tel" id="profTrustedPhoneInput" class="mobile-input" placeholder="Ej: +54 9 383 400-1122">
+          <label>⭐ Persona de Confianza (Seleccionar de la Familia):</label>
+          <select id="profTrustedMemberSelect" class="mobile-select">
+            <!-- Opciones dinámicas de familiares con Estrella ⭐ -->
+          </select>
         </div>
 
         <div class="form-group">
@@ -1450,59 +1587,80 @@
     </div>
   </div>
 
-  <!-- MODAL DE AÑADIR CÁMARA DE SEGURIDAD (QR & URL REMOTA) -->
+  <!-- MODAL DE AÑADIR CÁMARA DE SEGURIDAD (QR, URL REMOTA Y AUTO-DISCOVERY IP) -->
   <div id="addCameraModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="addCamTitle">
-    <div class="modal-card glass-card" style="max-width: 440px; width: 92%;">
+    <div class="modal-card glass-card" style="max-width: 460px; width: 92%;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
         <h3 id="addCamTitle" style="font-size: 16px; font-weight: 800; color: var(--accent-cyan); display: flex; align-items: center; gap: 8px;">
-          <i class="fa-solid fa-qrcode"></i> Vinculación de Cámara IP / QR
+          <i class="fa-solid fa-video"></i> Vinculación de Cámara (3 Métodos)
         </h3>
         <button class="btn-sheet-close" onclick="closeAddCameraModal()"><i class="fa-solid fa-xmark"></i></button>
       </div>
 
-      <div style="display: flex; gap: 8px; margin-bottom: 14px;">
-        <button class="btn-sm active" id="tabCamQrBtn" style="flex: 1; padding: 8px; background: rgba(56, 189, 248, 0.2); color: var(--accent-cyan); border: 1px solid var(--accent-cyan); border-radius: 8px; font-weight: 700;" onclick="switchCamTab('qr')">
-          <i class="fa-solid fa-qrcode"></i> Escanear QR
+      <!-- 3 Pestañas de Vinculación -->
+      <div style="display: flex; gap: 6px; margin-bottom: 14px;">
+        <button class="btn-sm active" id="tabCamQrBtn" style="flex: 1; padding: 8px 4px; background: rgba(56, 189, 248, 0.2); color: var(--accent-cyan); border: 1px solid var(--accent-cyan); border-radius: 8px; font-weight: 700; font-size: 11px;" onclick="switchCamTab('qr')">
+          <i class="fa-solid fa-qrcode"></i> QR Scanner
         </button>
-        <button class="btn-sm" id="tabCamUrlBtn" style="flex: 1; padding: 8px; background: rgba(255, 255, 255, 0.08); color: #fff; border: 1px solid var(--border-glass); border-radius: 8px; font-weight: 700;" onclick="switchCamTab('url')">
-          <i class="fa-solid fa-link"></i> URL Remota / IP
+        <button class="btn-sm" id="tabCamUrlBtn" style="flex: 1; padding: 8px 4px; background: rgba(255, 255, 255, 0.08); color: #fff; border: 1px solid var(--border-glass); border-radius: 8px; font-weight: 700; font-size: 11px;" onclick="switchCamTab('url')">
+          <i class="fa-solid fa-link"></i> URL / IP Manual
+        </button>
+        <button class="btn-sm" id="tabCamAutoBtn" style="flex: 1; padding: 8px 4px; background: rgba(255, 255, 255, 0.08); color: #fff; border: 1px solid var(--border-glass); border-radius: 8px; font-weight: 700; font-size: 11px;" onclick="switchCamTab('auto')">
+          <i class="fa-solid fa-satellite-dish"></i> Auto-Detección IP
         </button>
       </div>
 
-      <!-- Vista Escaneo QR -->
+      <!-- Tab 1: Vista Escaneo QR -->
       <div id="camQrScanView" style="text-align: center; padding: 12px 0;">
-        <div style="width: 210px; height: 210px; margin: 0 auto 12px; border: 2px stroke var(--accent-cyan); border-radius: 16px; position: relative; overflow: hidden; background: #000; display: flex; align-items: center; justify-content: center;">
+        <div style="width: 200px; height: 200px; margin: 0 auto 12px; border: 2px stroke var(--accent-cyan); border-radius: 16px; position: relative; overflow: hidden; background: #000; display: flex; align-items: center; justify-content: center;">
           <div style="position: absolute; top:0; left:0; width:100%; height:4px; background: #06B6D4; box-shadow: 0 0 15px #06B6D4; animation: scanLine 2s infinite ease-in-out;"></div>
-          <i class="fa-solid fa-camera-retro" style="font-size: 54px; color: rgba(255,255,255,0.3);"></i>
+          <i class="fa-solid fa-camera-retro" style="font-size: 50px; color: rgba(255,255,255,0.3);"></i>
         </div>
-        <p style="font-size: 11px; color: var(--text-secondary); margin-bottom: 12px;">Apunta con la cámara al código QR grabado en la base o empaque de tu cámara IP.</p>
+        <p style="font-size: 11px; color: var(--text-secondary); margin-bottom: 12px;">Apunta la cámara de tu teléfono al código QR de tu cámara IP para vincularla en 1 segundo.</p>
         <button class="btn-mobile-submit" style="background: linear-gradient(135deg, #0284C7, #06B6D4); font-size: 13px; padding: 10px;" onclick="simulateQrCameraScan()">
-          <i class="fa-solid fa-bolt"></i> Simular Lectura QR Automática
+          <i class="fa-solid fa-bolt"></i> Escanear Código QR
         </button>
       </div>
 
-      <!-- Vista Formulario URL IP Remota -->
+      <!-- Tab 2: Vista Formulario URL / IP Manual -->
       <div id="camUrlView" class="hidden">
         <form onsubmit="handleRemoteCameraSubmit(event)">
           <div class="form-group">
-            <label>Nombre de la Cámara:</label>
+            <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Nombre de la Cámara:</label>
             <input type="text" id="camNameInput" class="mobile-input" placeholder="Ej: Cámara Garaje / Frente" required>
           </div>
 
           <div class="form-group">
-            <label>Ubicación / Zona del Hogar:</label>
+            <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Ubicación / Zona del Hogar:</label>
             <input type="text" id="camLocationInput" class="mobile-input" placeholder="Ej: Garaje Exterior" required>
           </div>
 
           <div class="form-group">
-            <label>URL de Stream Remota / RTSP / WebRTC:</label>
-            <input type="url" id="camUrlInput" class="mobile-input" placeholder="https://mi-camara.ddns.net:8443/video" required>
+            <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Dirección IP / URL Stream RTSP/WebRTC:</label>
+            <input type="text" id="camUrlInput" class="mobile-input" placeholder="192.168.1.100 o https://mi-camara.ddns.net/video" required>
           </div>
 
           <button type="submit" class="btn-mobile-submit" style="background: linear-gradient(135deg, #10B981, #059669); font-size: 13px; padding: 10px;">
-            <i class="fa-solid fa-circle-check"></i> Vincular Cámara Remota
+            <i class="fa-solid fa-circle-check"></i> Vincular Cámara Manualmente
           </button>
         </form>
+      </div>
+
+      <!-- Tab 3: Vista Auto-Detección IP (Wi-Fi Scanner) -->
+      <div id="camAutoView" class="hidden">
+        <div style="text-align: center; padding: 10px 0;">
+          <p style="font-size: 11px; color: var(--text-secondary); margin-bottom: 12px;">Escanea automáticamente la subred local Wi-Fi/IP en busca de cámaras activas (ONVIF/IP) y conéctalas en 1 clic.</p>
+          <button class="btn-mobile-submit" id="btnRunIpScan" style="background: linear-gradient(135deg, #0284C7, #06B6D4); font-size: 12px; padding: 10px;" onclick="autoDiscoverLocalCameras()">
+            <i class="fa-solid fa-satellite-dish"></i> Escanear Red Wi-Fi / IP Local
+          </button>
+        </div>
+
+        <div id="discoveredCamsContainer" class="hidden" style="margin-top: 12px; background: rgba(0,0,0,0.3); border-radius: 10px; padding: 10px; border: 1px solid var(--border-glass);">
+          <div style="font-size: 11px; font-weight: 800; color: var(--accent-cyan); margin-bottom: 8px;">Dispositivos Encontrados en la Red:</div>
+          <div id="discoveredCamsList" style="display: flex; flex-direction: column; gap: 8px; max-height: 180px; overflow-y: auto;">
+            <!-- Renderizado dinámico -->
+          </div>
+        </div>
       </div>
     </div>
   </div>
