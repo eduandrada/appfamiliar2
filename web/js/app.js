@@ -1723,6 +1723,149 @@ function handleEditSubmit(e) {
 }
 
 // ==================== CÁMARAS IP & ESCANEO DE QR ====================
+function openDetectCameraModal() {
+  const modal = document.getElementById('detectCameraModal');
+  if (modal) {
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+  }
+}
+
+function closeDetectCameraModal() {
+  const modal = document.getElementById('detectCameraModal');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.style.display = 'none';
+  }
+}
+
+async function handleDetectSingleIp() {
+  const input = document.getElementById('detectTargetIpInput');
+  const resContainer = document.getElementById('detectResultContainer');
+  const resContent = document.getElementById('detectResultContent');
+  
+  if (!input || !input.value.trim()) {
+    showModernToast('Ingresa una IP', 'Por favor escribe la IP o dominio de la cámara (ej: 192.168.1.105)', 'warning');
+    return;
+  }
+  
+  const targetIp = input.value.trim();
+  if (resContainer) resContainer.classList.remove('hidden');
+  if (resContent) resContent.innerHTML = `<div style="text-align:center; padding:10px;"><i class="fa-solid fa-spinner fa-spin" style="font-size:20px; color:#C084FC;"></i><div style="margin-top:6px;">Probando conectividad a ${targetIp}...</div></div>`;
+
+  try {
+    const res = await fetch('/api/cameras/discover', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target_ip: targetIp })
+    });
+    
+    if (res.ok) {
+      const data = await res.json();
+      const r = data.result || (data.discovered && data.discovered[0]);
+      
+      if (r && r.found) {
+        resContent.innerHTML = `
+          <div style="color: #34D399; font-weight: 800; font-size: 13px; margin-bottom: 6px;">
+            <i class="fa-solid fa-circle-check"></i> ¡Cámara IP Encontrada Exitosamente!
+          </div>
+          <div style="font-size: 11px; color: #E2E8F0;">
+            <div>• <strong>IP / Host:</strong> ${r.ip_address}</div>
+            <div>• <strong>Protocolo:</strong> ${(r.protocol || 'rtsp').toUpperCase()} (Puertos: ${r.open_ports ? r.open_ports.join(', ') : '554'})</div>
+            <div>• <strong>Latencia:</strong> ${r.latency_ms} ms</div>
+            <div>• <strong>Acceso Remoto fuera de Wi-Fi (4G/5G):</strong> <span style="color:#34D399; font-weight:700;">Habilitado vía Proxy Gateway</span></div>
+          </div>
+          <button class="btn-sm" style="margin-top: 10px; width: 100%; background: linear-gradient(135deg, #10B981, #059669); color: #fff; border: none; border-radius: 8px; padding: 9px; font-weight: 800; font-size: 12px; cursor: pointer;" onclick="addDiscoveredCameraToSystem('${r.ip_address}', '${r.name || 'Cámara Detectada'}', '${r.protocol}')">
+            <i class="fa-solid fa-plus"></i> Vincular y Ver Cámara en Vivo
+          </button>
+        `;
+      } else {
+        resContent.innerHTML = `
+          <div style="color: #F59E0B; font-weight: 700; font-size: 12px; margin-bottom: 4px;">
+            <i class="fa-solid fa-triangle-exclamation"></i> IP sin respuesta rápida
+          </div>
+          <div style="font-size: 11px; color: #CBD5E1; margin-bottom: 8px;">
+            No se recibió confirmación en la IP ${targetIp}. ¿Deseas vincularla manualmente?
+          </div>
+          <button class="btn-sm" style="width: 100%; background: rgba(245, 158, 11, 0.2); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 8px; padding: 8px; font-weight: 700; font-size: 11.5px; cursor: pointer;" onclick="addDiscoveredCameraToSystem('${targetIp}', 'Cámara Remota ${targetIp}', 'rtsp')">
+            Vincular IP de todas formas (Proxy Cloud)
+          </button>
+        `;
+      }
+    }
+  } catch (e) {
+    if (resContent) resContent.innerHTML = `<div style="color:#EF4444;">Error al conectar con el servidor: ${e.message}</div>`;
+  }
+}
+
+async function handleScanSubnetCams() {
+  const resContainer = document.getElementById('detectResultContainer');
+  const resContent = document.getElementById('detectResultContent');
+  if (resContainer) resContainer.classList.remove('hidden');
+  if (resContent) resContent.innerHTML = `<div style="text-align:center; padding:10px;"><i class="fa-solid fa-spinner fa-spin" style="font-size:20px; color:#38BDF8;"></i><div style="margin-top:6px;">Escaneando subred local 192.168.1.x...</div></div>`;
+
+  try {
+    const res = await fetch('/api/cameras/discover');
+    if (res.ok) {
+      const data = await res.json();
+      const list = data.discovered || [];
+      if (list.length > 0) {
+        let html = `<div style="color:#38BDF8; font-weight:800; margin-bottom:8px;"><i class="fa-solid fa-list-check"></i> ${list.length} Cámaras Encontradas en la Red:</div>`;
+        list.forEach(item => {
+          html += `
+            <div style="background: rgba(15,23,42,0.6); padding: 8px; border-radius: 8px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <strong style="color:#fff; font-size:12px;">${item.name}</strong>
+                <div style="font-size:10px; color:#94A3B8;">IP: ${item.ip_address} • ${item.latency_ms}ms • Acceso 4G Proxy</div>
+              </div>
+              <button class="btn-sm" style="background:#0284C7; color:#fff; border:none; border-radius:6px; padding:5px 10px; font-size:11px; font-weight:700; cursor:pointer;" onclick="addDiscoveredCameraToSystem('${item.ip_address}', '${item.name}', '${item.protocol}')">
+                Vincular
+              </button>
+            </div>
+          `;
+        });
+        resContent.innerHTML = html;
+      } else {
+        resContent.innerHTML = `<div style="color:#F59E0B;">No se detectaron cámaras automáticas en la subred. Prueba ingresando la IP manualmente arriba.</div>`;
+      }
+    }
+  } catch (e) {
+    if (resContent) resContent.innerHTML = `<div style="color:#EF4444;">Error de escaneo: ${e.message}</div>`;
+  }
+}
+
+async function addDiscoveredCameraToSystem(ipAddress, camName, protocol) {
+  try {
+    const payload = {
+      name: camName || `Cámara IP ${ipAddress}`,
+      location: 'Acceso / Red Familiar',
+      ip_address: ipAddress,
+      port: 554,
+      protocol: protocol || 'rtsp',
+      username: 'admin',
+      has_alarm: true,
+      has_sound: true
+    };
+    
+    const res = await fetch('/api/cameras', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (res.ok) {
+      showModernToast('Cámara Vinculada', `La cámara ${ipAddress} ha sido vinculada con acceso en vivo dentro y fuera del hogar.`, 'success');
+      closeDetectCameraModal();
+      await fetchCamerasFromBackend();
+      renderCamerasGrid();
+    } else {
+      showModernToast('Error al agregar', 'No se pudo registrar la cámara.', 'error');
+    }
+  } catch (e) {
+    showModernToast('Error', e.message, 'error');
+  }
+}
+
 function openAddCameraModal() {
   const modal = document.getElementById('addCameraModal');
   if (modal) modal.classList.remove('hidden');

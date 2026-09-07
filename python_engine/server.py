@@ -15,9 +15,9 @@ except ImportError:
     from python_engine.rules import SafetyRuleEngine, SAFE_ZONES_ANDRADA
 
 try:
-    from stream_gateway import sanitize_camera_dict, test_camera_connection, scan_local_subnet_cameras
+    from stream_gateway import sanitize_camera_dict, test_camera_connection, scan_local_subnet_cameras, discover_single_ip_camera
 except ImportError:
-    from python_engine.stream_gateway import sanitize_camera_dict, test_camera_connection, scan_local_subnet_cameras
+    from python_engine.stream_gateway import sanitize_camera_dict, test_camera_connection, scan_local_subnet_cameras, discover_single_ip_camera
 
 app = FastAPI(
     title="Familia Andrada - Motor de Seguridad Inteligente 2026",
@@ -425,9 +425,20 @@ def get_cameras(admin: Optional[bool] = False):
     sanitized_list = [sanitize_camera_dict(c, is_admin=bool(admin)) for c in cams]
     return {"cameras": sanitized_list}
 
+class DiscoverIpInput(BaseModel):
+    target_ip: Optional[str] = None
+    port: Optional[int] = 554
+
 @app.get("/api/cameras/discover")
 @app.post("/api/cameras/discover")
-def discover_cameras():
+def discover_cameras(data: Optional[DiscoverIpInput] = None):
+    target_ip = data.target_ip if data and data.target_ip else None
+    port = data.port if data and data.port else 554
+
+    if target_ip:
+        res = discover_single_ip_camera(target_ip, port=port)
+        return {"status": "SUCCESS", "target_ip": target_ip, "result": res, "discovered": [res] if res.get("found") else []}
+    
     discovered = scan_local_subnet_cameras()
     return {"status": "SUCCESS", "discovered": discovered}
 
