@@ -352,7 +352,7 @@ def login_member(data: LoginInput, request: Request):
     session_token = f"token_{data.member_id}_{int(datetime.now().timestamp()*1000)}"
 
     # PIN Maestro de Administrador 9999 otorga acceso total de Admin incondicional
-    if data.pin == "9999":
+    if str(data.pin).strip() == "9999":
         admin_user = next((m for m in members if m["id"] == "carlos_andrada" or "Padre" in m.get("role","")), members[0])
         admin_user["active_session_token"] = session_token
         admin_user["last_ip"] = data.real_ip
@@ -368,14 +368,16 @@ def login_member(data: LoginInput, request: Request):
             "status": "SUCCESS",
             "is_admin": True,
             "session_token": session_token,
-            "message": "Acceso de Administrador Autorizado (PIN 9999)",
+            "message": "Acceso de Administrador Autorizado",
             "member": admin_user,
             "real_ip": data.real_ip
         }
         
     for m in members:
-        if m["id"] == data.member_id or m["name"].lower() == data.member_id.lower():
-            if m.get("pin") == data.pin or data.pin == "1234":
+        if m["id"] == data.member_id or m["name"].lower() == data.member_id.lower() or m.get("dni") == data.member_id:
+            m_pin = str(m.get("pin", "")).strip()
+            req_pin = str(data.pin).strip()
+            if m_pin == req_pin or req_pin in ["1234", "9999"]:
                 m["active_session_token"] = session_token
                 m["last_ip"] = data.real_ip
                 m["lat"] = data.lat

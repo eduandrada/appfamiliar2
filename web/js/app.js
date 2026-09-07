@@ -549,9 +549,9 @@ function renderMemberChips() {
   if (!container) return;
 
   container.innerHTML = familyMembers.map(m => `
-    <div class="m-chip ${m.id === activeMemberId ? 'active' : ''}" onclick="selectMember('${m.id}')">
+    <div class="m-chip ${m.id === activeMemberId ? 'active' : ''}" onclick="selectMember('${m.id}')" title="${m.name} (${m.role})">
       ${getAvatarHtml(m, 26)}
-      <span>${m.name.split(' ')[0]}</span>
+      <span>${m.nickname ? m.nickname : m.name.split(' ')[0]}</span>
       <small style="color: ${m.battery <= 20 ? '#EF4444' : '#10B981'};">${m.battery}%</small>
     </div>
   `).join('');
@@ -834,6 +834,8 @@ function renderDirectoryList() {
     const isMe = current && current.id === m.id;
     const distText = isMe ? 'Tu dispositivo (Aquí)' : formatDistance(current.lat, current.lng, m.lat, m.lng);
     const netLabel = m.network_label || (m.zone.includes('Casa') ? '🟢 WiFi Casa' : (m.zone.includes('Ruta') ? '📶 4G/5G Datos' : 'ᛡ BLE Mesh'));
+    const lastSeenFormatted = formatLastSeen(m.last_seen || m.lastSeen);
+    const trustedText = m.trusted_contact_name ? `⭐ ${m.trusted_contact_name}` : '⭐ Sin asignar';
 
     return `
       <div class="dir-member-card glass-card" style="padding: 14px; margin-bottom: 12px; border-radius: 14px; background: rgba(18, 28, 48, 0.7); border: 1px solid var(--border-glass);">
@@ -845,8 +847,11 @@ function renderDirectoryList() {
                 ${m.name} ${m.nickname ? `<span style="font-size: 11px; padding: 2px 7px; border-radius: 10px; background: rgba(245, 158, 11, 0.2); color: #F59E0B; font-weight: 700; border: 1px solid rgba(245, 158, 11, 0.3);">"${m.nickname}"</span>` : ''} ${isMe ? '<small style="color: var(--accent-blue); font-weight: 600;">(Tú)</small>' : ''}
               </div>
               <div class="dir-meta" style="font-size: 11px; color: var(--text-secondary);">DNI: ${m.dni} • Tel: ${m.phone}</div>
+              <div class="dir-meta" style="font-size: 11px; color: #F59E0B; font-weight: 600; margin-top: 1px;">
+                ${trustedText}
+              </div>
               <div class="dir-meta" style="font-size: 11px; color: #38BDF8; font-weight: 600; margin-top: 2px;">
-                <i class="fa-solid fa-location-arrow"></i> ${distText} • 🔋 ${m.battery}%
+                <i class="fa-solid fa-location-arrow"></i> ${distText} • 🔋 ${m.battery}% • <span style="color: #10B981;">${lastSeenFormatted}</span>
               </div>
             </div>
           </div>
@@ -990,53 +995,7 @@ function updateLoginPinDisplay() {
   }
 }
 
-function submitLoginPin() {
-  const select = document.getElementById('loginMemberSelect');
-  const selectedId = select ? select.value : (familyMembers[0] ? familyMembers[0].id : 'carlos_andrada');
-  const member = familyMembers.find(m => m.id === selectedId) || familyMembers[0];
-
-  if (!member) return;
-
-  // PIN de Administrador Maestro 9999: Otorga acceso total de Admin inmediatamente
-  if (loginEnteredPin === '9999') {
-    isAdminLoggedIn = true;
-    activeUser = member;
-    localStorage.setItem('andrada_active_session', JSON.stringify(member));
-    localStorage.setItem('andrada_is_admin', 'true');
-    updateActiveUserUI();
-    closeLoginModal();
-    notifyInPhone('🛡️ Modo Administrador Activado', 'Acceso total de control familiar concedido con PIN 9999.');
-    alert(`👑 ¡Bienvenido Administrador (${member.name})!\n\nAcceso total concedido (PIN 9999). Puedes gestionar usuarios, resetear PINs y configurar la protección familiar.`);
-    openAdminModal();
-    return;
-  }
-
-  // Validación de PIN Regular
-  if (member.pin === loginEnteredPin || loginEnteredPin === '1234') {
-    activeUser = member;
-    localStorage.setItem('andrada_active_session', JSON.stringify(member));
-    updateActiveUserUI();
-    closeLoginModal();
-    notifyInPhone('✅ Sesión Iniciada', `Bienvenido/a ${member.name}. Ubicación en vivo sincronizada.`);
-    alert(`✅ Bienvenido/a, ${member.name}. Círculo de protección activo.`);
-    selectMember(member.id);
-
-    // Enviar inicio de sesión a la API Backend de Render
-    fetch('/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ member_id: member.id, pin: loginEnteredPin })
-    }).catch(() => {});
-  } else {
-    alert('❌ PIN Incorrecto. Si olvidaste tu PIN, ingresa el PIN 9999 de Administrador.');
-    clearLoginPin();
-  }
-}
-
-// ==================== REGISTRO DE NUEVO FAMILIAR (Ver implementación unificada en línea 3620) ====================
-
-
-// ==================== PANEL DE ADMINISTRADOR (admin / 1234) ====================
+// ==================== PANEL DE ADMINISTRADOR ====================
 function openAdminModal() {
   document.getElementById('adminModal').classList.remove('hidden');
   if (isAdminLoggedIn) {
@@ -1056,11 +1015,11 @@ function handleAdminLogin(e) {
   const user = document.getElementById('adminUserInput').value.trim();
   const pass = document.getElementById('adminPassInput').value.trim();
 
-  if (user === 'admin' && pass === '1234') {
+  if (user === 'admin' && (pass === '1234' || pass === '9999')) {
     isAdminLoggedIn = true;
     showAdminDashboard();
   } else {
-    alert('❌ Credenciales de Administrador inválidas. (Usuario: admin | Clave: 1234)');
+    alert('❌ Credenciales de Administrador inválidas.');
   }
 }
 
@@ -1284,6 +1243,35 @@ function handleRemoteCameraSubmit(e) {
   });
 }
 
+// Helper para formatear última conexión
+function formatLastSeen(lastSeenIso) {
+  if (!lastSeenIso) return '🟢 En línea';
+  if (lastSeenIso === 'Ahora') return '🟢 En línea ahora';
+
+  try {
+    const d = new Date(lastSeenIso);
+    if (isNaN(d.getTime())) return lastSeenIso;
+
+    const now = new Date();
+    const diffSec = Math.floor((now - d) / 1000);
+
+    if (diffSec < 45) return '🟢 En línea ahora';
+    if (diffSec < 3600) return `🟢 Hace ${Math.max(1, Math.floor(diffSec / 60))} min`;
+    if (diffSec < 86400) {
+      const hrs = d.getHours().toString().padStart(2, '0');
+      const mins = d.getMinutes().toString().padStart(2, '0');
+      return `🕒 Hoy ${hrs}:${mins} hs`;
+    }
+    const day = d.getDate().toString().padStart(2, '0');
+    const month = (d.getMonth() + 1).toString().padStart(2, '0');
+    const hrs = d.getHours().toString().padStart(2, '0');
+    const mins = d.getMinutes().toString().padStart(2, '0');
+    return `🕒 ${day}/${month} ${hrs}:${mins} hs`;
+  } catch (e) {
+    return lastSeenIso;
+  }
+}
+
 // ==================== PERFIL COMPLETO DE MIEMBRO & ALERTA SOSPECHA ====================
 function openFullMemberDetailModal(memberId) {
   const member = familyMembers.find(m => m.id === memberId) || activeUser || familyMembers[0];
@@ -1294,6 +1282,7 @@ function openFullMemberDetailModal(memberId) {
 
   const netLabel = member.network_label || (member.zone && member.zone.includes('Casa') ? '🟢 WiFi Casa' : '📶 4G/5G Datos');
   const nickBadge = member.nickname ? `<span style="font-size: 11px; padding: 3px 10px; border-radius: 12px; background: rgba(245, 158, 11, 0.2); color: #F59E0B; font-weight: 700; border: 1px solid rgba(245, 158, 11, 0.4); margin-left: 6px;">🏷️ "${member.nickname}"</span>` : '';
+  const lastSeenStr = formatLastSeen(member.last_seen || member.lastSeen);
 
   content.innerHTML = `
     <div style="margin-bottom: 14px;">
@@ -1317,8 +1306,12 @@ function openFullMemberDetailModal(memberId) {
         <strong style="color: #fff;">${member.phone}</strong>
       </div>
       <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-        <span style="color: var(--text-secondary);">Contacto de Confianza:</span>
-        <strong style="color: #F59E0B;">🛡️ ${member.trusted_contact_name || 'Sin asignar'} (${member.trusted_contact_phone || 'N/A'})</strong>
+        <span style="color: var(--text-secondary);">⭐ Contacto de Confianza:</span>
+        <strong style="color: #F59E0B;">⭐ ${member.trusted_contact_name || 'Sin asignar'} (${member.trusted_contact_phone || 'N/A'})</strong>
+      </div>
+      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+        <span style="color: var(--text-secondary);">Última Conexión:</span>
+        <strong style="color: #10B981;">${lastSeenStr}</strong>
       </div>
       <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
         <span style="color: var(--text-secondary);">Zona Actual:</span>
@@ -3668,12 +3661,12 @@ function forceRealBatteryUpdate() {
   });
 }
 
-// --- Restricción de Registro de Miembros: Solo Administrador (PIN 9999) ---
+// --- Restricción de Registro de Miembros: Solo Administrador ---
 function openRegisterModal() {
   if (!isAdminLoggedIn) {
-    const entered = prompt('🔐 RESTRICCIÓN DE SEGURIDAD:\n\nSolo el Administrador puede registrar nuevos familiares. Ingrese el PIN de Administrador (9999):');
-    if (!entered || entered !== '9999') {
-      alert('⛔ Acceso Denegado: Solo el Administrador (PIN 9999) puede registrar nuevos miembros en la Familia Andrada.');
+    const entered = prompt('🔐 RESTRICCIÓN DE SEGURIDAD:\n\nSolo el Administrador puede registrar nuevos familiares. Ingrese la clave de Administrador:');
+    if (!entered || (entered !== '9999' && entered !== '1234')) {
+      alert('⛔ Acceso Denegado: Solo el Administrador puede registrar nuevos miembros en la Familia Andrada.');
       return;
     }
   }

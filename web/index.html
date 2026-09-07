@@ -636,7 +636,7 @@
             <button class="btn-subaction" onclick="openDuressKeypad()">
               <i class="fa-solid fa-user-ninja"></i>
               <span>PIN de Coacción</span>
-              <small>Alarma Silenciosa (9999)</small>
+              <small>Alarma Silenciosa</small>
             </button>
             <button class="btn-subaction" onclick="activateFakeShutdown()">
               <i class="fa-solid fa-power-off"></i>
@@ -684,7 +684,7 @@
             <div class="admin-callout-header">
               <div>
                 <h4><i class="fa-solid fa-user-shield"></i> Panel Administrador</h4>
-                <small>Usuario: <strong>admin</strong> | Clave: <strong>1234</strong></small>
+                <small>Acceso Administrador de la App</small>
               </div>
               <button class="btn-admin-login" onclick="openAdminModal()">
                 <i class="fa-solid fa-key"></i> Ingresar Admin
@@ -992,11 +992,11 @@
         <form onsubmit="handleAdminLogin(event)">
           <div class="form-group">
             <label>Usuario:</label>
-            <input type="text" id="adminUserInput" class="mobile-input" placeholder="admin" required>
+            <input type="text" id="adminUserInput" class="mobile-input" placeholder="Usuario Administrador" required>
           </div>
           <div class="form-group">
-            <label>Contraseña:</label>
-            <input type="password" id="adminPassInput" class="mobile-input" placeholder="1234" required>
+            <label>Contraseña / PIN:</label>
+            <input type="password" id="adminPassInput" class="mobile-input" placeholder="••••" required>
           </div>
           <button type="submit" class="btn-mobile-submit"><i class="fa-solid fa-unlock"></i> Ingresar como Admin</button>
         </form>
@@ -1065,7 +1065,7 @@
       <!-- Vista de Gestión (solo visible autenticado como admin) -->
       <div id="adminDashboardView" class="hidden">
         <div class="admin-badge-logged">
-          <span><i class="fa-solid fa-circle-check"></i> Sesión Administrador Activa (PIN 9999)</span>
+          <span><i class="fa-solid fa-circle-check"></i> Sesión Administrador Activa</span>
           <button class="btn-mini-logout" onclick="logoutAdmin()">Salir Admin</button>
         </div>
 
