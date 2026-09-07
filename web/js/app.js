@@ -6,81 +6,81 @@
 const DEFAULT_MEMBERS = [
   {
     id: 'carlos_andrada',
-    name: 'Carlos Andrada',
+    name: 'Eduardo Andrada',
     nickname: 'Papá / Admin',
-    dni: '34.567.890',
-    phone: '+54 9 383 456-7890',
+    dni: '35388342',
+    phone: '+54 9 383 4772960',
     pin: '1234',
     role: 'Padre (Protector)',
     trusted_contact_id: 'lucia_andrada',
-    trusted_contact_name: 'Lucía Andrada',
-    trusted_contact_phone: '+54 9 383 467-8901',
+    trusted_contact_name: 'Maira Deldado',
+    trusted_contact_phone: '+54 9 383 4017252',
     lat: -28.469570,
     lng: -65.785240,
-    battery: 92,
+    battery: 100,
     speed: 0.0,
-    zone: 'Peatonal Rivadavia (Catamarca)',
-    avatar: 'CA',
+    zone: 'Valle Chico Av 27 Casa 40 (Catamarca)',
+    avatar: 'EA',
     isOnline: true,
     lastSeen: 'Ahora'
   },
   {
     id: 'lucia_andrada',
-    name: 'Lucía Andrada',
+    name: 'Maira Deldado',
     nickname: 'Mamá',
-    dni: '36.789.012',
-    phone: '+54 9 383 467-8901',
-    pin: '4321',
+    dni: '35501054',
+    phone: '+54 9 383 4017252',
+    pin: '1234',
     role: 'Madre (Protectora)',
     trusted_contact_id: 'carlos_andrada',
-    trusted_contact_name: 'Carlos Andrada',
-    trusted_contact_phone: '+54 9 383 456-7890',
+    trusted_contact_name: 'Eduardo Andrada',
+    trusted_contact_phone: '+54 9 383 4772960',
     lat: -28.476500,
     lng: -65.771200,
     battery: 78,
     speed: 42.5,
     zone: 'La Chacarita (Catamarca)',
-    avatar: 'LA',
+    avatar: 'MD',
     isOnline: true,
     lastSeen: 'Hace 2 min'
   },
   {
     id: 'mateo_andrada',
-    name: 'Mateo Andrada',
+    name: 'Jere Andrada',
     nickname: 'Bro',
     dni: '45.123.456',
     phone: '+54 9 383 478-9012',
-    pin: '1122',
+    pin: '1234',
     role: 'Hijo',
-    trusted_contact_id: 'lucia_andrada',
-    trusted_contact_name: 'Lucía Andrada',
-    trusted_contact_phone: '+54 9 383 467-8901',
+    trusted_contact_id: 'sofia_andrada',
+    trusted_contact_name: 'Josefina Andrada',
+    trusted_contact_phone: '+54 9 383 489-0123',
     lat: -28.463200,
     lng: -65.781100,
     battery: 64,
     speed: 0.0,
     zone: 'Colegio Quintana (Catamarca)',
-    avatar: 'MA',
+    avatar: 'JA',
     isOnline: true,
     lastSeen: 'Ahora'
   },
   {
     id: 'sofia_andrada',
-    name: 'Sofía Andrada',
-    nickname: 'Amor',
+    name: 'Josefina Andrada',
+    nickname: 'Hija',
     dni: '48.987.654',
     phone: '+54 9 383 489-0123',
-    pin: '3344',
+    pin: '1234',
     role: 'Hija',
     trusted_contact_id: 'carlos_andrada',
-    trusted_contact_name: 'Carlos Andrada',
-    trusted_contact_phone: '+54 9 383 456-7890',
+    trusted_contact_name: 'Eduardo Andrada',
+    trusted_contact_phone: '+54 9 383 4772960',
     lat: -28.459400,
     lng: -65.789100,
     battery: 45,
     speed: 0.0,
     zone: 'UNCA Universidad (Catamarca)',
-    avatar: 'SA',
+    avatar: 'JA',
     isOnline: false,
     lastSeen: 'Hace 18 min'
   }
@@ -113,6 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initCustomBg();
   loadStoredMembers();
   loadStoredSession();
+  syncMembersFromBackend();
   updateSafeWordUI();
   initServiceWorker();
   initMap();
@@ -127,6 +128,25 @@ document.addEventListener('DOMContentLoaded', () => {
   startCloudSyncLoop();
   initRealtimeGpsTracker();
 });
+
+async function syncMembersFromBackend() {
+  try {
+    const res = await fetch('/api/members');
+    if (res.ok) {
+      const data = await res.json();
+      if (data && Array.isArray(data.members) && data.members.length > 0) {
+        familyMembers = data.members;
+        saveMembers();
+        renderMemberChips();
+        renderDirectoryList();
+        updateMapMarkers();
+        updateActiveUserUI();
+      }
+    }
+  } catch (e) {
+    console.log('[Sync] Servidor offline, usando base de datos local.');
+  }
+}
 
 // ==================== PWA INSTALLATION PROMPT ====================
 let deferredPwaPrompt = null;

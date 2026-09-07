@@ -44,84 +44,84 @@ if os.path.exists(WEB_DIR):
 DEFAULT_MEMBERS = [
     {
         "id": "carlos_andrada",
-        "name": "Carlos Andrada",
+        "name": "Eduardo Andrada",
         "nickname": "Papá / Admin",
-        "dni": "34.567.890",
-        "phone": "+54 9 383 456-7890",
+        "dni": "35388342",
+        "phone": "+54 9 383 4772960",
         "pin": "1234",
         "role": "Padre (Protector)",
         "trusted_contact_id": "lucia_andrada",
-        "trusted_contact_name": "Lucía Andrada",
-        "trusted_contact_phone": "+54 9 383 467-8901",
+        "trusted_contact_name": "Maira Deldado",
+        "trusted_contact_phone": "+54 9 383 4017252",
         "lat": -28.469570,
         "lng": -65.785240,
-        "battery": 92,
+        "battery": 100,
         "speed": 0.0,
-        "zone": "Peatonal Rivadavia (Catamarca)",
-        "avatar": "CA",
+        "zone": "Valle Chico Av 27 Casa 40 (Catamarca)",
+        "avatar": "EA",
         "network_type": "WIFI_HOME",
         "network_label": "🟢 WiFi Casa",
         "last_seen": datetime.now().isoformat()
     },
     {
         "id": "lucia_andrada",
-        "name": "Lucía Andrada",
+        "name": "Maira Deldado",
         "nickname": "Mamá",
-        "dni": "36.789.012",
-        "phone": "+54 9 383 467-8901",
-        "pin": "4321",
+        "dni": "35501054",
+        "phone": "+54 9 383 4017252",
+        "pin": "1234",
         "role": "Madre (Protectora)",
         "trusted_contact_id": "carlos_andrada",
-        "trusted_contact_name": "Carlos Andrada",
-        "trusted_contact_phone": "+54 9 383 456-7890",
+        "trusted_contact_name": "Eduardo Andrada",
+        "trusted_contact_phone": "+54 9 383 4772960",
         "lat": -28.476500,
         "lng": -65.771200,
         "battery": 78,
         "speed": 42.5,
         "zone": "La Chacarita (Catamarca)",
-        "avatar": "LA",
+        "avatar": "MD",
         "network_type": "CELLULAR_DATA",
         "network_label": "📶 4G/5G Datos",
         "last_seen": datetime.now().isoformat()
     },
     {
         "id": "mateo_andrada",
-        "name": "Mateo Andrada",
+        "name": "Jere Andrada",
         "nickname": "Bro",
         "dni": "45.123.456",
         "phone": "+54 9 383 478-9012",
-        "pin": "1122",
+        "pin": "1234",
         "role": "Hijo",
-        "trusted_contact_id": "lucia_andrada",
-        "trusted_contact_name": "Lucía Andrada",
-        "trusted_contact_phone": "+54 9 383 467-8901",
+        "trusted_contact_id": "sofia_andrada",
+        "trusted_contact_name": "Josefina Andrada",
+        "trusted_contact_phone": "+54 9 383 489-0123",
         "lat": -28.463200,
         "lng": -65.781100,
         "battery": 64,
         "speed": 0.0,
         "zone": "Colegio Quintana (Catamarca)",
-        "avatar": "MA",
+        "avatar": "JA",
         "network_type": "WIFI_HOME",
         "network_label": "🟢 WiFi Colegio",
         "last_seen": datetime.now().isoformat()
     },
     {
         "id": "sofia_andrada",
-        "name": "Sofía Andrada",
-        "nickname": "Amor",
+        "name": "Josefina Andrada",
+        "nickname": "Hija",
         "dni": "48.987.654",
         "phone": "+54 9 383 489-0123",
-        "pin": "3344",
+        "pin": "1234",
         "role": "Hija",
         "trusted_contact_id": "carlos_andrada",
-        "trusted_contact_name": "Carlos Andrada",
-        "trusted_contact_phone": "+54 9 383 456-7890",
+        "trusted_contact_name": "Eduardo Andrada",
+        "trusted_contact_phone": "+54 9 383 4772960",
         "lat": -28.459400,
         "lng": -65.789100,
         "battery": 45,
         "speed": 0.0,
         "zone": "UNCA Universidad (Catamarca)",
-        "avatar": "SA",
+        "avatar": "JA",
         "network_type": "BLE_MESH",
         "network_label": "ᛡ BLE Mesh",
         "last_seen": datetime.now().isoformat()
@@ -211,6 +211,23 @@ def system_info():
 @app.get("/api/safe-zones")
 def get_safe_zones():
     return {"safe_zones": SAFE_ZONES_ANDRADA}
+
+@app.get("/api/database/export")
+def export_database():
+    return DATA_STORE
+
+@app.post("/api/database/backup")
+def create_database_backup():
+    backups_dir = os.path.join(BASE_DIR, "backups")
+    os.makedirs(backups_dir, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_file = os.path.join(backups_dir, f"data_store_backup_{timestamp}.json")
+    try:
+        with open(backup_file, "w", encoding="utf-8") as f:
+            json.dump(DATA_STORE, f, ensure_ascii=False, indent=2)
+        return {"status": "SUCCESS", "backup_file": backup_file, "timestamp": timestamp}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error creando copia de respaldo: {e}")
 
 @app.get("/api/members")
 def get_members():
