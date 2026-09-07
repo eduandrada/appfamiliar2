@@ -3151,5 +3151,55 @@ select option, optgroup {
   border: 1px solid var(--border-glass);
 }
 
+/* ==================== BARRA DE CONTROLES DEL MAPA RESPONSIVE (PC Y MÓVIL) ==================== */
+.map-controls-toolbar-responsive {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.btn-map-control-pill {
+  flex: 1 1 auto;
+  min-width: 105px;
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(10px);
+  color: var(--text-primary);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  padding: 9px 12px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.btn-map-control-pill:hover {
+  transform: translateY(-1.5px);
+  background: rgba(30, 41, 59, 0.95);
+  border-color: rgba(56, 189, 248, 0.5);
+  box-shadow: 0 4px 14px rgba(56, 189, 248, 0.3);
+}
+
+.btn-map-control-pill:active {
+  transform: scale(0.97);
+}
+
+@media (max-width: 480px) {
+  .btn-map-control-pill {
+    min-width: 92px;
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+}
+
 
 

@@ -890,6 +890,19 @@ function centerMapOnFamily() {
   map.fitBounds(group.getBounds().pad(0.3));
 }
 
+function centerMapOnHomeCatamarca() {
+  const homeLat = -28.469570;
+  const homeLng = -65.785240;
+  
+  if (typeof currentMapEngine !== 'undefined' && currentMapEngine === 'google' && typeof googleMap !== 'undefined' && googleMap) {
+    googleMap.panTo({ lat: homeLat, lng: homeLng });
+    googleMap.setZoom(16);
+  } else if (map) {
+    map.setView([homeLat, homeLng], 16);
+  }
+  showModernToast('📍 Casa Andrada', 'Mapa centrado en Valle Chico Av 27 (Catamarca)', 'info');
+}
+
 // ==================== DISPARADORES DE SIMULACIÓN ====================
 function triggerSimulationEvent(type) {
   const member = familyMembers.find(m => m.id === activeMemberId) || familyMembers[0];
