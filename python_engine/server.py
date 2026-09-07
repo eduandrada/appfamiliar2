@@ -899,6 +899,8 @@ class LocationUpdateInput(BaseModel):
     battery: Optional[int] = 100
     speed: Optional[float] = 0.0
     zone: Optional[str] = "Ubicación en Vivo"
+    device_type: Optional[str] = "📱 Celular"
+    device_name: Optional[str] = "Navegador Web"
 
 @app.post("/api/location")
 def update_member_location(data: LocationUpdateInput):
@@ -911,6 +913,8 @@ def update_member_location(data: LocationUpdateInput):
             m["battery"] = data.battery
             m["speed"] = data.speed
             m["zone"] = data.zone
+            m["device_type"] = data.device_type
+            m["device_name"] = data.device_name
             m["last_seen"] = datetime.now().isoformat()
             updated = True
             break
@@ -930,6 +934,8 @@ class HeartbeatInput(BaseModel):
     wifi_ssid: Optional[str] = "WiFi Casa Andrada"
     ip_address: Optional[str] = "190.18.24.112"
     ble_beacons: Optional[List[str]] = []
+    device_type: Optional[str] = "📱 Celular"
+    device_name: Optional[str] = "Navegador Web"
 
 @app.post("/api/telemetry/heartbeat")
 def receive_heartbeat(data: HeartbeatInput):
@@ -943,6 +949,8 @@ def receive_heartbeat(data: HeartbeatInput):
             m["speed"] = data.speed
             m["zone"] = data.zone
             m["network_type"] = data.network_type
+            m["device_type"] = data.device_type
+            m["device_name"] = data.device_name
             
             labels = {
                 "WIFI_HOME": "🟢 WiFi Casa",

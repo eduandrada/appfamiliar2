@@ -2234,6 +2234,10 @@ function openFullMemberDetailModal(memberId) {
         <span style="color: var(--text-secondary);">Batería Teléfono:</span>
         <strong style="color: #10B981;">🔋 ${member.battery}%</strong>
       </div>
+      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+        <span style="color: var(--text-secondary);">Dispositivo / Sesión:</span>
+        <strong style="color: #38BDF8;">${member.device_type || '📱 Celular'} (${member.device_name || 'Navegador Web'})</strong>
+      </div>
       <div style="display: flex; justify-content: space-between;">
         <span style="color: var(--text-secondary);">Conexión de Red:</span>
         <strong style="color: #10B981;">${netLabel}</strong>
@@ -5575,7 +5579,10 @@ function renderDirectoryList() {
               ${starTag}
             </div>
             <div style="font-size: 11px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${m.role} • 📍 ${m.zone}</div>
-            <div style="font-size: 10px; color: var(--accent-cyan);">🔋 ${m.battery}% • ⚡ ${m.speed || 0} km/h</div>
+            <div style="font-size: 10px; color: var(--accent-cyan); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 2px;">
+              <span>🔋 ${m.battery}% • ⚡ ${m.speed || 0} km/h</span>
+              <span style="background: rgba(56, 189, 248, 0.15); color: #38BDF8; padding: 1px 6px; border-radius: 6px; font-weight: 700;">${m.device_type || '📱 Celular'} (${m.device_name || 'Web'})</span>
+            </div>
           </div>
         </div>
 
@@ -5617,8 +5624,50 @@ function selectMapMember(memberId) {
 // FUNCIONALIDADES VIVO 2026: BATERÍA REAL, GPS ALTA PRECISIÓN, MAPA GOOGLE & SOS
 // ==============================================================================
 
+function getDeviceDetails() {
+  const ua = navigator.userAgent || '';
+  let deviceType = '💻 PC Web';
+  let deviceName = 'PC Escritorio';
+  let isMobile = false;
+
+  if (/Android/i.test(ua)) {
+    isMobile = true;
+    deviceType = '📱 Celular Android';
+    deviceName = 'Android Celular';
+    if (/Samsung/i.test(ua)) deviceName = 'Samsung Galaxy';
+    else if (/Pixel/i.test(ua)) deviceName = 'Google Pixel';
+    else if (/Xiaomi/i.test(ua) || /Redmi/i.test(ua)) deviceName = 'Xiaomi Redmi';
+    else if (/Motorola/i.test(ua) || /Moto/i.test(ua)) deviceName = 'Motorola Moto';
+  } else if (/iPhone|iPad|iPod/i.test(ua)) {
+    isMobile = true;
+    deviceType = /iPad/i.test(ua) ? '📱 iPad (Apple)' : '📱 iPhone (Apple)';
+    deviceName = /iPad/i.test(ua) ? 'iPad Apple' : 'iPhone Apple';
+  } else if (/Macintosh|Mac OS X/i.test(ua)) {
+    deviceType = '💻 PC Mac';
+    deviceName = 'MacBook / Mac';
+  } else if (/Windows/i.test(ua)) {
+    deviceType = '💻 PC Windows';
+    deviceName = 'Windows PC';
+  } else if (/Linux/i.test(ua)) {
+    deviceType = '💻 PC Linux';
+    deviceName = 'Linux PC';
+  }
+
+  return { deviceType, deviceName, isMobile, fullLabel: `${deviceType} (${deviceName})` };
+}
+
 function sendTelemetryUpdate() {
   if (!currentUser) return;
+  const dev = getDeviceDetails();
+  currentUser.device_type = dev.deviceType;
+  currentUser.device_name = dev.deviceName;
+
+  const m = familyMembers.find(item => item.id === currentUser.id);
+  if (m) {
+    m.device_type = dev.deviceType;
+    m.device_name = dev.deviceName;
+  }
+
   fetch(`/api/members/${currentUser.id}/location`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -5627,10 +5676,13 @@ function sendTelemetryUpdate() {
       lng: currentUser.lng,
       speed: currentUser.speed || 0,
       battery: currentUser.battery || 100,
-      zone: currentUser.zone || 'Catamarca'
+      zone: currentUser.zone || 'Catamarca',
+      device_type: dev.deviceType,
+      device_name: dev.deviceName
     })
   }).catch(err => console.warn('[Telemetría] Sync fallido:', err));
 }
+
 
 function initBatteryMonitoring() {
   if ('getBattery' in navigator) {
