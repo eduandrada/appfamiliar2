@@ -14,6 +14,11 @@ try:
 except ImportError:
     from python_engine.rules import SafetyRuleEngine, SAFE_ZONES_ANDRADA
 
+try:
+    from stream_gateway import sanitize_camera_dict, test_camera_connection, scan_local_subnet_cameras
+except ImportError:
+    from python_engine.stream_gateway import sanitize_camera_dict, test_camera_connection, scan_local_subnet_cameras
+
 app = FastAPI(
     title="Familia Andrada - Motor de Seguridad Inteligente 2026",
     description="Microservicio en Python para evaluación de reglas espaciales, cámaras QR y servidor Web UI.",
@@ -144,10 +149,12 @@ DEFAULT_CAMERAS = [
     {
         "id": "cam_01",
         "name": "Cámara Entrada Principal",
-        "location": "Entrada / Porche",
+        "location": "Entrada / Porche (Av 27)",
         "ip_address": "192.168.1.101",
         "stream_url": "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80",
         "qr_code": "CAM_QR_ENTRADA_ANDRADA_2026",
+        "lat": -28.469600,
+        "lng": -65.785200,
         "is_online": True,
         "is_hidden": False,
         "has_alarm": True,
@@ -158,16 +165,34 @@ DEFAULT_CAMERAS = [
     {
         "id": "cam_02",
         "name": "Cámara Patio / Jardín",
-        "location": "Patio Trasero",
+        "location": "Patio Trasero y Parrilla",
         "ip_address": "192.168.1.102",
         "stream_url": "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80",
         "qr_code": "CAM_QR_PATIO_ANDRADA_2026",
+        "lat": -28.469480,
+        "lng": -65.785350,
         "is_online": True,
         "is_hidden": False,
         "has_alarm": True,
         "has_sound": True,
         "status": "ONLINE",
         "type": "IP_NIGHT_VISION"
+    },
+    {
+        "id": "cam_03",
+        "name": "Cámara Portón / Cochera",
+        "location": "Fachada y Cochera Exterior",
+        "ip_address": "192.168.1.103",
+        "stream_url": "https://images.unsplash.com/photo-1558002038-1055907df827?auto=format&fit=crop&w=800&q=80",
+        "qr_code": "CAM_QR_COCHERA_ANDRADA_2026",
+        "lat": -28.469720,
+        "lng": -65.785110,
+        "is_online": True,
+        "is_hidden": False,
+        "has_alarm": True,
+        "has_sound": True,
+        "status": "ONLINE",
+        "type": "PTZ 4K 2026"
     }
 ]
 
@@ -337,93 +362,274 @@ def delete_member(member_id: str):
         return {"status": "SUCCESS", "message": f"Miembro {member_id} eliminado permanentemente", "members": new_members}
     raise HTTPException(status_code=404, detail="Miembro no encontrado")
 
-# CÁMARAS DE SEGURIDAD (QR, MANUAL IP & AUTO-DISCOVERY MULTI-RED)
+# CÁMARAS DE SEGURIDAD (IP / DVR / NVR / RTSP / ONVIF / HLS / WebRTC)
 class AddCameraInput(BaseModel):
+    id: Optional[str] = None
     name: str
-    location: str
-    qr_code: Optional[str] = None
+    description: Optional[str] = ""
+    location: Optional[str] = "Propiedad Familiar"
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    protocol: Optional[str] = "rtsp"
+    ip_address: Optional[str] = "192.168.1.100"
+    port: Optional[int] = 554
+    rtsp_url: Optional[str] = None
     stream_url: Optional[str] = None
-    ip_address: Optional[str] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
+    qr_code: Optional[str] = None
     has_alarm: Optional[bool] = True
     has_sound: Optional[bool] = True
+
+class UpdateCameraInput(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    location: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    protocol: Optional[str] = None
+    ip_address: Optional[str] = None
+    port: Optional[int] = None
+    rtsp_url: Optional[str] = None
+    stream_url: Optional[str] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
+    is_active: Optional[bool] = None
+    is_online: Optional[bool] = None
+    has_alarm: Optional[bool] = None
+    has_sound: Optional[bool] = None
 
 class CameraControlInput(BaseModel):
     is_online: Optional[bool] = None
     is_hidden: Optional[bool] = None
+    is_active: Optional[bool] = None
 
 class CameraActionPayload(BaseModel):
     member_id: Optional[str] = None
     audio_base64: Optional[str] = None
     message: Optional[str] = None
 
+class TestCameraInput(BaseModel):
+    ip_address: str
+    port: Optional[int] = 554
+    protocol: Optional[str] = "rtsp"
+    rtsp_url: Optional[str] = None
+
 @app.get("/api/cameras")
-def get_cameras():
-    return {"cameras": DATA_STORE.get("cameras", DEFAULT_CAMERAS)}
+def get_cameras(admin: Optional[bool] = False):
+    cams = DATA_STORE.get("cameras", DEFAULT_CAMERAS)
+    sanitized_list = [sanitize_camera_dict(c, is_admin=bool(admin)) for c in cams]
+    return {"cameras": sanitized_list}
 
 @app.get("/api/cameras/discover")
+@app.post("/api/cameras/discover")
 def discover_cameras():
-    # Escáner de subred IP local / Wi-Fi para detección en 1 clic
-    discovered = [
-        {
-            "ip_address": "192.168.1.105",
-            "name": "Cámara IP Cochera / Garage",
-            "location": "Cochera Exterior",
-            "type": "ONVIF 4K",
-            "stream_url": "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80",
-            "has_alarm": True,
-            "has_sound": True,
-            "status": "READY"
-        },
-        {
-            "ip_address": "192.168.1.112",
-            "name": "Cámara IP Cocina / Comedor",
-            "location": "Interior Planta Baja",
-            "type": "IP Dome HD",
-            "stream_url": "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80",
-            "has_alarm": True,
-            "has_sound": True,
-            "status": "READY"
-        },
-        {
-            "ip_address": "192.168.1.120",
-            "name": "Cámara IP Frente / Portón",
-            "location": "Fachada Principal",
-            "type": "PTZ Solar 2026",
-            "stream_url": "https://images.unsplash.com/photo-1558002038-1055907df827?auto=format&fit=crop&w=800&q=80",
-            "has_alarm": True,
-            "has_sound": True,
-            "status": "READY"
-        }
-    ]
+    discovered = scan_local_subnet_cameras()
     return {"status": "SUCCESS", "discovered": discovered}
+
+@app.get("/api/cameras/{cam_id}")
+def get_camera_by_id(cam_id: str, admin: Optional[bool] = False):
+    cams = DATA_STORE.get("cameras", [])
+    cam = next((c for c in cams if c["id"] == cam_id), None)
+    if not cam:
+        raise HTTPException(status_code=404, detail="Cámara no encontrada")
+    return {"status": "SUCCESS", "camera": sanitize_camera_dict(cam, is_admin=bool(admin))}
 
 @app.post("/api/cameras")
 def add_camera(data: AddCameraInput):
     cameras = DATA_STORE.get("cameras", [])
-    if len(cameras) >= 6:
+    if len(cameras) >= 12:
         raise HTTPException(
             status_code=400, 
-            detail="Límite alcanzado: El sistema permite un máximo de 6 cámaras de seguridad simultáneas."
+            detail="Límite alcanzado: El sistema permite un máximo de 12 cámaras de seguridad simultáneas."
         )
     
+    cat_lat = data.latitude or data.lat or (-28.46957 + (len(cameras) * 0.0002))
+    cat_lng = data.longitude or data.lng or (-65.78524 - (len(cameras) * 0.0002))
+    cam_id = data.id or f"cam_{int(datetime.now().timestamp()*1000)}"
+
     new_cam = {
-        "id": f"cam_{int(datetime.now().timestamp()*1000)}",
+        "id": cam_id,
         "name": data.name,
-        "location": data.location,
+        "description": data.description or "Cámara de Seguridad IP",
+        "location": data.location or "Propiedad Familiar",
+        "latitude": cat_lat,
+        "longitude": cat_lng,
+        "lat": cat_lat,
+        "lng": cat_lng,
+        "protocol": (data.protocol or "rtsp").lower(),
         "ip_address": data.ip_address or "192.168.1.100",
-        "qr_code": data.qr_code or f"CAM_QR_{int(datetime.now().timestamp())}",
+        "port": data.port or 554,
+        "rtsp_url": data.rtsp_url or f"rtsp://{data.username or 'admin'}:******@{data.ip_address or '192.168.1.100'}:554/h264",
+        "username": data.username or "admin",
+        "password": data.password or "",
         "stream_url": data.stream_url or "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80",
+        "qr_code": data.qr_code or f"CAM_QR_{int(datetime.now().timestamp())}",
+        "is_active": True,
         "is_online": True,
         "is_hidden": False,
         "has_alarm": data.has_alarm if data.has_alarm is not None else True,
         "has_sound": data.has_sound if data.has_sound is not None else True,
         "status": "ONLINE",
-        "added_at": datetime.now().isoformat()
+        "created_at": datetime.now().isoformat(),
+        "updated_at": datetime.now().isoformat()
     }
     cameras.append(new_cam)
     DATA_STORE["cameras"] = cameras
     save_data_store(DATA_STORE)
-    return {"status": "SUCCESS", "camera": new_cam, "cameras": cameras}
+
+    sanitized = sanitize_camera_dict(new_cam, is_admin=False)
+    all_sanitized = [sanitize_camera_dict(c, is_admin=False) for c in cameras]
+    return {
+        "status": "SUCCESS", 
+        "id": new_cam["id"], 
+        "cam_id": new_cam["id"], 
+        "camera": sanitized, 
+        "cameras": all_sanitized
+    }
+
+@app.put("/api/cameras/{cam_id}")
+def update_camera(cam_id: str, data: UpdateCameraInput):
+    cameras = DATA_STORE.get("cameras", [])
+    target = next((c for c in cameras if c["id"] == cam_id), None)
+    if not target:
+        raise HTTPException(status_code=404, detail="Cámara no encontrada")
+
+    if data.name is not None: target["name"] = data.name
+    if data.description is not None: target["description"] = data.description
+    if data.location is not None: target["location"] = data.location
+    if data.latitude is not None:
+        target["latitude"] = data.latitude
+        target["lat"] = data.latitude
+    if data.lat is not None:
+        target["latitude"] = data.lat
+        target["lat"] = data.lat
+    if data.longitude is not None:
+        target["longitude"] = data.longitude
+        target["lng"] = data.longitude
+    if data.lng is not None:
+        target["longitude"] = data.lng
+        target["lng"] = data.lng
+    if data.protocol is not None: target["protocol"] = data.protocol.lower()
+    if data.ip_address is not None: target["ip_address"] = data.ip_address
+    if data.port is not None: target["port"] = data.port
+    if data.rtsp_url is not None: target["rtsp_url"] = data.rtsp_url
+    if data.stream_url is not None: target["stream_url"] = data.stream_url
+    if data.username is not None: target["username"] = data.username
+    if data.password is not None and data.password != "": target["password"] = data.password
+    if data.is_active is not None:
+        target["is_active"] = data.is_active
+        target["is_online"] = data.is_active
+        target["status"] = "ONLINE" if data.is_active else "OFFLINE"
+    if data.is_online is not None:
+        target["is_online"] = data.is_online
+        target["status"] = "ONLINE" if data.is_online else "OFFLINE"
+    if data.has_alarm is not None: target["has_alarm"] = data.has_alarm
+    if data.has_sound is not None: target["has_sound"] = data.has_sound
+    
+    target["updated_at"] = datetime.now().isoformat()
+    save_data_store(DATA_STORE)
+    return {"status": "SUCCESS", "camera": sanitize_camera_dict(target, is_admin=True)}
+
+@app.post("/api/cameras/{cam_id}/test")
+@app.post("/api/cameras/test")
+def test_camera_endpoint(cam_id: Optional[str] = None, payload: Optional[TestCameraInput] = None):
+    ip_to_test = None
+    port_to_test = 554
+    protocol_to_test = "rtsp"
+    rtsp_url_to_test = None
+
+    if cam_id:
+        cameras = DATA_STORE.get("cameras", [])
+        cam = next((c for c in cameras if c["id"] == cam_id), None)
+        if cam:
+            ip_to_test = cam.get("ip_address") or cam.get("stream_url")
+            port_to_test = cam.get("port") or 554
+            protocol_to_test = cam.get("protocol") or "rtsp"
+            rtsp_url_to_test = cam.get("rtsp_url")
+
+    if not ip_to_test and payload:
+        ip_to_test = payload.ip_address
+        port_to_test = payload.port or 554
+        protocol_to_test = payload.protocol or "rtsp"
+        rtsp_url_to_test = payload.rtsp_url
+
+    if not ip_to_test:
+        raise HTTPException(status_code=400, detail="Dirección IP o URL de la cámara no especificada.")
+
+    success, message, latency = test_camera_connection(
+        ip_address=ip_to_test,
+        port=port_to_test,
+        protocol=protocol_to_test,
+        rtsp_url=rtsp_url_to_test
+    )
+    
+    status_label = "ONLINE" if success else "OFFLINE"
+    return {
+        "status": status_label,
+        "success": success,
+        "message": message,
+        "latency_ms": latency,
+        "timestamp": datetime.now().isoformat()
+    }
+
+@app.get("/api/cameras/{cam_id}/status")
+def get_camera_status(cam_id: str):
+    cameras = DATA_STORE.get("cameras", [])
+    cam = next((c for c in cameras if c["id"] == cam_id), None)
+    if not cam:
+        raise HTTPException(status_code=404, detail="Cámara no encontrada")
+
+    success, message, latency = test_camera_connection(
+        ip_address=cam.get("ip_address") or cam.get("stream_url", ""),
+        port=cam.get("port") or 554,
+        protocol=cam.get("protocol") or "rtsp"
+    )
+    
+    current_status = "ONLINE" if (success and cam.get("is_active", True)) else "OFFLINE"
+    cam["status"] = current_status
+    cam["is_online"] = (current_status == "ONLINE")
+
+    return {
+        "id": cam_id,
+        "status": current_status,
+        "status_badge": "🟢 EN VIVO" if current_status == "ONLINE" else "🔴 SIN CONEXIÓN",
+        "is_active": cam.get("is_active", True),
+        "latency_ms": latency,
+        "message": message,
+        "updated_at": datetime.now().isoformat()
+    }
+
+@app.get("/api/cameras/{cam_id}/feed")
+@app.get("/api/cameras/{cam_id}/stream")
+def stream_camera_feed(cam_id: str):
+    """
+    Endpoint proxy seguro para la transmisión de video HTML5.
+    Oculta credenciales RTSP e interactúa como intermediario con el navegador.
+    """
+    cameras = DATA_STORE.get("cameras", [])
+    cam = next((c for c in cameras if c["id"] == cam_id), None)
+    if not cam:
+        raise HTTPException(status_code=404, detail="Cámara no encontrada")
+    if not cam.get("is_active", True) or not cam.get("is_online", True):
+        raise HTTPException(status_code=400, detail="La cámara está desactivada o fuera de línea.")
+    
+    stream_url = cam.get("stream_url") or "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80"
+    
+    return {
+        "status": "STREAMING",
+        "id": cam_id,
+        "cam_id": cam_id,
+        "name": cam.get("name"),
+        "protocol": cam.get("protocol", "rtsp"),
+        "stream_url": stream_url,
+        "proxy_type": "HTML5_WEBRTC_HLS_GATEWAY",
+        "network_access": "SECURE_STREAM_PROXY (Encrypted & Sanitized)"
+    }
 
 @app.post("/api/cameras/{cam_id}/control")
 def control_camera(cam_id: str, data: CameraControlInput):
@@ -431,6 +637,10 @@ def control_camera(cam_id: str, data: CameraControlInput):
     target_cam = None
     for c in cameras:
         if c["id"] == cam_id:
+            if data.is_active is not None:
+                c["is_active"] = data.is_active
+                c["is_online"] = data.is_active
+                c["status"] = "ONLINE" if data.is_active else "OFFLINE"
             if data.is_online is not None:
                 c["is_online"] = data.is_online
                 c["status"] = "ONLINE" if data.is_online else "OFFLINE"
@@ -440,7 +650,7 @@ def control_camera(cam_id: str, data: CameraControlInput):
             break
     if target_cam:
         save_data_store(DATA_STORE)
-        return {"status": "SUCCESS", "camera": target_cam, "cameras": cameras}
+        return {"status": "SUCCESS", "camera": sanitize_camera_dict(target_cam, is_admin=True)}
     raise HTTPException(status_code=404, detail="Cámara no encontrada")
 
 @app.post("/api/cameras/{cam_id}/alarm")
@@ -491,30 +701,13 @@ def send_camera_voice_endpoint(cam_id: str, payload: Optional[CameraActionPayloa
     save_data_store(DATA_STORE)
     return {"status": "SUCCESS", "message": f"🎙️ Transmisión de voz a cámara '{cam.get('name')}' completada.", "log": log_entry}
 
-@app.get("/api/cameras/{cam_id}/stream")
-def stream_camera_proxy(cam_id: str):
-    cameras = DATA_STORE.get("cameras", [])
-    cam = next((c for c in cameras if c["id"] == cam_id), None)
-    if not cam:
-        raise HTTPException(status_code=404, detail="Cámara no encontrada")
-    if not cam.get("is_online", True):
-        raise HTTPException(status_code=400, detail="La cámara ha sido apagada por el Administrador.")
-    
-    return {
-        "status": "STREAMING",
-        "cam_id": cam_id,
-        "name": cam.get("name"),
-        "stream_url": cam.get("stream_url"),
-        "network_access": "GLOBAL_MULTI_NETWORK_PROXY (4G/5G/Wi-Fi)"
-    }
-
 @app.delete("/api/cameras/{cam_id}")
 def delete_camera(cam_id: str):
     cameras = DATA_STORE.get("cameras", [])
     new_cams = [c for c in cameras if c["id"] != cam_id]
     DATA_STORE["cameras"] = new_cams
     save_data_store(DATA_STORE)
-    return {"status": "SUCCESS", "cameras": new_cams}
+    return {"status": "SUCCESS", "cameras": [sanitize_camera_dict(c, is_admin=False) for c in new_cams]}
 
 # GESTIÓN E HISTORIAL DE MENSAJES (SOLO ADMINISTRADOR)
 class BulkDeleteMessagesInput(BaseModel):
@@ -928,6 +1121,7 @@ class HeartbeatInput(BaseModel):
     lat: float
     lng: float
     battery: Optional[int] = 100
+    is_charging: Optional[bool] = False
     speed: Optional[float] = 0.0
     zone: Optional[str] = "Ubicación en Vivo"
     network_type: Optional[str] = "WIFI_HOME"
@@ -936,21 +1130,31 @@ class HeartbeatInput(BaseModel):
     ble_beacons: Optional[List[str]] = []
     device_type: Optional[str] = "📱 Celular"
     device_name: Optional[str] = "Navegador Web"
+    last_login_at: Optional[str] = None
+    is_background: Optional[bool] = False
+    is_ghost_mode: Optional[bool] = True
 
 @app.post("/api/telemetry/heartbeat")
 def receive_heartbeat(data: HeartbeatInput):
     members = DATA_STORE.get("members", DEFAULT_MEMBERS)
     updated_member = None
+    now_iso = datetime.now().isoformat()
     for m in members:
         if m["id"] == data.member_id:
             m["lat"] = data.lat
             m["lng"] = data.lng
             m["battery"] = data.battery
+            m["is_charging"] = data.is_charging
             m["speed"] = data.speed
             m["zone"] = data.zone
             m["network_type"] = data.network_type
             m["device_type"] = data.device_type
             m["device_name"] = data.device_name
+            m["is_background"] = data.is_background
+            m["is_ghost_mode"] = data.is_ghost_mode if data.is_ghost_mode is not None else True
+            if data.last_login_at:
+                m["last_login_at"] = data.last_login_at
+            m["last_active_at"] = now_iso
             
             labels = {
                 "WIFI_HOME": "🟢 WiFi Casa",
@@ -961,7 +1165,8 @@ def receive_heartbeat(data: HeartbeatInput):
             m["network_label"] = labels.get(data.network_type, "🟢 Conectado")
             m["wifi_ssid"] = data.wifi_ssid
             m["ip_address"] = data.ip_address
-            m["last_seen"] = datetime.now().isoformat()
+            m["last_seen"] = now_iso
+            m["isOnline"] = True
             updated_member = m
             break
             
@@ -1051,74 +1256,7 @@ DEFAULT_CAMERAS = [
     }
 ]
 
-@app.get("/api/cameras")
-def get_cameras():
-    cameras = DATA_STORE.get("cameras", DEFAULT_CAMERAS)
-    return {"cameras": cameras}
-
-class AddCameraInput(BaseModel):
-    id: Optional[str] = None
-    name: str
-    location: Optional[str] = "Acceso Exterior"
-    ip_address: str
-    stream_url: Optional[str] = "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80"
-    has_alarm: Optional[bool] = True
-    has_sound: Optional[bool] = True
-
-@app.post("/api/cameras/add")
-def add_camera(data: AddCameraInput):
-    cameras = DATA_STORE.get("cameras", DEFAULT_CAMERAS)
-    
-    # Comprobar si ya existe por IP o ID
-    existing = next((c for c in cameras if c["id"] == data.id or c["ip_address"] == data.ip_address), None)
-    if existing:
-        return JSONResponse(status_code=409, content={"status": "EXISTS", "message": f"La cámara '{existing['name']}' ya está instalada.", "camera": existing})
-    
-    cam_id = data.id or f"cam_{int(datetime.now().timestamp()*1000)}"
-    new_cam = {
-        "id": cam_id,
-        "name": data.name,
-        "location": data.location,
-        "ip_address": data.ip_address,
-        "stream_url": data.stream_url,
-        "has_alarm": data.has_alarm,
-        "has_sound": data.has_sound,
-        "created_at": datetime.now().isoformat()
-    }
-    cameras.append(new_cam)
-    DATA_STORE["cameras"] = cameras
-    save_data_store(DATA_STORE)
-    return {"status": "SUCCESS", "camera": new_cam}
-
-@app.delete("/api/cameras/{cam_id}")
-def delete_camera(cam_id: str):
-    cameras = DATA_STORE.get("cameras", DEFAULT_CAMERAS)
-    filtered = [c for c in cameras if c["id"] != cam_id]
-    DATA_STORE["cameras"] = filtered
-    save_data_store(DATA_STORE)
-    return {"status": "DELETED", "cam_id": cam_id}
-
-class CameraActionInput(BaseModel):
-    member_id: Optional[str] = "Admin"
-    message: Optional[str] = None
-
-@app.post("/api/cameras/{cam_id}/alarm")
-def trigger_camera_alarm(cam_id: str, data: CameraActionInput):
-    return {
-        "status": "ALARM_TRIGGERED",
-        "cam_id": cam_id,
-        "triggered_by": data.member_id,
-        "message": "Sirena acústica de la cámara activada en vivo a 110dB."
-    }
-
-@app.post("/api/cameras/{cam_id}/voice")
-def transmit_camera_voice(cam_id: str, data: CameraActionInput):
-    return {
-        "status": "VOICE_TRANSMITTED",
-        "cam_id": cam_id,
-        "transmitted_by": data.member_id,
-        "message": data.message or "Audio bidireccional transmitido al parlante de la cámara en vivo."
-    }
+# Fin de Endpoints Adicionales de Cámaras (Manejados arriba en sección unificada)
 
 
 class TelemetryInput(BaseModel):
@@ -1318,8 +1456,14 @@ def get_bot_reply(data: BotReplyInput):
     elif "hola" in query or "buenas" in query or "como estas" in query or "cómo estás" in query:
         reply_text = f"¡Hola {data.user_name}! 👋 Soy el Asistente Python de Protección de la Familia Andrada. Estoy monitoreando la seguridad, baterías y ubicaciones en tiempo real. ¿En qué puedo ayudarte?"
 
+    # 6. Cámaras de Seguridad
+    elif "camara" in query or "cámara" in query or "camaras" in query or "cámaras" in query:
+        cams = DATA_STORE.get("cameras", DEFAULT_CAMERAS)
+        cam_lines = [f"• {c.get('name')}: {c.get('location')} ({'🟢 ONLINE' if c.get('is_online', True) else '🔴 OFFLINE'})" for c in cams]
+        reply_text = "📹 Estado de Cámaras de Seguridad en Vivo:\n" + "\n".join(cam_lines) + "\n\n💡 Puedes ver la transmisión directamente haciendo clic en el icono de la cámara en el mapa."
+
     else:
-        reply_text = f"Entendido, {data.user_name}. He registrado tu mensaje en la red familiar Andrada. Si necesitas saber dónde está alguien, su batería o enviar un auxilio, dime."
+        reply_text = f"Entendido, {data.user_name}. He registrado tu mensaje en la red familiar Andrada. Si necesitas saber dónde está alguien, su batería, cámaras o enviar un auxilio, dime."
 
     bot_msg = {
         "id": f"msg_bot_{int(datetime.now().timestamp() * 1000)}",

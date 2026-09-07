@@ -157,7 +157,7 @@ class SafetyRuleEngine:
         # 5. REGLA: Inmovilidad Anómala fuera de Zonas Seguras (>45 min)
         stationary_since = None
         if prev_state and not is_inside_safe_zone and speed_kmh < 1.0:
-            stationary_since = prev_state.get("stationary_since", timestamp)
+            stationary_since = prev_state.get("stationary_since") or timestamp
             duration_minutes = (timestamp - stationary_since) / (1000.0 * 60.0)
             if duration_minutes >= 45.0:
                 alerts_triggered.append({

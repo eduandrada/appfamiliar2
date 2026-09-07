@@ -123,6 +123,7 @@ let fakeShutdownTimer = null;
 document.addEventListener('DOMContentLoaded', () => {
   initThemeMode();
   initCustomBg();
+  initGhostModeState();
   loadStoredMembers();
   loadStoredSession();
   syncMembersFromBackend();
@@ -296,6 +297,17 @@ function saveMembers() {
   localStorage.setItem('andrada_family_members', JSON.stringify(familyMembers));
 }
 
+function saveActiveUserSession(isNewLogin = false) {
+  if (!activeUser) return;
+  const nowIso = new Date().toISOString();
+  if (isNewLogin || !activeUser.last_login_at) {
+    activeUser.last_login_at = nowIso;
+  }
+  activeUser.last_active_at = nowIso;
+  localStorage.setItem('andrada_active_session', JSON.stringify(activeUser));
+  localStorage.setItem('andrada_last_login_at', activeUser.last_login_at);
+}
+
 function loadStoredSession() {
   const savedSession = localStorage.getItem('andrada_active_session');
   if (savedSession) {
@@ -307,7 +319,18 @@ function loadStoredSession() {
   } else {
     activeUser = familyMembers[0];
   }
+  if (activeUser && !activeUser.last_login_at) {
+    activeUser.last_login_at = localStorage.getItem('andrada_last_login_at') || new Date().toISOString();
+  }
+  saveActiveUserSession(false);
   updateActiveUserUI();
+
+  // Transmitir heartbeat inmediato al restaurar la sesión
+  setTimeout(() => {
+    if (typeof execute5SecondSyncPulse === 'function') {
+      execute5SecondSyncPulse();
+    }
+  }, 300);
 }
 
 function getAvatarHtml(member, size = 40) {
@@ -434,10 +457,112 @@ function switchTab(tabId) {
   }
 }
 
+// Source: Google Maps Platform Code Assist
+// ==================== DUAL MAP ENGINE: GOOGLE MAPS PLATFORM & LEAFLET ====================
+let googleMap = null;
+let googleMapMarkers = {};
+let currentMapEngine = 'google'; // 'google' | 'leaflet'
+
+function initGoogleMap() {
+  const container = document.getElementById('familyMap');
+  if (!container) return;
+
+  if (typeof google === 'undefined' || !google.maps) {
+    console.log('[Google Maps] Cargando SDK o usando Leaflet fallback...');
+    initMap();
+    return;
+  }
+
+  try {
+    const centerLatLng = { lat: -28.46957, lng: -65.78524 };
+    googleMap = new google.maps.Map(container, {
+      center: centerLatLng,
+      zoom: 16,
+      mapId: "DEMO_MAP_ID",
+      disableDefaultUI: false,
+      zoomControl: true,
+      mapTypeControl: false,
+      streetViewControl: false,
+      internalUsageAttributionIds: ["gmp_git_agentskills_v1"]
+    });
+
+    updateGoogleMapMarkers();
+    const label = document.getElementById('mapEngineLabel');
+    if (label) label.textContent = 'Google Maps';
+  } catch (err) {
+    console.warn('[Google Maps] Fallback a Leaflet:', err.message);
+    initMap();
+  }
+}
+
+function updateGoogleMapMarkers() {
+  if (!googleMap || typeof google === 'undefined' || !google.maps) return;
+
+  // Actualizar marcadores de miembros familiares
+  (familyMembers || []).forEach(member => {
+    const pos = { lat: parseFloat(member.lat), lng: parseFloat(member.lng) };
+    let marker = googleMapMarkers[member.id];
+
+    if (google.maps.marker && google.maps.marker.AdvancedMarkerElement) {
+      if (!marker) {
+        const pinElement = document.createElement('div');
+        pinElement.style.cssText = 'background: #0284C7; color: #fff; border-radius: 20px; padding: 4px 8px; font-size: 11px; font-weight: 800; border: 2px solid #fff; box-shadow: 0 0 10px rgba(6,182,212,0.8); cursor: pointer;';
+        pinElement.innerHTML = `👤 ${member.name.split(' ')[0]} (${member.battery || 100}%)`;
+
+        marker = new google.maps.marker.AdvancedMarkerElement({
+          map: googleMap,
+          position: pos,
+          title: `${member.name} • ${member.battery || 100}% Batería`,
+          content: pinElement
+        });
+
+        marker.addListener('click', () => {
+          showMemberProfileModal(member.id);
+        });
+
+        googleMapMarkers[member.id] = marker;
+      } else {
+        marker.position = pos;
+      }
+    } else {
+      if (!marker) {
+        marker = new google.maps.Marker({
+          position: pos,
+          map: googleMap,
+          title: member.name
+        });
+        googleMapMarkers[member.id] = marker;
+      } else {
+        marker.setPosition(pos);
+      }
+    }
+  });
+}
+
+function toggleMapEngine() {
+  const label = document.getElementById('mapEngineLabel');
+  if (currentMapEngine === 'google') {
+    currentMapEngine = 'leaflet';
+    if (label) label.textContent = 'Leaflet Map';
+    showModernToast('Motor de Mapa', 'Cambiado a Leaflet Map (Dark Mode CARTO)', 'info');
+    initMap();
+  } else {
+    currentMapEngine = 'google';
+    if (label) label.textContent = 'Google Maps';
+    showModernToast('Motor de Mapa', 'Cambiado a Google Maps Platform (3D & Traffic)', 'success');
+    initGoogleMap();
+  }
+}
+
 // ==================== MAPA LEAFLET EN VIVO ====================
 function initMap() {
+  if (map) {
+    try { map.remove(); } catch(e) {}
+    map = null;
+  }
+
   map = L.map('familyMap', {
-    center: [-34.603722, -58.381592],
+    center: [-28.46957, -65.78524],
     zoom: 15,
     zoomControl: false
   });
@@ -556,6 +681,10 @@ function triggerRealtimeAlertOnMap(memberId, alertType, alertMessage) {
 }
 
 function updateMapMarkers() {
+  if (currentMapEngine === 'google' && googleMap) {
+    updateGoogleMapMarkers();
+    return;
+  }
   if (!map) return;
   const current = activeUser || familyMembers[0];
 
@@ -623,6 +752,87 @@ function updateMapMarkers() {
       marker.bindPopup(popupHtml);
       marker.on('click', () => selectMember(m.id));
       memberMarkers[m.id] = marker;
+    }
+  });
+
+  // --- Render Security Cameras on Leaflet Map ---
+  if (!window.cameraMarkers) window.cameraMarkers = {};
+  const currentCams = (typeof camerasStore !== 'undefined' && camerasStore.length) ? camerasStore : [
+    { id: 'cam_01', name: 'Cámara Entrada Principal', location: 'Entrada / Porche (Av 27)', lat: -28.469600, lng: -65.785200, is_online: true },
+    { id: 'cam_02', name: 'Cámara Patio / Jardín', location: 'Patio Trasero y Parrilla', lat: -28.469480, lng: -65.785350, is_online: true },
+    { id: 'cam_03', name: 'Cámara Portón / Cochera', location: 'Fachada y Cochera Exterior', lat: -28.469720, lng: -65.785110, is_online: true }
+  ];
+
+  currentCams.forEach(cam => {
+    if (!cam.lat || !cam.lng) return;
+    if (cam.is_hidden) {
+      if (window.cameraMarkers[cam.id]) {
+        map.removeLayer(window.cameraMarkers[cam.id]);
+        delete window.cameraMarkers[cam.id];
+      }
+      return;
+    }
+
+    const camIconHtml = `
+      <div style="
+        background: linear-gradient(135deg, #0F172A, #1E293B);
+        border: 2.5px solid ${cam.is_online ? '#06B6D4' : '#64748B'};
+        border-radius: 50%;
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: ${cam.is_online ? '#38BDF8' : '#94A3B8'};
+        font-size: 15px;
+        box-shadow: 0 0 14px ${cam.is_online ? 'rgba(6, 182, 212, 0.8)' : 'rgba(0,0,0,0.5)'};
+        position: relative;
+      ">
+        <i class="fa-solid fa-video"></i>
+        <span style="position: absolute; top: -2px; right: -2px; width: 10px; height: 10px; border-radius: 50%; background: ${cam.is_online ? '#10B981' : '#EF4444'}; border: 1.5px solid #fff;"></span>
+      </div>
+    `;
+
+    const camIcon = L.divIcon({
+      html: camIconHtml,
+      className: 'custom-camera-pin',
+      iconSize: [36, 36],
+      iconAnchor: [18, 18]
+    });
+
+    const camPopupHtml = `
+      <div style="min-width: 210px; font-family: sans-serif; padding: 4px; color: #0F172A;">
+        <div style="font-weight: 800; font-size: 14px; color: #0284C7; display: flex; align-items: center; gap: 6px;">
+          <i class="fa-solid fa-video"></i> ${cam.name}
+        </div>
+        <div style="font-size: 11px; color: #475569; margin-top: 2px;">📍 ${cam.location || 'Acceso'}</div>
+        <div style="font-size: 10px; font-weight: 700; margin: 4px 0; color: ${cam.is_online ? '#059669' : '#DC2626'};">
+          ${cam.is_online ? '🟢 Transmisión En Vivo HD' : '🔴 Fuera de Línea'}
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 8px;">
+          <button style="background: #0284C7; color: #fff; border: none; border-radius: 6px; padding: 6px; font-size: 11px; font-weight: 700; cursor: pointer;" onclick="openLiveCameraModal('${cam.id}')">
+            🎬 Ver Transmisión en Vivo
+          </button>
+          <div style="display: flex; gap: 4px;">
+            <button style="flex: 1; background: #DC2626; color: #fff; border: none; border-radius: 6px; padding: 5px; font-size: 10px; font-weight: 700; cursor: pointer;" onclick="triggerCameraAlarm('${cam.id}')">
+              🚨 Sirena 110dB
+            </button>
+            <button style="flex: 1; background: #0D9488; color: #fff; border: none; border-radius: 6px; padding: 5px; font-size: 10px; font-weight: 700; cursor: pointer;" onclick="openCameraVoiceModal('${cam.id}')">
+              🎙️ Audio / Voz
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    if (window.cameraMarkers[cam.id]) {
+      window.cameraMarkers[cam.id].setLatLng([cam.lat, cam.lng]);
+      window.cameraMarkers[cam.id].setIcon(camIcon);
+      window.cameraMarkers[cam.id].setPopupContent(camPopupHtml);
+    } else {
+      const camMarker = L.marker([cam.lat, cam.lng], { icon: camIcon }).addTo(map);
+      camMarker.bindPopup(camPopupHtml);
+      window.cameraMarkers[cam.id] = camMarker;
     }
   });
 
@@ -777,7 +987,7 @@ function triggerDomesticAlert(type) {
   }
 
   notifyInPhone(title, msg);
-  showWhatsAppModal(title, msg, -34.603722, -58.381592);
+  showWhatsAppModal(title, msg, activeUser ? activeUser.lat : -28.46957, activeUser ? activeUser.lng : -65.78524);
 }
 
 // ==================== TAB 3: VENÍ A BUSCARME & CHAT ====================
@@ -798,17 +1008,11 @@ function triggerPickupRequest() {
 }
 
 function sendQuickReply(replyText) {
-  appendChatMessage('outgoing', `Tú: "${replyText}"`);
-
-  setTimeout(() => {
-    if (replyText.includes('camino')) {
-      appendChatMessage('incoming', 'Carlos: "Dale, te espero en la esquina. Gracias."');
-    } else if (replyText.includes('auto') || replyText.includes('Uber')) {
-      appendChatMessage('incoming', 'Carlos: "Genial, pasame la patente del auto cuando la tengas."');
-    } else {
-      appendChatMessage('incoming', 'Familiar: "Recibido, estoy atento."');
-    }
-  }, 1800);
+  if (typeof sendMessageToPythonBot === 'function') {
+    sendMessageToPythonBot(replyText);
+  } else {
+    appendChatMessage('outgoing', `Tú: "${replyText}"`);
+  }
 }
 
 function handleSendCustomMessage(e) {
@@ -817,16 +1021,12 @@ function handleSendCustomMessage(e) {
   if (!input) return;
   const rawText = input.value.trim();
   if (!rawText) return;
-
-  const cleanText = filterBadWords(rawText);
-  appendChatMessage('outgoing', `Tú: "${cleanText}"`);
   input.value = '';
-  input.focus(); // Mantiene el foco en PC para seguir escribiendo
-
-  setTimeout(() => {
-    appendChatMessage('incoming', 'Familiar: "Entendido, estoy atento al mapa."');
-    if ('vibrate' in navigator) navigator.vibrate(100);
-  }, 1800);
+  if (typeof sendMessageToPythonBot === 'function') {
+    sendMessageToPythonBot(rawText);
+  } else {
+    appendChatMessage('outgoing', `Tú: "${rawText}"`);
+  }
 }
 
 function appendChatMessage(type, htmlContent) {
@@ -1031,9 +1231,12 @@ function renderDirectoryList() {
 
   container.innerHTML = familyMembers.map(m => {
     const isMe = current && current.id === m.id;
-    const distText = isMe ? 'Tu dispositivo (Aquí)' : formatDistance(current.lat, current.lng, m.lat, m.lng);
-    const netLabel = m.network_label || (m.zone.includes('Casa') ? '🟢 WiFi Casa' : (m.zone.includes('Ruta') ? '📶 4G/5G Datos' : 'ᛡ BLE Mesh'));
-    const lastSeenFormatted = formatLastSeen(m.last_seen || m.lastSeen);
+    const isGhost = !isMe && (m.is_ghost_mode === true);
+
+    const distText = isMe ? (isGhostModeActive ? 'Tu dispositivo (👻 Modo Fantasma Activo)' : 'Tu dispositivo (Aquí)') : (isGhost ? '👻 Modo Fantasma (Invisible)' : formatDistance(current.lat, current.lng, m.lat, m.lng));
+    const batteryText = isGhost ? '🔒 Protegida' : `${m.battery}%`;
+    const netLabel = isGhost ? '👻 Modo Fantasma' : (m.network_label || (m.zone.includes('Casa') ? '🟢 WiFi Casa' : (m.zone.includes('Ruta') ? '📶 4G/5G Datos' : 'ᛡ BLE Mesh')));
+    const lastSeenFormatted = isGhost ? '👻 Modo Invisible' : formatLastSeen(m.last_seen || m.lastSeen);
     const trustedText = m.trusted_contact_name ? `⭐ ${m.trusted_contact_name}` : '⭐ Sin asignar';
 
     return `
@@ -1043,20 +1246,20 @@ function renderDirectoryList() {
             <div class="dir-avatar">${getAvatarHtml(m, 44)}</div>
             <div>
               <div class="dir-name" style="font-weight: 700; font-size: 15px; color: #fff; display: flex; align-items: center; gap: 6px;">
-                ${m.name} ${getViewerCustomNickname(m.id) ? `<span style="font-size: 11px; padding: 2px 7px; border-radius: 10px; background: rgba(245, 158, 11, 0.2); color: #F59E0B; font-weight: 700; border: 1px solid rgba(245, 158, 11, 0.3);">"${getViewerCustomNickname(m.id)}"</span>` : ''} ${isMe ? '<small style="color: var(--accent-blue); font-weight: 600;">(Tú)</small>' : ''}
+                ${m.name} ${getViewerCustomNickname(m.id) ? `<span style="font-size: 11px; padding: 2px 7px; border-radius: 10px; background: rgba(245, 158, 11, 0.2); color: #F59E0B; font-weight: 700; border: 1px solid rgba(245, 158, 11, 0.3);">"${getViewerCustomNickname(m.id)}"</span>` : ''} ${isMe ? (isGhostModeActive ? '<small style="color: #C084FC; font-weight: 600;">(👻 Tú - Modo Fantasma)</small>' : '<small style="color: var(--accent-blue); font-weight: 600;">(Tú)</small>') : (isGhost ? '<small style="color: #C084FC; font-weight: 600;">(👻 Invisible)</small>' : '')}
               </div>
               <div class="dir-meta" style="font-size: 11px; color: var(--text-secondary);">DNI: ${m.dni} • Tel: ${m.phone}</div>
               <div class="dir-meta" style="font-size: 11px; color: #F59E0B; font-weight: 600; margin-top: 1px;">
                 ${trustedText}
               </div>
               <div class="dir-meta" style="font-size: 11px; color: #38BDF8; font-weight: 600; margin-top: 2px;">
-                <i class="fa-solid fa-location-arrow"></i> ${distText} • 🔋 ${m.battery}% • <span style="color: #10B981;">${lastSeenFormatted}</span>
+                <i class="fa-solid fa-location-arrow"></i> ${distText} • 🔋 ${batteryText} • <span style="color: #10B981;">${lastSeenFormatted}</span>
               </div>
             </div>
           </div>
           <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
             <span class="badge-role" style="font-size: 10px; padding: 3px 8px; border-radius: 12px; background: rgba(56, 189, 248, 0.15); color: #38BDF8; border: 1px solid rgba(56, 189, 248, 0.3);">${m.role}</span>
-            <span style="font-size: 10px; padding: 2px 7px; border-radius: 10px; background: rgba(16, 185, 129, 0.15); color: #10B981; font-weight: 600; border: 1px solid rgba(16, 185, 129, 0.3);">${netLabel}</span>
+            <span style="font-size: 10px; padding: 2px 7px; border-radius: 10px; background: ${isGhost ? 'rgba(168, 85, 247, 0.2)' : 'rgba(16, 185, 129, 0.15)'}; color: ${isGhost ? '#C084FC' : '#10B981'}; font-weight: 600; border: 1px solid ${isGhost ? 'rgba(168, 85, 247, 0.4)' : 'rgba(16, 185, 129, 0.3)'};">${netLabel}</span>
           </div>
         </div>
 
@@ -1091,8 +1294,8 @@ function sendDirectMemberWhatsApp(memberId) {
 
 function sendGroupWhatsApp() {
   const sender = activeUser || familyMembers[0];
-  const lat = sender.lat || -34.603722;
-  const lng = sender.lng || -58.381592;
+  const lat = sender.lat || -28.46957;
+  const lng = sender.lng || -65.78524;
   const mapsUrl = `https://www.google.com/maps?q=${lat.toFixed(6)},${lng.toFixed(6)}`;
 
   const text = `👨‍👩‍👧‍👦 *GRUPO FAMILIA ANDRADA* 📍\n\nMensaje enviado por: *${sender.name}*\n• Estado: Todo bien / Ubicación reportada\n• Zona: ${sender.zone}\n• Batería: ${sender.battery}%\n\n📌 Ubicación GPS:\n${mapsUrl}`;
@@ -1124,8 +1327,8 @@ function sendExpressSosViaWhatsApp() {
   const sender = activeUser || familyMembers[0];
   if (!target) return;
 
-  const lat = sender.lat || -34.603722;
-  const lng = sender.lng || -58.381592;
+  const lat = sender.lat || -28.46957;
+  const lng = sender.lng || -65.78524;
   const mapsUrl = `https://www.google.com/maps?q=${lat.toFixed(6)},${lng.toFixed(6)}`;
 
   const text = `🚨 *¡ALERTA SOS EXPRÉS!* 🚨\n\n*${sender.name}* necesita auxilio inmediato.\n• Teléfono: ${sender.phone}\n• Batería: ${sender.battery}%\n• Zona: ${sender.zone || 'Ubicación actual'}\n\n📍 *Ubicación GPS en vivo:*\n${mapsUrl}`;
@@ -1617,7 +1820,9 @@ function connectDiscoveredCamera(name, location, ip, streamUrl) {
     closeAddCameraModal();
     showModernToast('Cámara Vinculada', `Cámara "${name}" (${ip}) conectada con éxito.`, 'success');
     renderCamerasGrid();
-    renderAdminCamerasList();
+    if (typeof renderAdminCamerasList === 'function') renderAdminCamerasList();
+    if (typeof updateMapMarkers === 'function') updateMapMarkers();
+    if (data && data.id) openLiveCameraModal(data.id);
   }).catch(() => {
     showModernToast('Error', 'No se pudo vincular la cámara.', 'error');
   });
@@ -1645,7 +1850,9 @@ function simulateQrCameraScan() {
     closeAddCameraModal();
     showModernToast('Cámara Vinculada', `Cámara "${camName}" conectada por Lectura QR con éxito.`, 'success');
     renderCamerasGrid();
-    renderAdminCamerasList();
+    if (typeof renderAdminCamerasList === 'function') renderAdminCamerasList();
+    if (typeof updateMapMarkers === 'function') updateMapMarkers();
+    if (data && data.id) openLiveCameraModal(data.id);
   }).catch(() => {
     closeAddCameraModal();
     showModernToast('Cámara Vinculada', 'Cámara agregada al sistema.', 'info');
@@ -1654,9 +1861,15 @@ function simulateQrCameraScan() {
 
 function handleRemoteCameraSubmit(e) {
   e.preventDefault();
-  const name = document.getElementById('camNameInput').value.trim();
-  const loc = document.getElementById('camLocationInput').value.trim();
-  const url = document.getElementById('camUrlInput').value.trim();
+  const name = document.getElementById('camNameInput') ? document.getElementById('camNameInput').value.trim() : '';
+  const loc = document.getElementById('camLocationInput') ? document.getElementById('camLocationInput').value.trim() : '';
+  const protocol = document.getElementById('camProtocolInput') ? document.getElementById('camProtocolInput').value : 'rtsp';
+  const ip = document.getElementById('camIpInput') ? document.getElementById('camIpInput').value.trim() : '';
+  const port = document.getElementById('camPortInput') ? parseInt(document.getElementById('camPortInput').value) || 554 : 554;
+  const url = document.getElementById('camUrlInput') ? document.getElementById('camUrlInput').value.trim() : '';
+  const user = document.getElementById('camUsernameInput') ? document.getElementById('camUsernameInput').value.trim() : '';
+  const pass = document.getElementById('camPasswordInput') ? document.getElementById('camPasswordInput').value : '';
+  const desc = document.getElementById('camDescInput') ? document.getElementById('camDescInput').value.trim() : '';
   const hasAlarm = document.getElementById('addCamHasAlarmCheck') ? document.getElementById('addCamHasAlarmCheck').checked : true;
   const hasSound = document.getElementById('addCamHasSoundCheck') ? document.getElementById('addCamHasSoundCheck').checked : true;
 
@@ -1666,7 +1879,13 @@ function handleRemoteCameraSubmit(e) {
     body: JSON.stringify({
       name: name,
       location: loc,
+      protocol: protocol,
+      ip_address: ip || '192.168.1.100',
+      port: port,
       stream_url: url,
+      username: user,
+      password: pass,
+      description: desc,
       has_alarm: hasAlarm,
       has_sound: hasSound
     })
@@ -1674,21 +1893,47 @@ function handleRemoteCameraSubmit(e) {
     const data = await res.json();
     if (!res.ok) {
       closeAddCameraModal();
-      showModernToast('Límite Alcanzado', data.detail || 'Límite máximo de 6 cámaras alcanzado.', 'error');
+      showModernToast('Error de Conexión', data.detail || 'No se pudo agregar la cámara.', 'error');
       return;
     }
     closeAddCameraModal();
-    showModernToast('Cámara Conectada', `Cámara IP "${name}" agregada correctamente.`, 'success');
+    showModernToast('📹 Cámara Vinculada', `Cámara "${name}" (${ip || '192.168.1.100'}) configurada en tiempo real.`, 'success');
     renderCamerasGrid();
     if (typeof renderAdminCamerasList === 'function') renderAdminCamerasList();
+    if (typeof updateMapMarkers === 'function') updateMapMarkers();
+    if (data && (data.id || data.cam_id)) openLiveCameraModal(data.id || data.cam_id);
   }).catch(() => {
     closeAddCameraModal();
     showModernToast('Cámara Agregada', 'Configuración de cámara guardada.', 'info');
   });
 }
 
-function renderAdminCamerasList() {
-  renderCamerasGrid();
+function testCameraConnectionFromAddForm() {
+  const ip = document.getElementById('camIpInput') ? document.getElementById('camIpInput').value.trim() : '';
+  const port = document.getElementById('camPortInput') ? parseInt(document.getElementById('camPortInput').value) || 554 : 554;
+  const protocol = document.getElementById('camProtocolInput') ? document.getElementById('camProtocolInput').value : 'rtsp';
+  const url = document.getElementById('camUrlInput') ? document.getElementById('camUrlInput').value.trim() : '';
+
+  if (!ip && !url) {
+    showModernToast('Datos Incompletos', 'Ingresa la Dirección IP o la URL para probar la conexión.', 'warning');
+    return;
+  }
+
+  showModernToast('Probando Conexión', 'Enviando Handshake RTSP / Ping a la cámara...', 'info');
+
+  fetch('/api/cameras/test', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ip_address: ip || url, port: port, protocol: protocol, rtsp_url: url })
+  }).then(res => res.json()).then(data => {
+    if (data.success || data.status === 'ONLINE') {
+      showModernToast('🟢 Conexión Exitosa', data.message || `Cámara en línea (${data.latency_ms || 12}ms)`, 'success');
+    } else {
+      showModernToast('🔴 Sin Conexión', data.message || 'La cámara no responde en el puerto especificado.', 'error');
+    }
+  }).catch(() => {
+    showModernToast('Error', 'No se pudo verificar la conexión con el servidor.', 'error');
+  });
 }
 
 // Variables Globales para Monitoreo de Cámaras
@@ -2917,10 +3162,13 @@ function openAiAssistantModal() {
   const modal = document.getElementById('aiAssistantModal');
   if (!modal) return;
   modal.classList.remove('hidden');
+  modal.style.display = 'flex';
 
   const history = document.getElementById('chatHistory');
   if (history && history.children.length === 0) {
-    appendAiMessage('bot', '🤖 ¡Hola! Soy el Asistente Virtual de la Familia Andrada. ¿En qué te puedo ayudar hoy? Puedes preguntarme sobre estafas, botón SOS, cómo cambiar tu PIN o agregar un familiar.');
+    if (typeof appendMessage === 'function') {
+      appendMessage('assistant', '🤖 ¡Hola! Soy el Asistente Virtual de la Familia Andrada. ¿En qué te puedo ayudar hoy? Puedes preguntarme sobre ubicaciones, baterías, cámaras de seguridad o ayuda SOS.');
+    }
   }
 }
 
@@ -2928,22 +3176,19 @@ function closeAiAssistantModal() {
   const modal = document.getElementById('aiAssistantModal');
   if (!modal) return;
   modal.classList.add('hidden');
+  modal.style.display = 'none';
 }
 
-function sendMessage() {
-  const input = document.getElementById('chatInput');
+function sendMessage(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  const input = document.getElementById('chatInput') || document.getElementById('customChatInput');
   if (!input) return;
   const rawText = input.value.trim();
   if (!rawText) return;
-
-  const cleanText = filterBadWords(rawText);
-  appendAiMessage('user', cleanText);
   input.value = '';
-
-  setTimeout(() => {
-    const reply = getAiResponse(cleanText.toLowerCase());
-    appendAiMessage('bot', reply);
-  }, 900);
+  if (typeof sendMessageToPythonBot === 'function') {
+    sendMessageToPythonBot(rawText);
+  }
 }
 
 function appendAiMessage(sender, text) {
@@ -3475,8 +3720,8 @@ function triggerSatellitePing() {
 
 function executeSatellitePing() {
   const user = activeUser || familyMembers[0];
-  const lat = user.lat || -34.603722;
-  const lng = user.lng || -58.381592;
+  const lat = user.lat || -28.46957;
+  const lng = user.lng || -65.78524;
 
   // Generar payload hex binario
   const hexCoords = `${Math.abs(Math.round(lat*100000)).toString(16).toUpperCase()}_${Math.abs(Math.round(lng*100000)).toString(16).toUpperCase()}`;
@@ -3536,8 +3781,8 @@ function scanBleMeshDevices() {
   container.innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 10px; font-size: 11px;"><i class="fa-solid fa-spinner fa-spin"></i> Escaneando balizas Bluetooth LE...</div>';
 
   const user = activeUser || familyMembers[0];
-  const observerLat = user ? user.lat : -34.603722;
-  const observerLng = user ? user.lng : -58.381592;
+  const observerLat = user ? user.lat : -28.46957;
+  const observerLng = user ? user.lng : -65.78524;
 
   setTimeout(() => {
     container.innerHTML = BLE_BEACON_DATA.map(d => `
@@ -3797,17 +4042,67 @@ function triggerSafeWalkExpiredAlert(destination) {
   showWhatsAppModal('🚨 ALERTA PREVENTIVA ACOMPÁÑAME', alertMsg, user.lat, user.lng);
 }
 
-// 4. Zona de Privacidad (Modo Fantasma)
-let isGhostModeActive = false;
+// 4. Zona de Privacidad (Modo Fantasma / Sistema Sigilo)
+let isGhostModeActive = true; // Por defecto activado
+
+function initGhostModeState() {
+  const savedGhost = localStorage.getItem('andrada_ghost_mode');
+  if (savedGhost !== null) {
+    isGhostModeActive = (savedGhost === 'true');
+  } else {
+    isGhostModeActive = true; // Por defecto activado por seguridad
+  }
+
+  const chk = document.getElementById('toggleGhostMode');
+  if (chk) chk.checked = isGhostModeActive;
+  updateGhostModeUI(isGhostModeActive);
+}
 
 function togglePrivacyGhostMode(enabled) {
   isGhostModeActive = enabled;
-  const user = activeUser || familyMembers[0];
-  
+  localStorage.setItem('andrada_ghost_mode', enabled ? 'true' : 'false');
+  if (activeUser) {
+    activeUser.is_ghost_mode = enabled;
+  }
+
+  updateGhostModeUI(enabled);
+
   if (enabled) {
-    notifyInPhone('👻 Modo Fantasma Activado', 'Tu ubicación se difumina en la vista familiar (+-500m). El botón SOS mantiene GPS exacto.');
+    showModernToast('👻 Modo Fantasma ACTIVADO', 'Estás en modo Invisible por defecto. Tu ubicación exacta, batería e IP están ocultas para otros usuarios.', 'info');
   } else {
-    notifyInPhone('📍 Ubicación Exacta Activada', 'Tu posición exacta se comparte con la Familia Andrada.');
+    showModernToast('🟢 Acceso Completo ACTIVADO', 'Modo Visible. Los miembros de tu familia pueden ver tu ubicación en tiempo real, batería e IP.', 'success');
+  }
+
+  // Transmitir inmediatamente la actualización de telemetría y privacidad
+  if (typeof execute5SecondSyncPulse === 'function') {
+    execute5SecondSyncPulse();
+  }
+}
+
+function updateGhostModeUI(enabled) {
+  const badge = document.getElementById('ghostModeBadge');
+  const subtext = document.getElementById('ghostModeSubtext');
+
+  if (badge) {
+    if (enabled) {
+      badge.style.background = 'rgba(168, 85, 247, 0.2)';
+      badge.style.borderColor = 'rgba(168, 85, 247, 0.4)';
+      badge.style.color = '#E9D5FF';
+      badge.innerHTML = '<i class="fa-solid fa-ghost"></i> <span>Modo Fantasma ACTIVADO (Modo Invisible por Defecto)</span>';
+    } else {
+      badge.style.background = 'rgba(16, 185, 129, 0.2)';
+      badge.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+      badge.style.color = '#A7F3D0';
+      badge.innerHTML = '<i class="fa-solid fa-eye"></i> <span>Acceso Completo (VISIBLE / Rastreo Familiar Activo)</span>';
+    }
+  }
+
+  if (subtext) {
+    if (enabled) {
+      subtext.textContent = '👻 Invisible en mapa | Oculta Ubicación, Batería e IP para otros';
+    } else {
+      subtext.textContent = '🟢 Acceso Completo | Permite rastreo en tiempo real, batería e IP';
+    }
   }
 }
 
@@ -3989,6 +4284,112 @@ function initRealtimeGpsTracker() {
   initBatteryMonitor();
   initHealthMonitor();
   populateWaTargetSelect();
+  start5SecondRealtimeSyncLoop();
+}
+
+let realtimeSync5sTimer = null;
+let realtimeWorkerTimer = null;
+let wakeLockSentinel = null;
+
+async function requestScreenWakeLock() {
+  if ('wakeLock' in navigator) {
+    try {
+      wakeLockSentinel = await navigator.wakeLock.request('screen');
+      console.log('[WakeLock] Bloqueo de pantalla de segundo plano activado.');
+    } catch (err) {
+      console.warn('[WakeLock] WakeLock no disponible:', err.message);
+    }
+  }
+}
+
+function start5SecondRealtimeSyncLoop() {
+  requestScreenWakeLock();
+
+  // 1. Ejecutar inmediatamente un pulso al iniciar
+  execute5SecondSyncPulse();
+
+  // 2. Crear Web Worker inline para ejecución continua e ininterrumpida en segundo plano
+  try {
+    if (realtimeWorkerTimer) realtimeWorkerTimer.terminate();
+
+    const workerCode = `
+      let timer = null;
+      self.onmessage = function(e) {
+        if (e.data === 'START') {
+          if (timer) clearInterval(timer);
+          timer = setInterval(() => {
+            self.postMessage('TICK');
+          }, 5000);
+        } else if (e.data === 'STOP') {
+          if (timer) clearInterval(timer);
+          timer = null;
+        }
+      };
+    `;
+    const blob = new Blob([workerCode], { type: 'application/javascript' });
+    realtimeWorkerTimer = new Worker(URL.createObjectURL(blob));
+
+    realtimeWorkerTimer.onmessage = function(e) {
+      if (e.data === 'TICK') {
+        execute5SecondSyncPulse();
+      }
+    };
+    realtimeWorkerTimer.postMessage('START');
+    console.log('[Realtime 5s] Worker de tiempo real en segundo plano iniciado.');
+  } catch (err) {
+    console.warn('[Realtime 5s] Worker no disponible, usando fallback setInterval:', err);
+    if (realtimeSync5sTimer) clearInterval(realtimeSync5sTimer);
+    realtimeSync5sTimer = setInterval(execute5SecondSyncPulse, 5000);
+  }
+
+  // 3. Listener para sincronizar inmediatamente al volver a primer plano
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      console.log('[Realtime] App regresó al primer plano. Sincronizando datos...');
+      execute5SecondSyncPulse();
+    }
+  });
+}
+
+function execute5SecondSyncPulse() {
+  if (!activeUser) return;
+
+  const isBg = document.visibilityState === 'hidden';
+  const connType = navigator.connection ? (navigator.connection.effectiveType || '4g') : 'wifi';
+
+  fetch('/api/telemetry/heartbeat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      member_id: activeUser.id,
+      lat: activeUser.lat || -28.46957,
+      lng: activeUser.lng || -65.78524,
+      battery: activeUser.battery || 100,
+      is_charging: activeUser.isCharging || false,
+      speed: activeUser.speed || 0.0,
+      zone: activeUser.zone || 'En Vivo',
+      network_type: connType === 'wifi' || connType === '4g' ? 'WIFI_HOME' : 'CELLULAR_DATA',
+      last_login_at: activeUser.last_login_at || new Date().toISOString(),
+      is_background: isBg,
+      is_ghost_mode: typeof isGhostModeActive !== 'undefined' ? isGhostModeActive : true
+    })
+  }).then(res => res.json()).then(data => {
+    fetch('/api/members')
+      .then(r => r.json())
+      .then(resData => {
+        if (resData.members && resData.members.length > 0) {
+          familyMembers = resData.members;
+          saveMembers();
+          renderMemberChips();
+          renderDirectoryList();
+          if (typeof currentMapEngine !== 'undefined' && currentMapEngine === 'google' && googleMap) {
+            updateGoogleMapMarkers();
+          } else {
+            updateMapMarkers();
+          }
+        }
+      }).catch(() => {});
+  }).catch(() => {});
 }
 
 function onGpsSuccess(position) {
@@ -4467,29 +4868,37 @@ function renderAdminCamerasList() {
   const container = document.getElementById('adminCamerasList');
   if (!container) return;
 
-  fetch('/api/cameras')
+  fetch('/api/cameras?admin=true')
     .then(res => res.json())
     .then(data => {
       const cams = data.cameras || [];
       if (cams.length === 0) {
-        container.innerHTML = '<div style="font-size: 11px; color: var(--text-muted); text-align: center; padding: 12px;">No hay cámaras vinculadas. Toca "+ Vincular Cámara" para agregar (máx 6).</div>';
+        container.innerHTML = '<div style="font-size: 11px; color: var(--text-muted); text-align: center; padding: 12px;">No hay cámaras vinculadas. Toca "+ Vincular Cámara" para agregar.</div>';
         return;
       }
 
       container.innerHTML = cams.map(c => `
-        <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; border: 1px solid var(--border-glass); display: flex; justify-content: space-between; align-items: center;">
+        <div style="background: rgba(255,255,255,0.05); padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border-glass); display: flex; justify-content: space-between; align-items: center; gap: 8px;">
           <div>
-            <strong style="font-size: 12px; color: #fff;"><i class="fa-solid fa-video" style="color: var(--accent-cyan);"></i> ${c.name}</strong>
-            <div style="font-size: 10px; color: var(--text-secondary);">${c.location} • IP: ${c.ip_address || '192.168.1.100'} • ${c.is_online !== false ? '🟢 ON' : '🔴 OFF'} ${c.is_hidden ? '👁️ Oculta' : ''}</div>
+            <strong style="font-size: 12px; color: #fff; display: flex; align-items: center; gap: 6px;">
+              <i class="fa-solid fa-video" style="color: var(--accent-cyan);"></i> ${c.name}
+            </strong>
+            <div style="font-size: 10px; color: var(--text-secondary); margin-top: 2px;">
+              ${c.location} • Protocolo: ${(c.protocol || 'RTSP').toUpperCase()} • IP: ${c.ip_address || '192.168.1.100'} 
+              • ${c.is_online !== false ? '🟢 EN VIVO' : '🔴 OFF'}
+            </div>
           </div>
-          <div style="display: flex; gap: 4px;">
-            <button class="btn-sm" style="background: ${c.is_online !== false ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.2)'}; color: ${c.is_online !== false ? '#EF4444' : '#10B981'}; border: 1px solid ${c.is_online !== false ? 'rgba(239,68,68,0.4)' : 'rgba(16,185,129,0.4)'}; padding: 4px 8px; border-radius: 6px;" title="${c.is_online !== false ? 'Apagar' : 'Encender'}" onclick="toggleCameraPower('${c.id}', ${c.is_online !== false})">
+          <div style="display: flex; gap: 4px; flex-wrap: nowrap;">
+            <button class="btn-sm" style="background: rgba(56,189,248,0.2); color: #38BDF8; border: 1px solid rgba(56,189,248,0.4); padding: 5px 8px; border-radius: 6px; font-size: 11px; cursor: pointer;" title="Probar Conexión" onclick="testCameraConnectionFromAdmin('${c.id}')">
+              <i class="fa-solid fa-plug"></i> Test
+            </button>
+            <button class="btn-sm" style="background: rgba(6,182,212,0.2); color: #06B6D4; border: 1px solid rgba(6,182,212,0.4); padding: 5px 8px; border-radius: 6px; font-size: 11px; cursor: pointer;" title="Editar Configuración" onclick="openEditCameraModal('${c.id}')">
+              <i class="fa-solid fa-pen-to-square"></i> Editar
+            </button>
+            <button class="btn-sm" style="background: ${c.is_online !== false ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.2)'}; color: ${c.is_online !== false ? '#EF4444' : '#10B981'}; border: 1px solid ${c.is_online !== false ? 'rgba(239,68,68,0.4)' : 'rgba(16,185,129,0.4)'}; padding: 5px 8px; border-radius: 6px; font-size: 11px; cursor: pointer;" title="${c.is_online !== false ? 'Desactivar' : 'Activar'}" onclick="toggleCameraPower('${c.id}', ${c.is_online !== false})">
               <i class="fa-solid ${c.is_online !== false ? 'fa-power-off' : 'fa-bolt'}"></i>
             </button>
-            <button class="btn-sm" style="background: ${c.is_hidden ? 'rgba(56,189,248,0.2)' : 'rgba(245,158,11,0.2)'}; color: ${c.is_hidden ? '#38BDF8' : '#F59E0B'}; border: 1px solid ${c.is_hidden ? 'rgba(56,189,248,0.4)' : 'rgba(245,158,11,0.4)'}; padding: 4px 8px; border-radius: 6px;" title="${c.is_hidden ? 'Mostrar' : 'Ocultar'}" onclick="toggleCameraVisibility('${c.id}', ${c.is_hidden})">
-              <i class="fa-solid ${c.is_hidden ? 'fa-eye' : 'fa-eye-slash'}"></i>
-            </button>
-            <button class="btn-sm" style="background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.4); padding: 4px 8px; border-radius: 6px; cursor: pointer;" title="Eliminar" onclick="deleteCameraFromAdmin('${c.id}')">
+            <button class="btn-sm" style="background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.4); padding: 5px 8px; border-radius: 6px; font-size: 11px; cursor: pointer;" title="Eliminar" onclick="deleteCameraFromAdmin('${c.id}')">
               <i class="fa-solid fa-trash"></i>
             </button>
           </div>
@@ -4500,6 +4909,115 @@ function renderAdminCamerasList() {
     });
 }
 
+function testCameraConnectionFromAdmin(camId) {
+  showModernToast('Probando Cámara', 'Verificando puerto y comunicación RTSP/IP...', 'info');
+  fetch(`/api/cameras/${camId}/test`, { method: 'POST' })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success || data.status === 'ONLINE') {
+        showModernToast('🟢 Conexión Exitosa', data.message || `Cámara en línea (${data.latency_ms || 14}ms)`, 'success');
+      } else {
+        showModernToast('🔴 Sin Conexión', data.message || 'La cámara está fuera de línea.', 'error');
+      }
+      renderAdminCamerasList();
+      renderCamerasGrid();
+    }).catch(() => {
+      showModernToast('Error', 'No se pudo probar la cámara.', 'error');
+    });
+}
+
+function openEditCameraModal(camId) {
+  fetch(`/api/cameras/${camId}?admin=true`)
+    .then(res => res.json())
+    .then(data => {
+      const cam = data.camera;
+      if (!cam) return;
+
+      if (document.getElementById('editCamId')) document.getElementById('editCamId').value = cam.id;
+      if (document.getElementById('editCamName')) document.getElementById('editCamName').value = cam.name || '';
+      if (document.getElementById('editCamProtocol')) document.getElementById('editCamProtocol').value = cam.protocol || 'rtsp';
+      if (document.getElementById('editCamLocation')) document.getElementById('editCamLocation').value = cam.location || '';
+      if (document.getElementById('editCamIp')) document.getElementById('editCamIp').value = cam.ip_address || '';
+      if (document.getElementById('editCamPort')) document.getElementById('editCamPort').value = cam.port || 554;
+      if (document.getElementById('editCamUsername')) document.getElementById('editCamUsername').value = cam.username || '';
+      if (document.getElementById('editCamPassword')) document.getElementById('editCamPassword').value = '';
+      if (document.getElementById('editCamDesc')) document.getElementById('editCamDesc').value = cam.description || '';
+      if (document.getElementById('editCamLat')) document.getElementById('editCamLat').value = cam.latitude || cam.lat || '';
+      if (document.getElementById('editCamLng')) document.getElementById('editCamLng').value = cam.longitude || cam.lng || '';
+      if (document.getElementById('editCamIsActive')) document.getElementById('editCamIsActive').checked = cam.is_active !== false && cam.is_online !== false;
+      if (document.getElementById('editCamHasAlarm')) document.getElementById('editCamHasAlarm').checked = cam.has_alarm !== false;
+      if (document.getElementById('editCamHasSound')) document.getElementById('editCamHasSound').checked = cam.has_sound !== false;
+
+      const modal = document.getElementById('editCameraModal');
+      if (modal) modal.classList.remove('hidden');
+    }).catch(() => {
+      showModernToast('Error', 'No se pudieron obtener los datos de la cámara.', 'error');
+    });
+}
+
+function closeEditCameraModal() {
+  const modal = document.getElementById('editCameraModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function handleEditCameraSubmit(e) {
+  e.preventDefault();
+  const camId = document.getElementById('editCamId').value;
+  const name = document.getElementById('editCamName').value.trim();
+  const protocol = document.getElementById('editCamProtocol').value;
+  const location = document.getElementById('editCamLocation').value.trim();
+  const ip = document.getElementById('editCamIp').value.trim();
+  const port = parseInt(document.getElementById('editCamPort').value) || 554;
+  const username = document.getElementById('editCamUsername').value.trim();
+  const password = document.getElementById('editCamPassword').value;
+  const description = document.getElementById('editCamDesc').value.trim();
+  const latStr = document.getElementById('editCamLat').value;
+  const lngStr = document.getElementById('editCamLng').value;
+  const isActive = document.getElementById('editCamIsActive').checked;
+  const hasAlarm = document.getElementById('editCamHasAlarm').checked;
+  const hasSound = document.getElementById('editCamHasSound').checked;
+
+  const body = {
+    name: name,
+    protocol: protocol,
+    location: location,
+    ip_address: ip,
+    port: port,
+    username: username,
+    description: description,
+    is_active: isActive,
+    is_online: isActive,
+    has_alarm: hasAlarm,
+    has_sound: hasSound
+  };
+  if (password) body.password = password;
+  if (latStr) body.latitude = parseFloat(latStr);
+  if (lngStr) body.longitude = parseFloat(lngStr);
+
+  fetch(`/api/cameras/${camId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  }).then(res => res.json()).then(data => {
+    closeEditCameraModal();
+    showModernToast('📹 Configuración Guardada', `Cámara "${name}" actualizada con éxito.`, 'success');
+    renderCamerasGrid();
+    renderAdminCamerasList();
+    if (typeof updateMapMarkers === 'function') updateMapMarkers();
+  }).catch(() => {
+    showModernToast('Error', 'No se pudo guardar la configuración de la cámara.', 'error');
+  });
+}
+
+function testCameraConnectionFromEditForm() {
+  const camId = document.getElementById('editCamId').value;
+  if (camId) {
+    testCameraConnectionFromAdmin(camId);
+  } else {
+    testCameraConnectionFromAddForm();
+  }
+}
+
 function deleteCameraFromAdmin(camId) {
   if (!confirm('¿Deseas desvincular esta cámara de seguridad?')) return;
   fetch(`/api/cameras/${camId}`, { method: 'DELETE' })
@@ -4507,6 +5025,7 @@ function deleteCameraFromAdmin(camId) {
       showModernToast('📹 Cámara Eliminada', 'La cámara ha sido borrada del sistema.', 'info');
       renderCamerasGrid();
       renderAdminCamerasList();
+      if (typeof updateMapMarkers === 'function') updateMapMarkers();
     }).catch(() => {});
 }
 
@@ -6273,6 +6792,9 @@ function notifyChatMessageReceived(senderName, text) {
 
 function goToBusameChat() {
   closeChatFloatingBanner();
+  if (typeof openAiAssistantModal === 'function') {
+    openAiAssistantModal();
+  }
   if (typeof switchTab === 'function') {
     switchTab('tab-pickup');
   }

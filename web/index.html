@@ -234,17 +234,22 @@
             <!-- Renderizado dinámico en app.js -->
           </div>
 
-          <!-- MODO FANTASMA & TELEMETRÍA Y ACCESO SOS DISCRETO (UBICADO ARRIBA DEL MAPA) -->
-          <div class="glass-card" style="padding: 12px; margin-bottom: 8px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <!-- MODO FANTASMA & PRIVACIDAD DE RASTREO (POR DEFECTO ACTIVADO) -->
+          <div class="glass-card" style="padding: 12px; margin-bottom: 8px; border: 1px solid rgba(168, 85, 247, 0.3); background: rgba(24, 18, 43, 0.65);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
               <div>
-                <strong style="font-size: 12px; color: #fff;"><i class="fa-solid fa-user-secret" style="color: var(--accent-purple);"></i> Zona de Privacidad (Modo Fantasma)</strong>
-                <div style="font-size: 10px; color: var(--text-secondary);">Difumina ubicación exacta (+-500m) en ocio</div>
+                <strong style="font-size: 13px; color: #fff;"><i class="fa-solid fa-ghost" style="color: #C084FC;"></i> Modo Fantasma (Sistema Sigilo)</strong>
+                <div style="font-size: 10.5px; color: #D8B4FE; margin-top: 2px;" id="ghostModeSubtext">👻 Invisible en mapa | Oculta Ubicación, Batería e IP para otros</div>
               </div>
               <label class="toggle-switch">
-                <input type="checkbox" id="toggleGhostMode" onchange="togglePrivacyGhostMode(this.checked)">
+                <input type="checkbox" id="toggleGhostMode" checked onchange="togglePrivacyGhostMode(this.checked)">
                 <span class="slider round"></span>
               </label>
+            </div>
+
+            <!-- BADGE INDICADOR DE ESTADO EN TIEMPO REAL -->
+            <div id="ghostModeBadge" style="margin-bottom: 8px; padding: 6px 10px; border-radius: 8px; background: rgba(168, 85, 247, 0.2); border: 1px solid rgba(168, 85, 247, 0.4); color: #E9D5FF; font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+              <i class="fa-solid fa-ghost"></i> <span>Modo Fantasma ACTIVADO (Modo Invisible por Defecto)</span>
             </div>
 
             <div style="display: flex; gap: 8px; margin-top: 8px;">
@@ -264,11 +269,17 @@
 
           <!-- BARRA DE CONTROLES DEL MAPA GOOGLE STYLE & REPORTES -->
           <div class="map-controls-toolbar" style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 6px; scrollbar-width: none;">
+            <button class="btn-map-tool" id="btnToggleMapEngine" onclick="toggleMapEngine()" title="Alternar entre Google Maps Platform y Leaflet" style="background: rgba(168, 85, 247, 0.2); color: #C084FC; border: 1px solid rgba(168, 85, 247, 0.4); border-radius: 8px; padding: 6px 10px; font-size: 11px; font-weight: 700; white-space: nowrap; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+              <i class="fa-solid fa-map-location-dot"></i> <span id="mapEngineLabel">Google Maps</span>
+            </button>
             <button class="btn-map-tool" id="btnRefreshMap" onclick="refreshMapLocation()" title="Refrescar Mapa y Ubicación" style="background: rgba(16, 185, 129, 0.2); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 8px; padding: 6px 10px; font-size: 11px; font-weight: 700; white-space: nowrap; cursor: pointer; display: flex; align-items: center; gap: 4px;">
               <i class="fa-solid fa-rotate-right"></i> Refrescar
             </button>
+            <button class="btn-map-tool" id="btnToggleCameras" onclick="openLiveCameraModal('cam_01')" title="Ver Cámaras de Seguridad en Vivo" style="background: rgba(6, 182, 212, 0.2); color: #06B6D4; border: 1px solid rgba(6, 182, 212, 0.4); border-radius: 8px; padding: 6px 10px; font-size: 11px; font-weight: 700; white-space: nowrap; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+              <i class="fa-solid fa-video"></i> Cámaras
+            </button>
             <button class="btn-map-tool" id="btnToggleTraffic" onclick="toggleGoogleTrafficLayer()" title="Activar/Desactivar Tráfico Google Maps" style="background: rgba(56, 189, 248, 0.2); color: #38BDF8; border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 8px; padding: 6px 10px; font-size: 11px; font-weight: 700; white-space: nowrap; cursor: pointer; display: flex; align-items: center; gap: 4px;">
-              <i class="fa-solid fa-traffic-light"></i> Tráfico Google
+              <i class="fa-solid fa-traffic-light"></i> Tráfico
             </button>
             <button class="btn-map-tool" id="btnToggleZones" onclick="toggleRiskZonesLayer()" title="Ver Zonas Seguras / Precaución / Peligro" style="background: rgba(245, 158, 11, 0.2); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 8px; padding: 6px 10px; font-size: 11px; font-weight: 700; white-space: nowrap; cursor: pointer; display: flex; align-items: center; gap: 4px;">
               <i class="fa-solid fa-layer-group"></i> Capa Zonas
@@ -286,7 +297,7 @@
 
 
           <!-- Contenedor del Mapa Leaflet -->
-          <div class="mobile-map-container" style="min-height: 280px; height: 280px; flex: none; position: relative;">
+          <div class="mobile-map-container" style="min-height: 380px; height: 380px; flex: none; position: relative;">
             <div id="familyMap" class="map-surface"></div>
             
             <div class="map-floating-status">
@@ -1862,12 +1873,24 @@
         </button>
       </div>
 
-      <!-- Tab 2: Vista Formulario URL / IP Manual -->
+      <!-- Tab 2: Vista Formulario IP / RTSP / ONVIF Manual -->
       <div id="camUrlView" class="hidden">
         <form onsubmit="handleRemoteCameraSubmit(event)">
-          <div class="form-group">
-            <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Nombre de la Cámara:</label>
-            <input type="text" id="camNameInput" class="mobile-input" placeholder="Ej: Cámara Garaje / Frente" required>
+          <div style="display: flex; gap: 8px;">
+            <div class="form-group" style="flex: 2;">
+              <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Nombre de la Cámara:</label>
+              <input type="text" id="camNameInput" class="mobile-input" placeholder="Ej: Cámara Garaje / Frente" required>
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Protocolo:</label>
+              <select id="camProtocolInput" class="mobile-select">
+                <option value="rtsp" selected>RTSP</option>
+                <option value="onvif">ONVIF</option>
+                <option value="webrtc">WebRTC</option>
+                <option value="hls">HLS</option>
+                <option value="http">HTTP / MJPEG</option>
+              </select>
+            </div>
           </div>
 
           <div class="form-group">
@@ -1875,9 +1898,36 @@
             <input type="text" id="camLocationInput" class="mobile-input" placeholder="Ej: Garaje Exterior" required>
           </div>
 
+          <div style="display: flex; gap: 8px;">
+            <div class="form-group" style="flex: 3;">
+              <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Dirección IP / Host:</label>
+              <input type="text" id="camIpInput" class="mobile-input" placeholder="192.168.1.100" required>
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Puerto:</label>
+              <input type="number" id="camPortInput" class="mobile-input" placeholder="554" value="554">
+            </div>
+          </div>
+
           <div class="form-group">
-            <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Dirección IP / URL Stream RTSP/WebRTC:</label>
-            <input type="text" id="camUrlInput" class="mobile-input" placeholder="192.168.1.100 o https://mi-camara.ddns.net/video" required>
+            <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">URL Stream Directa (Opcional):</label>
+            <input type="text" id="camUrlInput" class="mobile-input" placeholder="rtsp://admin:pass@192.168.1.100:554/h264 o https://...">
+          </div>
+
+          <div style="display: flex; gap: 8px;">
+            <div class="form-group" style="flex: 1;">
+              <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Usuario IP/RTSP:</label>
+              <input type="text" id="camUsernameInput" class="mobile-input" placeholder="admin">
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Contraseña (Protegida):</label>
+              <input type="password" id="camPasswordInput" class="mobile-input" placeholder="••••••••">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Descripción / Notas:</label>
+            <input type="text" id="camDescInput" class="mobile-input" placeholder="Ej: Visión nocturna 4K con detección de movimiento">
           </div>
 
           <div class="form-group" style="display: flex; gap: 12px; margin-top: 10px;">
@@ -1889,9 +1939,14 @@
             </label>
           </div>
 
-          <button type="submit" class="btn-mobile-submit" style="background: linear-gradient(135deg, #10B981, #059669); font-size: 13px; padding: 10px;">
-            <i class="fa-solid fa-circle-check"></i> Vincular Cámara Manualmente
-          </button>
+          <div style="display: flex; gap: 8px; margin-top: 12px;">
+            <button type="button" class="btn-sm" style="flex: 1; background: rgba(56, 189, 248, 0.2); color: #38BDF8; border: 1px solid rgba(56, 189, 248, 0.4); padding: 10px; border-radius: 8px; font-weight: 700; cursor: pointer;" onclick="testCameraConnectionFromAddForm()">
+              <i class="fa-solid fa-plug"></i> Probar Conexión
+            </button>
+            <button type="submit" class="btn-mobile-submit" style="flex: 2; background: linear-gradient(135deg, #10B981, #059669); font-size: 13px; padding: 10px; margin:0;">
+              <i class="fa-solid fa-circle-check"></i> Vincular Cámara
+            </button>
+          </div>
         </form>
       </div>
 
@@ -1911,6 +1966,101 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE EDICIÓN DE CÁMARA (ADMIN) -->
+  <div id="editCameraModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="editCameraModalTitle">
+    <div class="modal-card glass-card" style="max-width: 460px; width: 92%;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 id="editCameraModalTitle" style="font-size: 16px; font-weight: 800; color: var(--accent-cyan); display: flex; align-items: center; gap: 8px; margin: 0;">
+          <i class="fa-solid fa-sliders"></i> Configurar Cámara IP / DVR
+        </h3>
+        <button class="btn-sheet-close" onclick="closeEditCameraModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form onsubmit="handleEditCameraSubmit(event)">
+        <input type="hidden" id="editCamId">
+        <div style="display: flex; gap: 8px;">
+          <div class="form-group" style="flex: 2;">
+            <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Nombre de la Cámara:</label>
+            <input type="text" id="editCamName" class="mobile-input" required>
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Protocolo:</label>
+            <select id="editCamProtocol" class="mobile-select">
+              <option value="rtsp">RTSP</option>
+              <option value="onvif">ONVIF</option>
+              <option value="webrtc">WebRTC</option>
+              <option value="hls">HLS</option>
+              <option value="http">HTTP / MJPEG</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Ubicación / Sector:</label>
+          <input type="text" id="editCamLocation" class="mobile-input" required>
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+          <div class="form-group" style="flex: 3;">
+            <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Dirección IP / Host:</label>
+            <input type="text" id="editCamIp" class="mobile-input" required>
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Puerto:</label>
+            <input type="number" id="editCamPort" class="mobile-input" value="554">
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+          <div class="form-group" style="flex: 1;">
+            <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Usuario:</label>
+            <input type="text" id="editCamUsername" class="mobile-input">
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Contraseña (Protegida):</label>
+            <input type="password" id="editCamPassword" class="mobile-input" placeholder="Sin cambios">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Descripción / Notas:</label>
+          <input type="text" id="editCamDesc" class="mobile-input">
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+          <div class="form-group" style="flex: 1;">
+            <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Latitud GPS:</label>
+            <input type="number" step="any" id="editCamLat" class="mobile-input" placeholder="-28.46957">
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Longitud GPS:</label>
+            <input type="number" step="any" id="editCamLng" class="mobile-input" placeholder="-65.78524">
+          </div>
+        </div>
+
+        <div class="form-group" style="display: flex; gap: 12px; margin-top: 10px;">
+          <label style="flex: 1; display: flex; align-items: center; gap: 6px; font-size: 11px; color: #fff; cursor: pointer;">
+            <input type="checkbox" id="editCamIsActive" checked style="accent-color: #10B981; width: 16px; height: 16px;"> 🟢 Cámara Activa
+          </label>
+          <label style="flex: 1; display: flex; align-items: center; gap: 6px; font-size: 11px; color: #fff; cursor: pointer;">
+            <input type="checkbox" id="editCamHasAlarm" checked style="accent-color: #EF4444; width: 16px; height: 16px;"> 🚨 Sirena
+          </label>
+          <label style="flex: 1; display: flex; align-items: center; gap: 6px; font-size: 11px; color: #fff; cursor: pointer;">
+            <input type="checkbox" id="editCamHasSound" checked style="accent-color: #06B6D4; width: 16px; height: 16px;"> 🎙️ Voz
+          </label>
+        </div>
+
+        <div style="display: flex; gap: 8px; margin-top: 14px;">
+          <button type="button" class="btn-sm" style="flex: 1; background: rgba(56, 189, 248, 0.2); color: #38BDF8; border: 1px solid rgba(56, 189, 248, 0.4); padding: 10px; border-radius: 8px; font-weight: 700; cursor: pointer;" onclick="testCameraConnectionFromEditForm()">
+            <i class="fa-solid fa-plug"></i> Probar Conexión
+          </button>
+          <button type="submit" class="btn-mobile-submit" style="flex: 2; background: linear-gradient(135deg, #0284C7, #06B6D4); font-size: 13px; padding: 10px; margin: 0;">
+            <i class="fa-solid fa-floppy-disk"></i> Guardar Cambios
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -2187,6 +2337,8 @@
       if (modal) modal.classList.add('hidden');
     }
   </script>
+  <script src="js/robot_chat.js"></script>
+  <script src="https://maps.googleapis.com/maps/api/js?libraries=places,marker&v=beta" async defer></script>
   <script src="js/app.js"></script>
 </body>
 </html>

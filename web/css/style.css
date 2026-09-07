@@ -250,39 +250,130 @@ body.mobile-layout {
   margin-left: 2px;
 }
 
-/* AI Chat Bubbles & Modal styling */
-.ai-chat-bubble {
+/* ==================== AI CHAT BUBBLES & MODAL STYLING ==================== */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(7, 11, 20, 0.85);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  z-index: 99999 !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.25s ease;
+}
+
+.modal.hidden {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+.modal-content {
+  background: linear-gradient(145deg, #0F172A, #1E293B);
+  border: 1.5px solid rgba(56, 189, 248, 0.35);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 480px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.85), 0 0 30px rgba(6, 182, 212, 0.25);
+  overflow: hidden;
+  animation: modalPop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes modalPop {
+  from { transform: scale(0.9) translateY(20px); opacity: 0; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.modal-header {
+  padding: 14px 18px;
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal-header h2 {
+  font-size: 16px;
+  font-weight: 800;
+  color: #38BDF8;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modal-header .close-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #94A3B8;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.modal-header .close-btn:hover {
+  background: rgba(239, 68, 68, 0.3);
+  color: #EF4444;
+}
+
+.chat-history, .chat-messages {
+  flex: 1;
+  min-height: 250px;
+  max-height: 380px;
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: rgba(3, 7, 18, 0.6);
+}
+
+.chat-bubble, .ai-chat-bubble, .chat-msg {
   padding: 10px 14px;
   border-radius: 14px;
-  margin-bottom: 8px;
   font-size: 13px;
-  line-height: 1.4;
+  line-height: 1.45;
   max-width: 85%;
   word-wrap: break-word;
 }
 
-.ai-user {
-  background: linear-gradient(135deg, #0284C7, #38BDF8);
-  color: #fff;
+.chat-bubble.user, .ai-user, .chat-bubble.outgoing {
+  background: linear-gradient(135deg, #0284C7, #06B6D4);
+  color: #FFF;
   margin-left: auto;
   border-bottom-right-radius: 2px;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
 }
 
-.ai-bot {
-  background: rgba(30, 41, 59, 0.9);
+.chat-bubble.assistant, .chat-bubble.bot, .ai-bot, .chat-bubble.incoming {
+  background: rgba(30, 41, 59, 0.95);
   color: #F8FAFC;
-  border: 1px solid var(--border-glass);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   margin-right: auto;
   border-bottom-left-radius: 2px;
 }
 
-.chat-history {
-  display: flex;
-  flex-direction: column;
-  max-height: 280px;
-  overflow-y: auto;
-  padding: 12px;
-  gap: 8px;
+.chat-bubble.loading {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38BDF8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  font-style: italic;
 }
 
 /* Viewport Principal de Pestañas */
@@ -1133,6 +1224,46 @@ input:checked + .slider:before { transform: translateX(24px); }
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.cam-badge-online {
+  background: rgba(16, 185, 129, 0.2);
+  color: #10B981;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 10px;
+}
+
+.cam-badge-connecting {
+  background: rgba(245, 158, 11, 0.2);
+  color: #F59E0B;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 10px;
+}
+
+.cam-badge-offline {
+  background: rgba(239, 68, 68, 0.2);
+  color: #EF4444;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 10px;
+}
+
+.cam-badge-error {
+  background: rgba(234, 179, 8, 0.2);
+  color: #EAB308;
+  border: 1px solid rgba(234, 179, 8, 0.4);
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 10px;
 }
 
 .rec-dot {
@@ -3001,5 +3132,24 @@ select option, optgroup {
   background: rgba(255, 255, 255, 0.16);
   color: #FFF;
 }
+
+/* ==================== CÁMARAS Y MAPA INTERACTIVO 2026 ==================== */
+.custom-camera-pin {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.custom-camera-pin:hover {
+  transform: scale(1.18);
+  z-index: 1000 !important;
+}
+
+.mobile-map-container {
+  min-height: 380px !important;
+  height: 380px !important;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border-glass);
+}
+
 
 

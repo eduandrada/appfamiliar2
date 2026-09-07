@@ -20,12 +20,12 @@ def run_simulation():
 
     scenarios = [
         {
-            "title": "Escenario 1: Carlos Andrada en Casa (Zona Segura)",
+            "title": "Escenario 1: Eduardo Andrada en Casa (Zona Segura)",
             "telemetry": {
                 "user_id": "carlos_andrada",
-                "user_name": "Carlos Andrada",
-                "latitude": -34.603750,
-                "longitude": -58.381580,
+                "user_name": "Eduardo Andrada",
+                "latitude": -28.469570,
+                "longitude": -65.785240,
                 "speed_kmh": 0.0,
                 "battery_level": 92,
                 "is_shutdown_event": False,
@@ -33,12 +33,12 @@ def run_simulation():
             }
         },
         {
-            "title": "Escenario 2: Lucía Andrada circulando a 52 km/h (Normal)",
+            "title": "Escenario 2: Maira Deldado circulando a 52 km/h (Normal en la zona)",
             "telemetry": {
                 "user_id": "lucia_andrada",
-                "user_name": "Lucía Andrada",
-                "latitude": -34.605000,
-                "longitude": -58.380000,
+                "user_name": "Maira Deldado",
+                "latitude": -28.469000,
+                "longitude": -65.784000,
                 "speed_kmh": 52.0,
                 "battery_level": 78,
                 "is_shutdown_event": False,
@@ -46,12 +46,12 @@ def run_simulation():
             }
         },
         {
-            "title": "Escenario 3: Lucía Andrada sufre Impacto / Colisión (Desaceleración brusca 52 -> 0 km/h y 4.8G)",
+            "title": "Escenario 3: Maira Deldado sufre Impacto / Colisión (Desaceleración brusca 52 -> 0 km/h y 4.8G)",
             "telemetry": {
                 "user_id": "lucia_andrada",
-                "user_name": "Lucía Andrada",
-                "latitude": -34.605050,
-                "longitude": -58.380020,
+                "user_name": "Maira Deldado",
+                "latitude": -28.469050,
+                "longitude": -65.784020,
                 "speed_kmh": 0.0,
                 "accelerometer_max_g": 4.8,
                 "battery_level": 77,
@@ -60,12 +60,12 @@ def run_simulation():
             }
         },
         {
-            "title": "Escenario 4: Mateo Andrada - Desvío Atípico de Ruta (> 2.8 km de Zonas Seguras)",
+            "title": "Escenario 4: Jere Andrada - Desvío Atípico de Ruta (> 7.5 km de Zonas Seguras)",
             "telemetry": {
                 "user_id": "mateo_andrada",
-                "user_name": "Mateo Andrada",
-                "latitude": -34.630000,
-                "longitude": -58.420000,
+                "user_name": "Jere Andrada",
+                "latitude": -28.520000,
+                "longitude": -65.850000,
                 "speed_kmh": 18.0,
                 "battery_level": 45,
                 "is_shutdown_event": False,
@@ -73,12 +73,12 @@ def run_simulation():
             }
         },
         {
-            "title": "Escenario 5: Sofía Andrada - Batería Crítica (2%) y Apagado Inminente (ACTION_SHUTDOWN)",
+            "title": "Escenario 5: Josefina Andrada - Batería Crítica (2%) y Apagado Inminente (ACTION_SHUTDOWN)",
             "telemetry": {
                 "user_id": "sofia_andrada",
-                "user_name": "Sofía Andrada",
-                "latitude": -34.608600,
-                "longitude": -58.374900,
+                "user_name": "Josefina Andrada",
+                "latitude": -28.459400,
+                "longitude": -65.789100,
                 "speed_kmh": 0.0,
                 "battery_level": 2,
                 "is_shutdown_event": True,
@@ -86,12 +86,12 @@ def run_simulation():
             }
         },
         {
-            "title": "Escenario 6: Carlos Andrada - Activación de Código PIN de Coacción ('9999')",
+            "title": "Escenario 6: Eduardo Andrada - Activación de Código PIN de Coacción ('9999')",
             "telemetry": {
                 "user_id": "carlos_andrada",
-                "user_name": "Carlos Andrada",
-                "latitude": -34.603750,
-                "longitude": -58.381580,
+                "user_name": "Eduardo Andrada",
+                "latitude": -28.469570,
+                "longitude": -65.785240,
                 "speed_kmh": 0.0,
                 "battery_level": 88,
                 "is_duress_panic": True,
@@ -99,12 +99,12 @@ def run_simulation():
             }
         },
         {
-            "title": "Escenario 7: Protocolo Antifraude - Llamada falsa pidiendo dinero por Mateo Andrada",
+            "title": "Escenario 7: Protocolo Antifraude - Llamada falsa pidiendo dinero por Jere Andrada",
             "telemetry": {
                 "user_id": "mateo_andrada",
-                "user_name": "Mateo Andrada",
-                "latitude": -34.608500,
-                "longitude": -58.375000,
+                "user_name": "Jere Andrada",
+                "latitude": -28.463200,
+                "longitude": -65.781100,
                 "speed_kmh": 0.0,
                 "battery_level": 74,
                 "timestamp": time.time() * 1000
@@ -114,9 +114,9 @@ def run_simulation():
             "title": "Escenario 8: Edge AI - Arrebato en Carrera y Despojo Violento (Snatch Detection)",
             "telemetry": {
                 "user_id": "lucia_andrada",
-                "user_name": "Lucía Andrada",
-                "latitude": -34.606200,
-                "longitude": -58.379500,
+                "user_name": "Maira Deldado",
+                "latitude": -28.476500,
+                "longitude": -65.771200,
                 "speed_kmh": 14.2,
                 "battery_level": 82,
                 "accelerometer_max_g": 4.6,
@@ -129,9 +129,9 @@ def run_simulation():
             "title": "Escenario 9: Conectividad Satelital Direct-to-Cell - Último Pulso de Socorro",
             "telemetry": {
                 "user_id": "carlos_andrada",
-                "user_name": "Carlos Andrada",
-                "latitude": -34.595000,
-                "longitude": -58.410000,
+                "user_name": "Eduardo Andrada",
+                "latitude": -28.469570,
+                "longitude": -65.785240,
                 "speed_kmh": 0.0,
                 "battery_level": 18,
                 "is_satellite_pulse": True,
@@ -142,9 +142,9 @@ def run_simulation():
             "title": "Escenario 10: Temporizador Acompáñame (Safe Walk) Expirado sin confirmación de llegada",
             "telemetry": {
                 "user_id": "mateo_andrada",
-                "user_name": "Mateo Andrada",
-                "latitude": -34.608500,
-                "longitude": -58.375000,
+                "user_name": "Jere Andrada",
+                "latitude": -28.463200,
+                "longitude": -65.781100,
                 "speed_kmh": 0.0,
                 "battery_level": 55,
                 "is_safe_walk_expired": True,
@@ -155,9 +155,9 @@ def run_simulation():
             "title": "Escenario 11: Alerta de Telemetría - Batería Baja al 12% (Aviso preventivo)",
             "telemetry": {
                 "user_id": "sofia_andrada",
-                "user_name": "Sofía Andrada",
-                "latitude": -34.599000,
-                "longitude": -58.390000,
+                "user_name": "Josefina Andrada",
+                "latitude": -28.459400,
+                "longitude": -65.789100,
                 "speed_kmh": 0.0,
                 "battery_level": 12,
                 "timestamp": time.time() * 1000
@@ -167,9 +167,9 @@ def run_simulation():
             "title": "Escenario 12: Seguridad Vial - Exceso de Velocidad a 135 km/h",
             "telemetry": {
                 "user_id": "lucia_andrada",
-                "user_name": "Lucía Andrada",
-                "latitude": -34.620000,
-                "longitude": -58.400000,
+                "user_name": "Maira Deldado",
+                "latitude": -28.476500,
+                "longitude": -65.771200,
                 "speed_kmh": 135.0,
                 "battery_level": 80,
                 "timestamp": time.time() * 1000
