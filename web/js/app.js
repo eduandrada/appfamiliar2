@@ -2050,6 +2050,204 @@ function sendTextToCameraVoice() {
   });
 }
 
+// ==============================================================================
+// GESTIÓN DE CÁMARAS: ESCÁNER QR, PREVENCIÓN DE DUPLICADOS & STREAM EN VIVO
+// ==============================================================================
+
+let installedCamerasList = [
+  { id: 'cam_01', name: 'Cámara Entrada Principal', location: 'Puerta Principal Av 27', ip_address: '192.168.1.101', stream_url: 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80', has_alarm: true, has_sound: true },
+  { id: 'cam_02', name: 'Cámara Patio Trasero', location: 'Jardín y Garaje', ip_address: '192.168.1.102', stream_url: 'https://images.unsplash.com/photo-1580894732444-8ecded7900cd?auto=format&fit=crop&w=800&q=80', has_alarm: true, has_sound: true }
+];
+
+let qrCameraStreamTrack = null;
+
+function openAddCameraModal() {
+  const modal = document.getElementById('addCameraModal');
+  if (modal) modal.classList.remove('hidden');
+  const notice = document.getElementById('qrDuplicateNotice');
+  if (notice) notice.classList.add('hidden');
+}
+
+function closeAddCameraModal() {
+  stopCameraQrScan();
+  const modal = document.getElementById('addCameraModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function startCameraQrScan() {
+  const videoEl = document.getElementById('qrCameraStream');
+  const placeholder = document.getElementById('qrPlaceholder');
+  const btn = document.getElementById('btnStartQrScan');
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    if (typeof showModernToast === 'function') {
+      showModernToast('No Soportado', 'Tu navegador o dispositivo no permite acceso a la cámara.', 'warning');
+    } else {
+      alert('Tu dispositivo no permite acceso a la cámara.');
+    }
+    return;
+  }
+
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+    .then(stream => {
+      qrCameraStreamTrack = stream;
+      if (videoEl) {
+        videoEl.srcObject = stream;
+        videoEl.classList.remove('hidden');
+      }
+      if (placeholder) placeholder.classList.add('hidden');
+      if (btn) btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Escaneando QR...';
+      if (typeof showModernToast === 'function') {
+        showModernToast('📷 Cámara Activa', 'Apunta al código QR de la cámara de seguridad.', 'info');
+      }
+    })
+    .catch(err => {
+      console.warn('Error al solicitar permiso de cámara:', err);
+      alert('Permiso de cámara denegado o no disponible en tu navegador/celular.');
+    });
+}
+
+function stopCameraQrScan() {
+  if (qrCameraStreamTrack) {
+    qrCameraStreamTrack.getTracks().forEach(t => t.stop());
+    qrCameraStreamTrack = null;
+  }
+  const videoEl = document.getElementById('qrCameraStream');
+  const placeholder = document.getElementById('qrPlaceholder');
+  const btn = document.getElementById('btnStartQrScan');
+
+  if (videoEl) {
+    videoEl.pause();
+    videoEl.srcObject = null;
+    videoEl.classList.add('hidden');
+  }
+  if (placeholder) placeholder.classList.remove('hidden');
+  if (btn) btn.innerHTML = '<i class="fa-solid fa-camera"></i> Iniciar Escáner QR (Pedir Permiso)';
+}
+
+function simulateQrScanSuccess() {
+  const sampleCams = [
+    { id: 'cam_01', name: 'Cámara Entrada Principal', location: 'Puerta Principal', ip_address: '192.168.1.101' },
+    { id: 'cam_03', name: 'Cámara Frente / Calle', location: 'Fachada Av. 27', ip_address: '192.168.1.103' },
+    { id: 'cam_04', name: 'Cámara Garaje', location: 'Entrada Vehicular', ip_address: '192.168.1.104' }
+  ];
+  const selected = sampleCams[Math.floor(Math.random() * sampleCams.length)];
+  processScannedCamera(selected);
+}
+
+function processScannedCamera(camData) {
+  // COMPROBACIÓN DE DUPLICADO (SI YA ESTÁ AGREGADA)
+  const existing = installedCamerasList.find(c => c.id === camData.id || c.ip_address === camData.ip_address);
+  
+  if (existing) {
+    const notice = document.getElementById('qrDuplicateNotice');
+    const text = document.getElementById('qrDuplicateText');
+    if (notice && text) {
+      text.textContent = `⚠️ La "${existing.name}" (IP: ${existing.ip_address}) YA ESTÁ INSTALADA en la app. Se instala una sola vez y no se vuelve a buscar. Si el Administrador la elimina por error, la volverá a detectar.`;
+      notice.classList.remove('hidden');
+    }
+    if (typeof showToastAlert === 'function') {
+      showToastAlert(`⚠️ La cámara "${existing.name}" ya está instalada en la app.`);
+    } else {
+      alert(`⚠️ La cámara "${existing.name}" ya está instalada. No es necesario volver a buscarla.`);
+    }
+    return;
+  }
+
+  // SI NO ESTÁ INSTALADA (NUEVA O RE-ESCANEO TRAS ELIMINACIÓN)
+  const newCam = {
+    id: camData.id || `cam_${Date.now()}`,
+    name: camData.name || 'Cámara Seguridad QR',
+    location: camData.location || 'Acceso Exterior',
+    ip_address: camData.ip_address || '192.168.1.105',
+    stream_url: camData.stream_url || 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80',
+    has_alarm: true,
+    has_sound: true
+  };
+
+  installedCamerasList.push(newCam);
+  stopCameraQrScan();
+  closeAddCameraModal();
+  renderCamerasGrid();
+
+  if (typeof showToastAlert === 'function') {
+    showToastAlert(`✅ Cámara "${newCam.name}" vinculada e instalada con éxito en la App`);
+  } else {
+    alert(`✅ Cámara "${newCam.name}" vinculada e instalada con éxito en la App.`);
+  }
+}
+
+function submitManualCameraAdd() {
+  const nameInput = document.getElementById('manualCamName');
+  const ipInput = document.getElementById('manualCamIp');
+
+  const name = nameInput ? nameInput.value.trim() : '';
+  const ip = ipInput ? ipInput.value.trim() : '';
+
+  if (!name || !ip) {
+    alert('Por favor ingresa un nombre y la dirección IP/URL de la cámara.');
+    return;
+  }
+
+  processScannedCamera({
+    id: `cam_${ip.replace(/[^a-zA-Z0-9]/g, '_')}`,
+    name: name,
+    location: 'Configuración Manual',
+    ip_address: ip
+  });
+}
+
+function deleteCameraByAdmin(camId) {
+  if (!confirm('¿Estás seguro de eliminar esta cámara? Podrás volver a escanear su código QR para reinstalarla cuando quieras.')) return;
+
+  installedCamerasList = installedCamerasList.filter(c => c.id !== camId);
+  renderCamerasGrid();
+  if (typeof showToastAlert === 'function') {
+    showToastAlert('🗑️ Cámara eliminada. Ahora puede volver a ser detectada por escáner QR.');
+  } else {
+    alert('🗑️ Cámara eliminada. Ahora puede volver a ser detectada por escáner QR.');
+  }
+}
+
+function renderCamerasGrid() {
+  const grid = document.getElementById('camerasGrid');
+  const countText = document.getElementById('camCountText');
+  if (countText) countText.textContent = `${installedCamerasList.length} / 6 Cámaras Conectadas`;
+
+  if (!grid) return;
+
+  if (installedCamerasList.length === 0) {
+    grid.innerHTML = '<div style="font-size: 12px; color: #94A3B8; text-align: center; grid-column: 1 / -1; padding: 20px;">No hay cámaras vinculadas. Haz clic en "Vincular Cámara (QR/IP)" para escanear.</div>';
+    return;
+  }
+
+  grid.innerHTML = installedCamerasList.map(cam => `
+    <div class="glass-card camera-card" style="padding: 12px; margin-bottom: 10px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <strong style="font-size: 13px; color: #fff;"><i class="fa-solid fa-video" style="color: #06B6D4;"></i> ${cam.name}</strong>
+        <span class="badge-tag" style="background: rgba(16, 185, 129, 0.2); color: #10B981; font-size: 10px;">🟢 En Vivo</span>
+      </div>
+      
+      <div style="position: relative; width: 100%; height: 160px; background: #000; border-radius: 10px; overflow: hidden; margin-bottom: 8px;">
+        <img src="${cam.stream_url}" style="width: 100%; height: 100%; object-fit: cover;" alt="${cam.name}">
+        <div style="position: absolute; bottom: 6px; left: 6px; background: rgba(0,0,0,0.6); color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 4px;">
+          📍 ${cam.location} (${cam.ip_address})
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 6px;">
+        <button class="btn-sm" style="flex: 2; background: linear-gradient(135deg, #0284C7, #06B6D4); color: #fff; border: none; padding: 8px; border-radius: 8px; font-weight: 800; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="openLiveCameraModal('${cam.id}')">
+          <i class="fa-solid fa-play"></i> Ver en Vivo (PC / Celular)
+        </button>
+        <button class="btn-sm" style="background: rgba(239, 68, 68, 0.15); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.4); padding: 8px 10px; border-radius: 8px; font-size: 11px; cursor: pointer;" onclick="deleteCameraByAdmin('${cam.id}')" title="Eliminar Cámara">
+          <i class="fa-solid fa-trash-can"></i>
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+
 function toggleCamFullscreen() {
   const img = document.getElementById('liveCamImageStream');
   if (!img) return;
@@ -6089,7 +6287,9 @@ function closeChatFloatingBanner() {
 document.addEventListener('DOMContentLoaded', () => {
   initBatteryMonitoring();
   initHighPrecisionGPS();
+  renderCamerasGrid();
 });
+
 
 
 
