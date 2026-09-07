@@ -1130,6 +1130,158 @@ def log_privacy_view(data: PrivacyLogInput):
         "entry": entry
     }
 
+# ==============================================================================
+# ENDPOINTS CHAT "BÚSCAME" & MAESTRO PYTHON INTELIGENTE 2026
+# ==============================================================================
+
+class ChatMessageInput(BaseModel):
+    sender_id: str
+    sender_name: str
+    text: str
+    msg_type: Optional[str] = "TEXT"
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+
+@app.get("/api/chat/messages")
+def get_chat_messages(limit: int = 50):
+    messages = DATA_STORE.get("chat_messages", [])
+    return {"messages": messages[-limit:]}
+
+@app.post("/api/chat/send")
+def send_chat_message(data: ChatMessageInput):
+    msg = {
+        "id": f"msg_{int(datetime.now().timestamp() * 1000)}",
+        "sender_id": data.sender_id,
+        "sender_name": data.sender_name,
+        "text": data.text,
+        "msg_type": data.msg_type,
+        "lat": data.lat,
+        "lng": data.lng,
+        "timestamp": datetime.now().strftime("%H:%M"),
+        "created_at": datetime.now().isoformat()
+    }
+    DATA_STORE.setdefault("chat_messages", []).append(msg)
+    save_data_store(DATA_STORE)
+    return {"status": "SUCCESS", "message": msg}
+
+class BotReplyInput(BaseModel):
+    user_id: str
+    user_name: str
+    text: str
+
+@app.post("/api/chat/bot_reply")
+def get_bot_reply(data: BotReplyInput):
+    query = data.text.lower().strip()
+    members = DATA_STORE.get("members", DEFAULT_MEMBERS)
+    reply_text = ""
+    
+    # 1. Búsqueda de ubicación de familiares
+    found_member = None
+    for m in members:
+        if m.get("name", "").lower() in query or m.get("nickname", "").lower() in query or m.get("id", "").lower() in query:
+            found_member = m
+            break
+
+    if "donde" in query or "dónde" in query or "ubicacion" in query or "ubicación" in query:
+        if found_member:
+            reply_text = f"📍 {found_member['name']} ({found_member.get('nickname','Familia')}) está en: {found_member.get('zone','Ubicación activa')}. Batería: {found_member.get('battery',100)}% 🔋. Velocidad: {found_member.get('speed',0)} km/h."
+        else:
+            locations = [f"{m['name']}: {m.get('zone','En línea')}" for m in members]
+            reply_text = "📍 Ubicación actual del grupo familiar:\n• " + "\n• ".join(locations)
+            
+    # 2. Consulta sobre Batería
+    elif "bateria" in query or "batería" in query or "carga" in query:
+        if found_member:
+            reply_text = f"🔋 La batería de {found_member['name']} es del {found_member.get('battery',100)}%."
+        else:
+            bat_status = [f"{m['name']}: {m.get('battery',100)}% 🔋" for m in members]
+            reply_text = "🔋 Estado de Baterías de la Familia:\n• " + "\n• ".join(bat_status)
+
+    # 3. Ayuda de Emergencia / SOS
+    elif "sos" in query or "emergencia" in query or "ayuda" in query or "panico" in query or "pánico" in query:
+        reply_text = f"🚨 Modo Alerta Activado para {data.user_name}. Presiona el Botón SOS gigante o usa las opciones de envío directo a WhatsApp para notificar a tus contactos de confianza de inmediato."
+
+    # 4. Tráfico / Operativos / Accidentes
+    elif "trafico" in query or "tráfico" in query or "policia" in query or "policía" in query or "accidente" in query or "control" in query:
+        reports = DATA_STORE.get("traffic_reports", [])
+        if reports:
+            latest = reports[-3:]
+            rep_str = [f"• [{r.get('type','ALERTA')}] {r.get('description','Incidente')} en ({r.get('lat')}, {r.get('lng')})" for r in latest]
+            reply_text = "🚦 Novedades de Tráfico / Operativos Policiales recientes:\n" + "\n".join(rep_str)
+        else:
+            reply_text = "🟢 No hay reportes de operativos policiales ni accidentes registrados en este momento. Las calles están despejadas."
+
+    # 5. Saludo y Respuesta General
+    elif "hola" in query or "buenas" in query or "como estas" in query or "cómo estás" in query:
+        reply_text = f"¡Hola {data.user_name}! 👋 Soy el Asistente Python de Protección de la Familia Andrada. Estoy monitoreando la seguridad, baterías y ubicaciones en tiempo real. ¿En qué puedo ayudarte?"
+
+    else:
+        reply_text = f"Entendido, {data.user_name}. He registrado tu mensaje en la red familiar Andrada. Si necesitas saber dónde está alguien, su batería o enviar un auxilio, dime."
+
+    bot_msg = {
+        "id": f"msg_bot_{int(datetime.now().timestamp() * 1000)}",
+        "sender_id": "python_bot",
+        "sender_name": "🤖 Asistente Búscame AI",
+        "text": reply_text,
+        "msg_type": "BOT",
+        "timestamp": datetime.now().strftime("%H:%M"),
+        "created_at": datetime.now().isoformat()
+    }
+    DATA_STORE.setdefault("chat_messages", []).append(bot_msg)
+    save_data_store(DATA_STORE)
+    return {"status": "SUCCESS", "message": bot_msg}
+
+# ==============================================================================
+# ENDPOINTS REPORTES DE TRÁFICO, OPERATIVOS POLICIALES & ACCIDENTES
+# ==============================================================================
+
+class TrafficReportInput(BaseModel):
+    report_type: str  # POLICE_CHECKPOINT, ACCIDENT, HAZARD
+    lat: float
+    lng: float
+    description: str
+    reporter_id: Optional[str] = "user"
+    reporter_name: Optional[str] = "Familia Andrada"
+
+@app.get("/api/reports")
+def get_traffic_reports():
+    reports = DATA_STORE.get("traffic_reports", [])
+    return {"reports": reports}
+
+@app.post("/api/reports/create")
+def create_traffic_report(data: TrafficReportInput):
+    report = {
+        "id": f"rep_{int(datetime.now().timestamp() * 1000)}",
+        "type": data.report_type,
+        "lat": data.lat,
+        "lng": data.lng,
+        "description": data.description,
+        "reporter_id": data.reporter_id,
+        "reporter_name": data.reporter_name,
+        "timestamp": datetime.now().strftime("%H:%M"),
+        "created_at": datetime.now().isoformat()
+    }
+    DATA_STORE.setdefault("traffic_reports", []).append(report)
+    save_data_store(DATA_STORE)
+    
+    # Publicar también una alerta en el chat automático
+    type_label = "🚨 Operativo Policial" if data.report_type == "POLICE_CHECKPOINT" else "💥 Accidente / Incidente Vial"
+    chat_alert = {
+        "id": f"msg_report_{int(datetime.now().timestamp() * 1000)}",
+        "sender_id": data.reporter_id,
+        "sender_name": data.reporter_name,
+        "text": f"⚠️ ALERTA DE TRÁFICO: {type_label} reportado en ({round(data.lat, 5)}, {round(data.lng, 5)}): {data.description}",
+        "msg_type": "TRAFFIC_ALERT",
+        "lat": data.lat,
+        "lng": data.lng,
+        "timestamp": datetime.now().strftime("%H:%M"),
+        "created_at": datetime.now().isoformat()
+    }
+    DATA_STORE.setdefault("chat_messages", []).append(chat_alert)
+    save_data_store(DATA_STORE)
+    
+    return {"status": "SUCCESS", "report": report}
+
 @app.get("/")
 def read_root():
     index_file = os.path.join(WEB_DIR, "index.html")
@@ -1141,3 +1293,4 @@ if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
     print(f"Iniciando Servidor Web y API Python en http://0.0.0.0:{port}...")
     uvicorn.run("server:app", host="0.0.0.0", port=port, reload=False)
+

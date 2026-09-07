@@ -5613,6 +5613,288 @@ function selectMapMember(memberId) {
   }
 }
 
+// ==============================================================================
+// FUNCIONALIDADES VIVO 2026: BATERÍA REAL, GPS ALTA PRECISIÓN, MAPA GOOGLE & SOS
+// ==============================================================================
+
+function sendTelemetryUpdate() {
+  if (!currentUser) return;
+  fetch(`/api/members/${currentUser.id}/location`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      lat: currentUser.lat,
+      lng: currentUser.lng,
+      speed: currentUser.speed || 0,
+      battery: currentUser.battery || 100,
+      zone: currentUser.zone || 'Catamarca'
+    })
+  }).catch(err => console.warn('[Telemetría] Sync fallido:', err));
+}
+
+function initBatteryMonitoring() {
+  if ('getBattery' in navigator) {
+    navigator.getBattery().then(battery => {
+      const updateBattery = () => {
+        const level = Math.round(battery.level * 100);
+        console.log(`[Batería Real] Nivel detectado: ${level}% (Cargando: ${battery.charging})`);
+        if (currentUser) {
+          currentUser.battery = level;
+          const m = familyMembers.find(item => item.id === currentUser.id);
+          if (m) m.battery = level;
+        }
+        renderMemberChips();
+        renderFamilyDirectory();
+        sendTelemetryUpdate();
+      };
+      updateBattery();
+      battery.addEventListener('levelchange', updateBattery);
+      battery.addEventListener('chargingchange', updateBattery);
+    });
+  }
+}
+
+function initHighPrecisionGPS() {
+  if ('geolocation' in navigator) {
+    navigator.geolocation.watchPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        const speed = Math.round((position.coords.speed || 0) * 3.6);
+        console.log(`[GPS Vivo Presición] lat: ${lat}, lng: ${lng}, speed: ${speed} km/h`);
+        
+        if (currentUser) {
+          currentUser.lat = lat;
+          currentUser.lng = lng;
+          currentUser.speed = speed;
+          const m = familyMembers.find(item => item.id === currentUser.id);
+          if (m) {
+            m.lat = lat;
+            m.lng = lng;
+            m.speed = speed;
+          }
+        }
+        if (map && memberMarkers[currentUser?.id]) {
+          memberMarkers[currentUser.id].setLatLng([lat, lng]);
+        }
+        sendTelemetryUpdate();
+      },
+      (err) => console.warn('[GPS] Error:', err),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  }
+}
+
+function refreshMapLocation() {
+  const btn = document.getElementById('btnRefreshMap');
+  if (btn) btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Refrescando...';
+  
+  if ('geolocation' in navigator) {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        if (currentUser) {
+          currentUser.lat = lat;
+          currentUser.lng = lng;
+          const m = familyMembers.find(item => item.id === currentUser.id);
+          if (m) { m.lat = lat; m.lng = lng; }
+        }
+        if (map) {
+          map.setView([lat, lng], 16);
+          if (memberMarkers[currentUser?.id]) {
+            memberMarkers[currentUser.id].setLatLng([lat, lng]).openPopup();
+          }
+        }
+        if (btn) btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Refrescar';
+        if (typeof showToastAlert === 'function') {
+          showToastAlert('🗺️ Mapa y ubicación GPS actualizados con alta precisión');
+        }
+      },
+      (err) => {
+        if (btn) btn.innerHTML = '<i class="fa-solid fa-rotate-right"></i> Refrescar';
+        if (typeof showToastAlert === 'function') {
+          showToastAlert('⚠️ No se pudo obtener la ubicación GPS actual');
+        }
+      },
+      { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+    );
+  }
+}
+
+let googleTrafficLayer = null;
+let isTrafficActive = false;
+
+function toggleGoogleTrafficLayer() {
+  if (!map) return;
+  if (!googleTrafficLayer) {
+    googleTrafficLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=m,traffic&x={x}&y={y}&z={z}', {
+      maxZoom: 20,
+      attribution: 'Google Traffic'
+    });
+  }
+  if (isTrafficActive) {
+    map.removeLayer(googleTrafficLayer);
+    isTrafficActive = false;
+    if (typeof showToastAlert === 'function') showToastAlert('🚦 Capa de Tráfico Desactivada');
+  } else {
+    map.addLayer(googleTrafficLayer);
+    isTrafficActive = true;
+    if (typeof showToastAlert === 'function') showToastAlert('🚦 Tráfico en Vivo de Google Maps Activado');
+  }
+}
+
+let riskZonesLayerGroup = null;
+let isRiskZonesActive = false;
+
+function toggleRiskZonesLayer() {
+  if (!map) return;
+  if (!riskZonesLayerGroup) {
+    riskZonesLayerGroup = L.layerGroup();
+    const greenZone = L.circle([-28.469570, -65.785240], {
+      color: '#10B981', fillColor: '#10B981', fillOpacity: 0.25, radius: 400
+    }).bindPopup('🟢 <b>Zona Verde (Segura)</b>: Valle Chico Av 27');
+    const yellowZone = L.circle([-28.476500, -65.771200], {
+      color: '#F59E0B', fillColor: '#F59E0B', fillOpacity: 0.25, radius: 500
+    }).bindPopup('🟡 <b>Zona Amarilla (Precaución)</b>: La Chacarita');
+    const redZone = L.circle([-28.463200, -65.781100], {
+      color: '#EF4444', fillColor: '#EF4444', fillOpacity: 0.35, radius: 350
+    }).bindPopup('🔴 <b>Zona Roja (Alto Riesgo / Calor)</b>: Centro Catamarca');
+
+    riskZonesLayerGroup.addLayer(greenZone);
+    riskZonesLayerGroup.addLayer(yellowZone);
+    riskZonesLayerGroup.addLayer(redZone);
+  }
+
+  if (isRiskZonesActive) {
+    map.removeLayer(riskZonesLayerGroup);
+    isRiskZonesActive = false;
+    if (typeof showToastAlert === 'function') showToastAlert('🗺️ Capa de Zonas Desactivada');
+  } else {
+    map.addLayer(riskZonesLayerGroup);
+    isRiskZonesActive = true;
+    if (typeof showToastAlert === 'function') showToastAlert('🟢 🟡 🔴 Capas de Zonas Visibles en el Mapa');
+  }
+}
+
+function reportPoliceOperation() {
+  const lat = currentUser?.lat || -28.469570;
+  const lng = currentUser?.lng || -65.785240;
+  const desc = prompt("Descripción del Operativo Policial / Control:", "Control Policial en Av. Belgrano");
+  if (!desc) return;
+
+  if (map) {
+    L.marker([lat, lng], {
+      icon: L.divIcon({
+        className: 'police-marker',
+        html: `<div style="background:#6366F1; color:#fff; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; border:2px solid #fff; box-shadow:0 0 10px #6366F1;"><i class="fa-solid fa-shield-cat"></i></div>`
+      })
+    }).addTo(map).bindPopup(`🚨 <b>OPERATIVO POLICIAL</b><br>${desc}<br><small>Reportado por: ${currentUser?.name || 'Familia'}</small>`).openPopup();
+  }
+
+  fetch('/api/reports/create', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      report_type: 'POLICE_CHECKPOINT',
+      lat: lat,
+      lng: lng,
+      description: desc,
+      reporter_name: currentUser?.name || 'Familia Andrada'
+    })
+  }).catch(err => console.warn(err));
+
+  if (typeof showToastAlert === 'function') showToastAlert('🚨 Operativo Policial reportado y compartido');
+}
+
+function reportTrafficAccident() {
+  const lat = currentUser?.lat || -28.469570;
+  const lng = currentUser?.lng || -65.785240;
+  const desc = prompt("Descripción del Accidente / Incidente Vial:", "Colisión vehicular / Calle cortada");
+  if (!desc) return;
+
+  if (map) {
+    L.marker([lat, lng], {
+      icon: L.divIcon({
+        className: 'accident-marker',
+        html: `<div style="background:#EF4444; color:#fff; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; border:2px solid #fff; box-shadow:0 0 10px #EF4444;"><i class="fa-solid fa-car-burst"></i></div>`
+      })
+    }).addTo(map).bindPopup(`💥 <b>ACCIDENTE VIAL</b><br>${desc}<br><small>Reportado por: ${currentUser?.name || 'Familia'}</small>`).openPopup();
+  }
+
+  fetch('/api/reports/create', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      report_type: 'ACCIDENT',
+      lat: lat,
+      lng: lng,
+      description: desc,
+      reporter_name: currentUser?.name || 'Familia Andrada'
+    })
+  }).catch(err => console.warn(err));
+
+  if (typeof showToastAlert === 'function') showToastAlert('💥 Accidente reportado en el mapa en tiempo real');
+}
+
+function openSosEmergencyModal(member, lat, lng, batteryLevel) {
+  const modal = document.getElementById('sosEmergencyModal');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+  
+  const userElem = document.getElementById('sosModalUser');
+  if (userElem) userElem.textContent = `🚨 Alerta SOS: ${member.name} (${member.nickname || 'Familia'})`;
+  const coordsElem = document.getElementById('sosModalCoords');
+  if (coordsElem) coordsElem.textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+  const batElem = document.getElementById('sosModalBattery');
+  if (batElem) batElem.textContent = `🔋 Batería del dispositivo: ${batteryLevel}%`;
+
+  const phone = member.trusted_contact_phone || '+5493834017252';
+  const cleanPhone = phone.replace(/[^0-9]/g, '');
+  const msgText = encodeURIComponent(`🚨 ¡ALERTA DE EMERGENCIA SOS! ${member.name} solicita ayuda urgente en Catamarca. Ubicación en tiempo real: https://maps.google.com/?q=${lat},${lng} Batería: ${batteryLevel}%`);
+  
+  const waBtn = document.getElementById('sosModalWhatsappBtn');
+  if (waBtn) waBtn.href = `https://wa.me/${cleanPhone}?text=${msgText}`;
+
+  const smsBtn = document.getElementById('sosModalSmsBtn');
+  if (smsBtn) smsBtn.href = `sms:${cleanPhone}?body=${msgText}`;
+
+  // Grabación de 15s automática con la Caja Negra de Audio
+  if (window.blackBoxAudio) {
+    const statusText = document.getElementById('sosAudioStatus');
+    if (statusText) statusText.textContent = 'Grabando 15 segundos de audio ambiente...';
+    window.blackBoxAudio.startRecording();
+    setTimeout(() => {
+      if (statusText) statusText.textContent = '✅ Grabación de 15s lista para reproducir y compartir';
+      const player = document.getElementById('sosAudioPlayback');
+      if (player && window.blackBoxAudio.audioPlayer) {
+        player.src = window.blackBoxAudio.audioPlayer.src;
+        player.classList.remove('hidden');
+      }
+    }, 15500);
+  }
+
+  // Notificación nativa si es permitida
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification('🚨 ¡ALERTA DE EMERGENCIA SOS FAMILIAR!', {
+      body: `${member.name} ha emitido un pedido de auxilio urgente en Catamarca.`,
+      icon: 'icons/icon-192.png'
+    });
+  }
+}
+
+function closeSosEmergencyModal() {
+  const modal = document.getElementById('sosEmergencyModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+// Inicialización de escuchas al cargar
+document.addEventListener('DOMContentLoaded', () => {
+  initBatteryMonitoring();
+  initHighPrecisionGPS();
+});
+
+
 
 
 

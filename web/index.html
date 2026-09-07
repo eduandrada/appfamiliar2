@@ -93,6 +93,49 @@
   </div>
 </div>
 
+<!-- Modal de Emergencia SOS Extremo -->
+<div id="sosEmergencyModal" class="modal hidden" role="dialog" aria-modal="true" style="z-index: 99999;">
+  <div class="modal-content" style="border: 3px solid #EF4444; background: #0F172A; text-align: center; max-width: 420px; animation: pulseRed 1.5s infinite;">
+    <header class="modal-header" style="background: #DC2626; color: #fff; padding: 12px;">
+      <h2 style="margin:0; font-size:18px; font-weight:900;"><i class="fa-solid fa-triangle-exclamation"></i> ¡ALERTA SOS EN CURSO!</h2>
+      <button class="close-btn" onclick="closeSosEmergencyModal()" style="color:#fff;">✖</button>
+    </header>
+    <div style="padding: 16px;">
+      <div style="font-size: 40px; color: #EF4444; margin-bottom: 8px;">
+        <i class="fa-solid fa-bell-concierge fa-bounce"></i>
+      </div>
+      <h3 id="sosModalUser" style="color: #fff; font-size: 16px; margin-bottom: 4px;">Alerta de Emergencia Emitida</h3>
+      <p id="sosModalDetails" style="color: #94A3B8; font-size: 12px; margin-bottom: 12px;">Ubicación GPS transmitida a la red familiar y contacto de confianza.</p>
+
+      <div style="background: rgba(239,68,68,0.15); border: 1px dashed #EF4444; border-radius: 8px; padding: 10px; margin-bottom: 12px;">
+        <div style="font-size: 11px; color: #FCA5A5; font-weight: 700;">UBICACIÓN EXACTA CATAMARCA:</div>
+        <div id="sosModalCoords" style="font-family: monospace; font-size: 13px; color: #fff; margin-top: 2px;">-28.469570, -65.785240</div>
+        <div id="sosModalBattery" style="font-size: 11px; color: #10B981; margin-top: 4px;">🔋 Batería del dispositivo: --%</div>
+      </div>
+
+      <!-- Grabación de 15s de Audio -->
+      <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-bottom: 12px;">
+        <div style="font-size: 11px; color: #CBD5E1; margin-bottom: 6px;"><i class="fa-solid fa-microphone-lines" style="color: #EF4444;"></i> Caja Negra (Grabación Automática 15s):</div>
+        <audio id="sosAudioPlayback" controls style="width: 100%; height: 32px;" class="hidden"></audio>
+        <div id="sosAudioStatus" style="font-size: 10px; color: #38BDF8; font-style: italic;">Grabando audio ambiente de 15 segundos...</div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <a id="sosModalWhatsappBtn" href="#" target="_blank" class="btn-mobile-submit" style="background: #25D366; color: #000; font-weight: 900; text-decoration: none; font-size: 13px; margin:0; padding: 10px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <i class="fa-brands fa-whatsapp" style="font-size: 18px;"></i> Abrir Mensaje en WhatsApp
+        </a>
+        <a id="sosModalSmsBtn" href="#" class="btn-mobile-submit" style="background: #0284C7; color: #fff; text-decoration: none; font-size: 12px; margin:0; padding: 8px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+          <i class="fa-solid fa-comment-sms"></i> Enviar SMS Contingencia (Sin Datos)
+        </a>
+        <button onclick="closeSosEmergencyModal()" class="btn-mobile-submit" style="background: rgba(255,255,255,0.1); color: #94A3B8; font-size: 11px; margin:0; padding: 6px;">
+          Desactivar Alarma en Pantalla
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
     <!-- Barra de Estado de Voz (Visible mientras habla) -->
     <div id="voiceSpeechBar" class="voice-speech-bar hidden">
       <div class="voice-wave-anim">
@@ -152,8 +195,27 @@
             </div>
           </div>
 
+          <!-- BARRA DE CONTROLES DEL MAPA GOOGLE STYLE & REPORTES -->
+          <div class="map-controls-toolbar" style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 6px; scrollbar-width: none;">
+            <button class="btn-map-tool" id="btnRefreshMap" onclick="refreshMapLocation()" title="Refrescar Mapa y Ubicación" style="background: rgba(16, 185, 129, 0.2); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 8px; padding: 6px 10px; font-size: 11px; font-weight: 700; white-space: nowrap; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+              <i class="fa-solid fa-rotate-right"></i> Refrescar
+            </button>
+            <button class="btn-map-tool" id="btnToggleTraffic" onclick="toggleGoogleTrafficLayer()" title="Activar/Desactivar Tráfico Google Maps" style="background: rgba(56, 189, 248, 0.2); color: #38BDF8; border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 8px; padding: 6px 10px; font-size: 11px; font-weight: 700; white-space: nowrap; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+              <i class="fa-solid fa-traffic-light"></i> Tráfico Google
+            </button>
+            <button class="btn-map-tool" id="btnToggleZones" onclick="toggleRiskZonesLayer()" title="Ver Zonas Seguras / Precaución / Peligro" style="background: rgba(245, 158, 11, 0.2); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 8px; padding: 6px 10px; font-size: 11px; font-weight: 700; white-space: nowrap; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+              <i class="fa-solid fa-layer-group"></i> Capa Zonas
+            </button>
+            <button class="btn-map-tool" onclick="reportPoliceOperation()" title="Reportar Operativo Policial" style="background: rgba(99, 102, 241, 0.2); color: #818CF8; border: 1px solid rgba(99, 102, 241, 0.4); border-radius: 8px; padding: 6px 10px; font-size: 11px; font-weight: 700; white-space: nowrap; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+              <i class="fa-solid fa-shield-cat"></i> Operativo Policial
+            </button>
+            <button class="btn-map-tool" onclick="reportTrafficAccident()" title="Reportar Accidente o Incidente" style="background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 8px; padding: 6px 10px; font-size: 11px; font-weight: 700; white-space: nowrap; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+              <i class="fa-solid fa-car-burst"></i> Accidente
+            </button>
+          </div>
+
           <!-- Contenedor del Mapa Leaflet -->
-          <div class="mobile-map-container" style="min-height: 260px; height: 260px; flex: none;">
+          <div class="mobile-map-container" style="min-height: 280px; height: 280px; flex: none; position: relative;">
             <div id="familyMap" class="map-surface"></div>
             
             <div class="map-floating-status">
@@ -161,10 +223,16 @@
               <span id="mapStatusText">Rastreo Activo en Tiempo Real</span>
             </div>
 
-            <button class="btn-floating-center" onclick="centerMapOnFamily()" title="Centrar Mapa">
+            <button class="btn-floating-center" onclick="centerMapOnFamily()" title="Centrar Mapa" style="bottom: 12px; right: 12px;">
               <i class="fa-solid fa-crosshairs"></i>
             </button>
+
+            <!-- Botón de Refrescar Mapa Flotante en el propio mapa -->
+            <button class="btn-floating-refresh" onclick="refreshMapLocation()" title="Refrescar Mapa Ahora" style="position: absolute; top: 12px; right: 12px; z-index: 1000; background: #0F172A; color: #10B981; border: 1px solid #10B981; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+              <i class="fa-solid fa-rotate-right"></i>
+            </button>
           </div>
+
 
           <!-- Disparadores rápidos de simulación -->
           <div class="quick-simulation-drawer" style="margin-top: 8px;">
