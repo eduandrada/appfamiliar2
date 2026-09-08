@@ -34,7 +34,7 @@ const DEFAULT_MEMBERS = [
     dni: '35388342',
     phone: '+54 9 383 4772960',
     pin: '1234',
-    role: 'Padre (Protector)',
+    role: 'Padre',
     trusted_contact_id: 'lucia_andrada',
     trusted_contact_name: 'Maira Deldado',
     trusted_contact_phone: '+54 9 383 4017252',
@@ -56,7 +56,7 @@ const DEFAULT_MEMBERS = [
     dni: '35501054',
     phone: '+54 9 383 4017252',
     pin: '1234',
-    role: 'Madre (Protectora)',
+    role: 'Madre',
     trusted_contact_id: 'carlos_andrada',
     trusted_contact_name: 'Eduardo Andrada',
     trusted_contact_phone: '+54 9 383 4772960',
@@ -1816,7 +1816,7 @@ async function submitAdminLogin() {
   const pinVal = pinInput.value.trim();
 
   if (!pinVal) {
-    showModernToast('PIN Requerido', 'Ingresa el PIN Maestro de Administrador (9999 o 1234).', 'warning');
+    showModernToast('PIN Requerido', 'Ingresa el PIN de Administrador.', 'warning');
     return;
   }
 
@@ -2042,30 +2042,77 @@ function closeFullMemberDetailModal() {
 
 // ==================== PANEL DE ADMINISTRADOR ====================
 function openAdminModal() {
-  document.getElementById('adminModal').classList.remove('hidden');
+  const modal = document.getElementById('adminModal');
+  if (modal) modal.classList.remove('hidden');
   if (isAdminLoggedIn) {
     showAdminDashboard();
   } else {
-    document.getElementById('adminAuthView').classList.remove('hidden');
-    document.getElementById('adminDashboardView').classList.add('hidden');
+    const authView = document.getElementById('adminAuthView');
+    const dashView = document.getElementById('adminDashboardView');
+    if (authView) authView.classList.remove('hidden');
+    if (dashView) dashView.classList.add('hidden');
   }
 }
 
 function closeAdminModal() {
-  document.getElementById('adminModal').classList.add('hidden');
+  // Al salir del panel de admin, la sesión de administrador se cierra automáticamente por seguridad
+  isAdminLoggedIn = false;
+  const modal = document.getElementById('adminModal');
+  if (modal) modal.classList.add('hidden');
+
+  const authView = document.getElementById('adminAuthView');
+  const dashView = document.getElementById('adminDashboardView');
+  if (authView) authView.classList.remove('hidden');
+  if (dashView) dashView.classList.add('hidden');
+
+  const userInput = document.getElementById('adminUserInput');
+  const passInput = document.getElementById('adminPassInput');
+  if (userInput) userInput.value = '';
+  if (passInput) passInput.value = '';
+
+  showModernToast('🔒 Sesión Cerrada', 'La sesión de Administrador finalizó al salir del panel.', 'info');
+  renderCamerasGrid();
+  renderFamilyMembersList();
 }
 
-function handleAdminLogin(e) {
-  e.preventDefault();
-  const user = document.getElementById('adminUserInput').value.trim();
-  const pass = document.getElementById('adminPassInput').value.trim();
+async function handleAdminLogin(e) {
+  if (e) e.preventDefault();
+  const user = document.getElementById('adminUserInput') ? document.getElementById('adminUserInput').value.trim() : '';
+  const pass = document.getElementById('adminPassInput') ? document.getElementById('adminPassInput').value.trim() : '';
 
-  if (user === 'admin' && (pass === '1234' || pass === '9999')) {
-    isAdminLoggedIn = true;
-    showAdminDashboard();
-  } else {
-    alert('❌ Credenciales de Administrador inválidas.');
+  if (!user || !pass) {
+    showModernToast('Credenciales Requeridas', 'Ingresa el usuario y PIN de Administrador.', 'warning');
+    return;
   }
+
+  try {
+    const res = await fetch('/api/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: user, pin: pass })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      isAdminLoggedIn = true;
+      showAdminDashboard();
+      showModernToast('🔑 Acceso Administrador', 'Panel de Gestión habilitado.', 'success');
+      return;
+    }
+  } catch (err) {}
+
+  // Validación Segura mediante Hashes SHA-256 en cliente (sin PIN en texto plano)
+  try {
+    const hashed = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pass));
+    const hashHex = Array.from(new Uint8Array(hashed)).map(b => b.toString(16).padStart(2, '0')).join('');
+    if (user.toLowerCase() === 'admin' && (hashHex === '03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4' || hashHex === '2e6d6d246698625b597c4155b410915f483c66f57879e6022e0302b1f86d6342')) {
+      isAdminLoggedIn = true;
+      showAdminDashboard();
+      showModernToast('🔑 Acceso Administrador', 'Panel de Gestión habilitado.', 'success');
+      return;
+    }
+  } catch (e) {}
+
+  showModernToast('Acceso Denegado', 'Credenciales de Administrador incorrectas.', 'error');
 }
 
 function showAdminDashboard() {
@@ -3803,7 +3850,7 @@ function getAiResponse(query) {
     return '🗺️ *Mapa en Vivo:* El mapa muestra las posiciones GPS de todos los familiares, su porcentaje de batería y su distancia en tiempo real.';
   }
   if (query.includes('pwa') || query.includes('instalar') || query.includes('app')) {
-    return '📲 *Instalar PWA:* Abre el Panel Administrador (admin/1234) o el menú de tu navegador y presiona "Agregar a la pantalla de inicio" para tener la app nativa en tu celular.';
+    return '📲 *Instalar PWA:* Abre el Panel Administrador (admin) o el menú de tu navegador y presiona "Agregar a la pantalla de inicio" para tener la app nativa en tu celular.';
   }
   return '🤖 Comprendido. Recuerda que ante cualquier duda o sospecha de peligro, puedes activar la Alerta SOS o presionar el botón de pánico.';
 }

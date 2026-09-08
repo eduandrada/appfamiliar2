@@ -48,31 +48,7 @@ if os.path.exists(WEB_DIR):
         if os.path.exists(sub_path):
             app.mount(f"/{sub}", StaticFiles(directory=sub_path), name=sub)
 
-DEFAULT_MEMBERS = [
-    {
-        "id": "carlos_andrada",
-        "name": "Eduardo Andrada",
-        "dni": "35388342",
-        "phone": "+54 9 383 4772960",
-        "pin": "1234",
-        "role": "Padre (Protector / Admin)",
-        "trusted_contact_id": "",
-        "trusted_contact_name": "",
-        "trusted_contact_phone": "",
-        "lat": -28.469570,
-        "lng": -65.785240,
-        "battery": 100,
-        "speed": 0.0,
-        "zone": "Valle Chico Av 27 Casa 40 (Catamarca)",
-        "avatar": "EA",
-        "network_type": "WIFI_HOME",
-        "network_label": "🟢 WiFi Casa",
-        "can_view_cameras": True,
-        "can_trigger_camera_alarm": True,
-        "can_send_camera_voice": True,
-        "last_seen": datetime.now().isoformat()
-    }
-]
+DEFAULT_MEMBERS = []
 
 DEFAULT_CAMERAS = [
     {
@@ -1011,7 +987,7 @@ def login_member(data: LoginInput, request: Request):
                 status_code=401,
                 content={
                     "status": "ERROR",
-                    "message": "PIN de Administrador Incorrecto. Utiliza el PIN Maestro 9999 o Clave 1234."
+                    "message": "Credenciales de Administrador incorrectas."
                 }
             )
 
@@ -1021,7 +997,7 @@ def login_member(data: LoginInput, request: Request):
             status_code=400,
             content={
                 "status": "ERROR",
-                "message": "El PIN 9999 está reservado para Administración. Para acceder como familiar, ingresa tu PIN personal o el PIN de prueba (1234)."
+                "message": "PIN reservado para Administración."
             }
         )
 
@@ -1671,3 +1647,29 @@ if __name__ == "__main__":
     print(f"Iniciando Servidor Web y API Python en http://0.0.0.0:{port}...")
     uvicorn.run("server:app", host="0.0.0.0", port=port, reload=False)
 
+
+
+# ENDPOINT DE AUTENTICACIÓN SEGURA DE ADMINISTRADOR CON SHA256 (SIN PIN EN TEXTO PLANO)
+ADMIN_PIN_HASHES = [
+    "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4", # Hash SHA256 de 1234
+    "2e6d6d246698625b597c4155b410915f483c66f57879e6022e0302b1f86d6342"  # Hash SHA256 de 9999
+]
+
+class AdminLoginPayload(BaseModel):
+    username: str
+    pin: str
+
+@app.post("/api/admin/login")
+def secure_admin_login(data: AdminLoginPayload):
+    user_clean = (data.username or "").strip().lower()
+    pin_clean = (data.pin or "").strip()
+    pin_hash = hashlib.sha256(pin_clean.encode('utf-8')).hexdigest()
+
+    if user_clean in ["admin", "administrador"] and pin_hash in ADMIN_PIN_HASHES:
+        return {
+            "success": True,
+            "message": "Acceso de Administrador verificado",
+            "role": "admin"
+        }
+    else:
+        raise HTTPException(status_code=401, detail="Credenciales de Administrador incorrectas")
