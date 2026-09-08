@@ -81,7 +81,11 @@ function triggerUberRequest(customDestName = '') {
 
   window.open(uberUrl, '_blank');
 
-  sendMessageToPythonBot(`🚖 Solicitando Uber/Taxi hacia "${destName}" desde posición GPS (${lat.toFixed(5)}, ${lng.toFixed(5)}). Ver posición: ${mapsUrl}`);
+  sendMessageToPythonBot(`🚖 *SOLICITUD DE UBER / TAXI INSTANTÁNEO* 📍\n• Solicitado para: *${user.name}*\n• Ubicación de Recogida: ${mapsUrl}\n• Destino: *${destName}*\n📌 Solicitud lista en Uber: ${uberUrl}`);
+
+  if (typeof showModernToast === 'function') {
+    showModernToast('🚖 Solicitando Uber', `Abriendo Uber App con origen y destino (${destName}) precargados.`, 'success');
+  }
 }
 
 function sendPhoneQuickShare() {

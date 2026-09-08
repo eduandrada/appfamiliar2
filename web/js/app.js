@@ -712,6 +712,10 @@ function updateMapMarkers() {
       marker.on('click', () => selectMember(m.id));
       memberMarkers[m.id] = marker;
     }
+
+    if (window.activeSafeWalkTrackingMemberId && window.activeSafeWalkTrackingMemberId === m.id && map) {
+      map.panTo([m.lat, m.lng]);
+    }
   });
 
   // --- Limpiar marcadores de cámaras del mapa (las cámaras se gestionan exclusivamente en la pestaña Cámaras) ---
@@ -4608,9 +4612,14 @@ function selectSafeWalkDuration(minutes, btn) {
   if (btn) btn.classList.add('active');
 }
 
+window.activeSafeWalkTrackingMemberId = null;
+
 function startSafeWalkTimer() {
   const destInput = document.getElementById('safeWalkDestination');
-  const destination = (destInput && destInput.value.trim()) ? destInput.value.trim() : 'Facultad a Casa (20 min)';
+  const destination = (destInput && destInput.value.trim()) ? destInput.value.trim() : 'Casa Andrada';
+  const user = activeUser || (familyMembers && familyMembers.length > 0 ? familyMembers[0] : { name: 'Eduardo Andrada', id: 'carlos_andrada', lat: -28.46957, lng: -65.78524 });
+  const lat = user.lat || -28.46957;
+  const lng = user.lng || -65.78524;
   
   safeWalkSecondsRemaining = selectedSafeWalkMinutes * 60;
   
@@ -4634,6 +4643,54 @@ function startSafeWalkTimer() {
     }
   }, 1000);
   
+  // 1. Enviar mensaje automático al chat del grupo
+  const mapsUrl = `https://www.google.com/maps?q=${lat.toFixed(6)},${lng.toFixed(6)}`;
+  const chatMsg = `🚶‍♂️ *INICIO DE ACOMPÁÑAME (SAFE WALK)* 🛡️\n• Familiar: *${user.name}*\n• Tiempo Estimado: *${selectedSafeWalkMinutes} min*\n• Destino: *${destination}*\n📍 Ubicación GPS en tiempo real:\n${mapsUrl}`;
+  if (typeof sendMessageToPythonBot === 'function') {
+    sendMessageToPythonBot(chatMsg);
+  }
+
+  // 2. Seleccionar familiar y activar seguimiento en vivo en el mapa
+  window.activeSafeWalkTrackingMemberId = user.id;
+  if (typeof selectMember === 'function') selectMember(user.id);
+
+  // Coordenadas aproximadas según destino
+  let destLat = -28.46957;
+  let destLng = -65.78524;
+  const dLower = destination.toLowerCase();
+  if (dLower.includes('unca') || dLower.includes('facultad') || dLower.includes('trabajo')) {
+    destLat = -28.45940; destLng = -65.78910;
+  } else if (dLower.includes('colegio') || dLower.includes('escuela')) {
+    destLat = -28.46320; destLng = -65.78110;
+  }
+
+  if (map) {
+    map.flyTo([lat, lng], 17, { animate: true, duration: 1 });
+
+    if (window.safeWalkPolyline) map.removeLayer(window.safeWalkPolyline);
+    if (window.safeWalkDestCircle) map.removeLayer(window.safeWalkDestCircle);
+
+    window.safeWalkPolyline = L.polyline([[lat, lng], [destLat, destLng]], {
+      color: '#38BDF8',
+      weight: 4,
+      dashArray: '8, 12',
+      opacity: 0.9
+    }).addTo(map);
+
+    window.safeWalkDestCircle = L.circle([destLat, destLng], {
+      color: '#10B981',
+      fillColor: '#10B981',
+      fillOpacity: 0.3,
+      radius: 40,
+      weight: 2
+    }).addTo(map).bindPopup(`<strong>🏁 Destino Acompáñame:</strong> ${destination}`);
+  }
+
+  const mapStatusText = document.getElementById('mapStatusText');
+  if (mapStatusText) {
+    mapStatusText.innerHTML = `<strong style="color: #38BDF8;"><i class="fa-solid fa-person-walking"></i> Siguiendo Acompáñame: ${user.name.split(' ')[0]} (${selectedSafeWalkMinutes}m)</strong>`;
+  }
+
   notifyInPhone('🛡️ Acompáñame Iniciado', `Supervisando trayecto a: ${destination} (${selectedSafeWalkMinutes} min)`);
 }
 
@@ -4658,6 +4715,17 @@ function resetSafeWalkUI() {
   document.getElementById('safeWalkStatusBadge').textContent = 'Inactivo';
   document.getElementById('safeWalkStatusBadge').style.background = 'rgba(56, 189, 248, 0.15)';
   document.getElementById('safeWalkStatusBadge').style.color = 'var(--accent-cyan)';
+  
+  window.activeSafeWalkTrackingMemberId = null;
+  if (map) {
+    if (window.safeWalkPolyline) { try { map.removeLayer(window.safeWalkPolyline); } catch(e) {} window.safeWalkPolyline = null; }
+    if (window.safeWalkDestCircle) { try { map.removeLayer(window.safeWalkDestCircle); } catch(e) {} window.safeWalkDestCircle = null; }
+  }
+
+  const mapStatusText = document.getElementById('mapStatusText');
+  if (mapStatusText) {
+    mapStatusText.innerHTML = 'Rastreo Activo en Tiempo Real';
+  }
 }
 
 function openFinishSafeWalkModal() {
