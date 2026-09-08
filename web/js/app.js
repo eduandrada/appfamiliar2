@@ -5712,6 +5712,13 @@ function openLoginModal() {
   // Reset de estado y vista inicial
   switchLoginMode('member');
   clearLoginPin();
+
+  // Ocultar o mostrar botón de cierre si el usuario ya inició sesión
+  const closeBtn = modal.querySelector('.btn-sheet-close');
+  if (closeBtn) {
+    closeBtn.style.display = activeUser ? 'flex' : 'none';
+  }
+
   modal.classList.remove('hidden');
 
   // Habilitar captura de teclado físico (números 0-9 y backspace)
@@ -5786,6 +5793,13 @@ function pressLoginPin(digit) {
     if (pinInput) pinInput.value = loginEnteredPin;
     updateLoginPinDisplay();
     if (navigator.vibrate) navigator.vibrate(20);
+    if (loginEnteredPin.length === 4) {
+      setTimeout(() => {
+        if (loginEnteredPin.length === 4) {
+          submitStrictLoginPin();
+        }
+      }, 250);
+    }
   }
 }
 
