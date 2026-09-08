@@ -290,69 +290,6 @@ class LoginInput(BaseModel):
     battery: Optional[int] = None
     user_agent: Optional[str] = None
 
-@app.post("/api/login")
-def login_endpoint(data: LoginInput):
-    members = DATA_STORE.get("members", DEFAULT_MEMBERS)
-    if data.member_id.lower() in ["admin", "administrador", "carlos_andrada"] and data.pin in ["9999", "1234"]:
-        admin_member = next((m for m in members if m["id"] == "carlos_andrada"), members[0])
-        return {
-            "status": "SUCCESS",
-            "message": "Acceso concedido como Administrador",
-            "member": admin_member,
-            "session_token": f"admin_token_{int(datetime.now().timestamp())}"
-        }
-
-    target = next((m for m in members if m["id"] == data.member_id), None)
-    if not target:
-        raise HTTPException(status_code=404, detail="Familiar no encontrado")
-
-    expected_pin = target.get("pin", "1234")
-    if data.pin == expected_pin or data.pin == "1234" or data.pin == "9999":
-        if data.lat is not None: target["lat"] = data.lat
-        if data.lng is not None: target["lng"] = data.lng
-        if data.battery is not None: target["battery"] = data.battery
-        if data.real_ip: target["last_ip"] = data.real_ip
-        target["last_seen"] = datetime.now().isoformat()
-        save_data_store(DATA_STORE)
-        return {
-            "status": "SUCCESS",
-            "message": f"Bienvenid@ {target['name']}",
-            "member": target,
-            "session_token": f"token_{target['id']}_{int(datetime.now().timestamp())}"
-        }
-    
-    return JSONResponse(status_code=401, content={"status": "ERROR", "message": "PIN incorrecto"})
-
-class PinRecoverInput(BaseModel):
-    member_id: str
-    dni: str
-    new_pin: Optional[str] = None
-
-@app.post("/api/pin/recover")
-def recover_pin_endpoint(data: PinRecoverInput):
-    members = DATA_STORE.get("members", DEFAULT_MEMBERS)
-    target = next((m for m in members if m["id"] == data.member_id), None)
-    if not target:
-        raise HTTPException(status_code=404, detail="Familiar no encontrado")
-
-    clean_input_dni = data.dni.replace(".", "").replace("-", "").strip()
-    clean_target_dni = target.get("dni", "").replace(".", "").replace("-", "").strip()
-
-    if clean_input_dni and clean_target_dni and clean_input_dni == clean_target_dni:
-        if data.new_pin and len(data.new_pin) >= 4:
-            target["pin"] = data.new_pin
-            save_data_store(DATA_STORE)
-        
-        return {
-            "status": "SUCCESS",
-            "message": f"Identidad verificada exitosamente para {target['name']}.",
-            "pin": target.get("pin", "1234"),
-            "member": target
-        }
-    
-    return JSONResponse(status_code=400, content={"status": "ERROR", "message": "El número de DNI ingresado no coincide con los registros."})
-
-
 @app.get("/api/database/export")
 def export_database():
     return DATA_STORE

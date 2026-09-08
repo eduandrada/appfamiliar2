@@ -1045,22 +1045,7 @@ function handleSendCustomMessage(e) {
   }
 }
 
-function appendChatMessage(type, htmlContent) {
-  const container = document.getElementById('chatMessages');
-  if (!container) return;
 
-  const now = new Date();
-  const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-
-  const msgDiv = document.createElement('div');
-  msgDiv.className = `chat-msg msg-${type}`;
-  msgDiv.innerHTML = `${htmlContent} <span class="msg-time">${timeStr}</span>`;
-
-  container.appendChild(msgDiv);
-  setTimeout(() => {
-    container.scrollTop = container.scrollHeight;
-  }, 50);
-}
 
 // ==================== TAB 4: CÁMARAS DE SEGURIDAD ====================
 function startCameraClocks() {
@@ -3797,26 +3782,9 @@ function stopVoiceGuide() {
 }
 
 // ==================== ASISTENTE VIRTUAL ROBOT IA ====================
-function openAiAssistantModal() {
-  const modal = document.getElementById('aiAssistantModal');
-  if (!modal) return;
-  modal.classList.remove('hidden');
-  modal.style.display = 'flex';
 
-  const history = document.getElementById('chatHistory');
-  if (history && history.children.length === 0) {
-    if (typeof appendMessage === 'function') {
-      appendMessage('assistant', '🤖 ¡Hola! Soy el Asistente Virtual de la Familia Andrada. ¿En qué te puedo ayudar hoy? Puedes preguntarme sobre ubicaciones, baterías, cámaras de seguridad o ayuda SOS.');
-    }
-  }
-}
 
-function closeAiAssistantModal() {
-  const modal = document.getElementById('aiAssistantModal');
-  if (!modal) return;
-  modal.classList.add('hidden');
-  modal.style.display = 'none';
-}
+
 
 function sendMessage(e) {
   if (e && e.preventDefault) e.preventDefault();

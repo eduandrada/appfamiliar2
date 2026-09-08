@@ -2070,64 +2070,7 @@
   </div>
 
   <!-- MODAL DE EDICIÓN DE MIEMBRO Y CONFIGURACIÓN DE PERMISOS ADMIN -->
-  <div id="editMemberModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="editMemberModalTitle">
-    <div class="modal-card glass-card" style="max-width: 440px; width: 92%;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-        <h3 id="editMemberModalTitle" style="font-size: 16px; font-weight: 800; color: var(--accent-cyan); display: flex; align-items: center; gap: 8px; margin: 0;">
-          <i class="fa-solid fa-user-gear"></i> Editar Permisos de Miembro
-        </h3>
-        <button class="btn-sheet-close" onclick="closeEditModal()"><i class="fa-solid fa-xmark"></i></button>
-      </div>
-      <form id="editMemberForm" onsubmit="handleEditSubmit(event)">
-        <input type="hidden" id="editMemberId">
-        <div class="form-group">
-          <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Nombre Completo:</label>
-          <input type="text" id="editFullName" class="mobile-input" required>
-        </div>
-        <div class="form-group">
-          <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">DNI Oficial:</label>
-          <input type="text" id="editDni" class="mobile-input" required>
-        </div>
-        <div class="form-group">
-          <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Teléfono (WhatsApp):</label>
-          <input type="tel" id="editPhone" class="mobile-input" required>
-        </div>
-        <div class="form-group">
-          <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">⭐ Persona de Confianza Asignada:</label>
-          <select id="editTrustedMemberSelect" class="mobile-select"></select>
-        </div>
-        <div class="form-group">
-          <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">PIN de Acceso (4 a 5 números):</label>
-          <input type="password" id="editPin" class="mobile-input" placeholder="Dejar vacío para mantener actual" maxlength="5">
-        </div>
-
-        <!-- Sección de Permisos Granulares de Cámaras (Control Administrador) -->
-        <div style="background: rgba(0,0,0,0.35); border: 1px solid var(--border-glass); border-radius: 10px; padding: 10px 12px; margin-bottom: 14px;">
-          <div style="font-size: 12px; font-weight: 800; color: #F59E0B; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
-            <i class="fa-solid fa-shield-cat"></i> Permisos de Cámaras (Administrador):
-          </div>
-          <div style="display: flex; flex-direction: column; gap: 8px; font-size: 11px; color: #fff;">
-            <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
-              <span>👁️ Ver Cámaras en Vivo:</span>
-              <input type="checkbox" id="editPermViewCameras" checked style="accent-color: var(--accent-cyan); width: 18px; height: 18px;">
-            </label>
-            <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
-              <span>🚨 Activar Alarma de Cámaras:</span>
-              <input type="checkbox" id="editPermTriggerAlarm" checked style="accent-color: #EF4444; width: 18px; height: 18px;">
-            </label>
-            <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
-              <span>🎙️ Enviar Mensajes de Voz a Cámaras:</span>
-              <input type="checkbox" id="editPermSendVoice" checked style="accent-color: #10B981; width: 18px; height: 18px;">
-            </label>
-          </div>
-        </div>
-
-        <button type="submit" class="btn-mobile-submit" style="background: linear-gradient(135deg, #0284C7, #06B6D4); font-size: 13px; padding: 10px;">
-          <i class="fa-solid fa-floppy-disk"></i> Guardar Cambios y Permisos
-        </button>
-      </form>
-    </div>
-  </div>
+  
 
   <!-- MODAL DE REPRODUCTOR Y TRANSMISIÓN EN VIVO DE CÁMARA EN TIEMPO REAL -->
   <div id="cameraLiveModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="liveCamTitle">
@@ -2306,39 +2249,7 @@
   </div>
 
   <!-- MODAL DE IMPACTO Y ALERTA PÁNICO SOS / SIMULACRO (PC & MÓVIL) -->
-  <div id="sosAlertModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="sosModalTitle">
-    <div class="modal-card glass-card sos-modal-impact">
-      <div class="sos-modal-pulse-container">
-        <div class="sos-modal-pulse-ring"></div>
-        <div class="sos-modal-icon-box">
-          <i class="fa-solid fa-triangle-exclamation"></i>
-        </div>
-      </div>
-
-      <div class="sos-modal-badge" id="sosModalBadgeMode">🚨 MODO REAL</div>
-
-      <h2 id="sosModalTitle" class="sos-modal-title">¡ALERTA SOS ACTIVADA!</h2>
-      
-      <p id="sosModalDesc" class="sos-modal-desc">
-        Has oprimido el Botón de Pánico. Se transmitirá tu posición exacta y señal de ayuda a todos los familiares.
-      </p>
-
-      <div class="sos-modal-timer-wrap">
-        <span class="sos-timer-label">Cuenta Regresiva para Despacho:</span>
-        <div id="sosModalTimerDisplay" class="sos-timer-number">30s</div>
-      </div>
-
-      <div class="sos-modal-actions">
-        <button id="btnSosModalCancel" class="btn-sos-cancel-impact" onclick="cancelPanicCountdown()">
-          <i class="fa-solid fa-ban"></i> CANCELAR ALARMA SOS (ESC)
-        </button>
-
-        <button class="btn-sos-map-impact" onclick="closeSosAlertModalAndGoToMap()">
-          <i class="fa-solid fa-map-location-dot"></i> Ver Alerta en Mapa
-        </button>
-      </div>
-    </div>
-  </div>
+  
 
   <!-- MODAL DE DETECCIÓN DE CÁMARAS POR IP (LOCAL & ACCESO REMOTO 4G/5G) -->
   <div id="detectCameraModal" class="modal-overlay hidden" style="display: none; align-items: center; justify-content: center; z-index: 10000; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(8px);">
@@ -2378,48 +2289,7 @@
 
 
   <!-- MODAL RECUPERACIÓN DE PIN CON DNI -->
-  <div id="recoverPinModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="recoverModalTitle">
-    <div class="modal-card glass-card" style="max-width: 400px; width: 92%;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-        <h3 id="recoverModalTitle" style="font-size: 15px; font-weight: 800; color: var(--accent-cyan); display: flex; align-items: center; gap: 8px; margin: 0;">
-          <i class="fa-solid fa-id-card"></i> Recuperación de PIN con DNI
-        </h3>
-        <button class="btn-sheet-close" onclick="closeRecoverPinModal()"><i class="fa-solid fa-xmark"></i></button>
-      </div>
-
-      <p style="font-size: 11.5px; color: var(--text-secondary); margin-bottom: 12px;">
-        Ingresa el DNI del familiar seleccionado para validar la identidad y recuperar o restablecer tu PIN personal.
-      </p>
-
-      <div style="margin-bottom: 10px;">
-        <label style="font-size: 11px; font-weight: 700; color: #fff; display: block; margin-bottom: 4px;">Familiar:</label>
-        <select id="recoverMemberSelect" class="mobile-input" style="width: 100%; font-weight: 700;">
-          <!-- Opciones cargadas por JS -->
-        </select>
-      </div>
-
-      <div style="margin-bottom: 10px;">
-        <label style="font-size: 11px; font-weight: 700; color: #fff; display: block; margin-bottom: 4px;">Número de DNI Registrado:</label>
-        <input type="text" id="recoverDniInput" class="mobile-input" placeholder="Ej: 35388342" style="width: 100%;" />
-      </div>
-
-      <div style="margin-bottom: 14px;">
-        <label style="font-size: 11px; font-weight: 700; color: #fff; display: block; margin-bottom: 4px;">Nuevo PIN (Opcional):</label>
-        <input type="password" id="recoverNewPinInput" class="mobile-input" placeholder="Ingresa un nuevo PIN de 4 dígitos" style="width: 100%;" maxLength="8" />
-      </div>
-
-      <div id="recoverResultBox" class="hidden" style="margin-bottom: 12px; padding: 10px; border-radius: 8px; font-size: 12px;"></div>
-
-      <div style="display: flex; gap: 8px;">
-        <button class="btn-mobile-submit" onclick="submitRecoverPin()" style="flex: 1; background: linear-gradient(135deg, #10B981, #059669); color: #fff; font-size: 12px; padding: 10px; font-weight: 800;">
-          <i class="fa-solid fa-check-double"></i> Validar DNI
-        </button>
-        <button class="btn-mobile-submit" onclick="closeRecoverPinModal()" style="background: rgba(255,255,255,0.1); color: #fff; font-size: 12px; padding: 10px;">
-          Cancelar
-        </button>
-      </div>
-    </div>
-  </div>
+  
 
   <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
