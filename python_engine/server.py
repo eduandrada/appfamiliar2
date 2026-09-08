@@ -2,7 +2,7 @@ import os
 import json
 from datetime import datetime
 import uvicorn
-from fastapi import FastAPI, Query, Response, HTTPException, Request
+from fastapi import FastAPI, Query, Response, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
@@ -272,6 +272,88 @@ def get_my_ip(request: Request):
     if forwarded:
         client_ip = forwarded.split(",")[0].strip()
     return {"ip": client_ip}
+
+# ==============================================================================
+# GESTOR DE CONEXIONES WEBSOCKET PARA GEOLOCALIZACIÓN FAMILIAR EN TIEMPO REAL
+# ==============================================================================
+class LocationConnectionManager:
+    def __init__(self):
+        self.active_connections: Dict[str, List[WebSocket]] = {}
+
+    async def connect(self, member_id: str, websocket: WebSocket):
+        await websocket.accept()
+        if member_id not in self.active_connections:
+            self.active_connections[member_id] = []
+        self.active_connections[member_id].append(websocket)
+        print(f"[WebSocket Location] Miembro '{member_id}' conectado en tiempo real.")
+
+    def disconnect(self, member_id: str, websocket: WebSocket):
+        if member_id in self.active_connections:
+            if websocket in self.active_connections[member_id]:
+                self.active_connections[member_id].remove(websocket)
+            if not self.active_connections[member_id]:
+                del self.active_connections[member_id]
+        print(f"[WebSocket Location] Miembro '{member_id}' desconectado.")
+
+    async def broadcast_location(self, sender_id: str, payload: dict):
+        for m_id, sockets in list(self.active_connections.items()):
+            for socket in list(sockets):
+                try:
+                    await socket.send_json(payload)
+                except Exception as e:
+                    print(f"[WebSocket Broadcast Error] {m_id}: {e}")
+
+location_manager = LocationConnectionManager()
+
+@app.websocket("/ws/location/{member_id}")
+async def websocket_location_endpoint(websocket: WebSocket, member_id: str):
+    await location_manager.connect(member_id, websocket)
+    try:
+        while True:
+            data_text = await websocket.receive_text()
+            try:
+                data = json.loads(data_text)
+            except Exception:
+                continue
+
+            lat = data.get("lat")
+            lng = data.get("lng")
+            speed = data.get("speed", 0.0)
+            battery = data.get("battery", 100)
+            zone = data.get("zone", "Ubicación en Vivo")
+
+            if lat is not None and lng is not None:
+                members = DATA_STORE.get("members", [])
+                updated = False
+                for m in members:
+                    if m["id"] == member_id:
+                        m["lat"] = lat
+                        m["lng"] = lng
+                        m["speed"] = speed
+                        m["battery"] = battery
+                        m["zone"] = zone
+                        m["last_seen"] = datetime.now().isoformat()
+                        updated = True
+                        break
+                if updated:
+                    save_data_store(DATA_STORE)
+
+            payload = {
+                "type": "LOCATION_UPDATE",
+                "member_id": member_id,
+                "lat": lat,
+                "lng": lng,
+                "speed": speed,
+                "battery": battery,
+                "zone": zone,
+                "last_seen": datetime.now().isoformat()
+            }
+            await location_manager.broadcast_location(member_id, payload)
+    except WebSocketDisconnect:
+        location_manager.disconnect(member_id, websocket)
+    except Exception as e:
+        print(f"[WebSocket Error] {member_id}: {e}")
+        location_manager.disconnect(member_id, websocket)
 
 class LoginInput(BaseModel):
     member_id: str

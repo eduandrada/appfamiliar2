@@ -4323,12 +4323,88 @@ let userHealthData = {
   smartwatchBattery: 88
 };
 
-// --- A. GPS Alta Precisión ---
+// --- A. GPS Alta Precisión con Canal WebSocket en Tiempo Real ---
+let locationWebSocket = null;
+let wsReconnectTimer = null;
+
+function initLocationWebSocket() {
+  if (!activeUser) return;
+  if (locationWebSocket && (locationWebSocket.readyState === WebSocket.OPEN || locationWebSocket.readyState === WebSocket.CONNECTING)) {
+    return;
+  }
+
+  const wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${wsProto}//${window.location.host}/ws/location/${encodeURIComponent(activeUser.id)}`;
+
+  console.log(`[WebSocket GPS] Conectando a ${wsUrl}...`);
+
+  try {
+    locationWebSocket = new WebSocket(wsUrl);
+
+    locationWebSocket.onopen = () => {
+      console.log('[WebSocket GPS] Conexión establecida con éxito.');
+      if (wsReconnectTimer) clearTimeout(wsReconnectTimer);
+      const statusEl = document.getElementById('mapStatusText');
+      if (statusEl) {
+        statusEl.innerHTML = `🟢 WebSocket Activo • Transmisión Directa`;
+      }
+    };
+
+    locationWebSocket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data && data.type === 'LOCATION_UPDATE') {
+          handleIncomingRealtimeLocation(data);
+        }
+      } catch (e) {
+        console.warn('[WebSocket GPS] Error parseando mensaje:', e);
+      }
+    };
+
+    locationWebSocket.onerror = (err) => {
+      console.warn('[WebSocket GPS] Error de conexión:', err);
+    };
+
+    locationWebSocket.onclose = () => {
+      console.log('[WebSocket GPS] Conexión cerrada. Reconectando en 3s...');
+      locationWebSocket = null;
+      wsReconnectTimer = setTimeout(() => {
+        if (activeUser) initLocationWebSocket();
+      }, 3000);
+    };
+  } catch (e) {
+    console.warn('[WebSocket GPS] No se pudo inicializar WebSocket:', e);
+  }
+}
+
+function handleIncomingRealtimeLocation(payload) {
+  if (!payload || !payload.member_id) return;
+
+  const targetId = payload.member_id;
+  const targetMember = familyMembers.find(m => m.id === targetId);
+
+  if (targetMember) {
+    targetMember.lat = payload.lat;
+    targetMember.lng = payload.lng;
+    if (payload.speed !== undefined) targetMember.speed = payload.speed;
+    if (payload.battery !== undefined) targetMember.battery = payload.battery;
+    if (payload.zone !== undefined) targetMember.zone = payload.zone;
+    targetMember.last_seen = 'Ahora (WebSocket)';
+
+    // Actualizar marcadores en el mapa Leaflet en tiempo real sin parpadeos
+    if (typeof updateMapMarkers === 'function') updateMapMarkers();
+    if (typeof renderMemberChips === 'function') renderMemberChips();
+    if (typeof renderDirectoryList === 'function') renderDirectoryList();
+  }
+}
+
 function initRealtimeGpsTracker() {
   if (!('geolocation' in navigator)) {
     console.warn('[GPS] Geolocation no soportada en este navegador');
     return;
   }
+
+  initLocationWebSocket();
 
   const options = {
     enableHighAccuracy: true,
@@ -4512,7 +4588,19 @@ function onGpsSuccess(position) {
   }
 
   if (activeUser) {
-    sendLocationUpdateToCloud(activeUser);
+    if (locationWebSocket && locationWebSocket.readyState === WebSocket.OPEN) {
+      locationWebSocket.send(JSON.stringify({
+        type: 'LOCATION_UPDATE',
+        member_id: activeUser.id,
+        lat: lat,
+        lng: lng,
+        speed: speedKmH,
+        battery: activeUser.battery || 100,
+        zone: activeUser.zone || 'Ubicación en Vivo'
+      }));
+    } else {
+      sendLocationUpdateToCloud(activeUser);
+    }
   }
 
   // Send periodic telemetry heartbeat
