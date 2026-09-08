@@ -4,7 +4,7 @@ import os
 import json
 from datetime import datetime
 import uvicorn
-from fastapi import FastAPI, Query, Response, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Query, Response, HTTPException, Request, WebSocket, WebSocketDisconnect, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
@@ -48,7 +48,34 @@ if os.path.exists(WEB_DIR):
         if os.path.exists(sub_path):
             app.mount(f"/{sub}", StaticFiles(directory=sub_path), name=sub)
 
-DEFAULT_MEMBERS = []
+DEFAULT_MEMBERS = [
+    {
+        "id": "carlos_andrada",
+        "name": "Eduardo Andrada",
+        "dni": "35388342",
+        "phone": "+54 9 383 4772960",
+        "pin": "1234",
+        "role": "Padre (Protector)",
+        "trusted_contact_id": None,
+        "trusted_contact_name": "Sin asignar",
+        "trusted_contact_phone": "",
+        "lat": -28.46957,
+        "lng": -65.78524,
+        "battery": 100,
+        "speed": 0.0,
+        "zone": "Valle Chico Av 27 Casa 66 (Catamarca)",
+        "avatar": "EA",
+        "network_type": "WIFI_HOME",
+        "network_label": "🟢 WiFi Casa",
+        "can_view_cameras": True,
+        "can_trigger_camera_alarm": True,
+        "can_send_camera_voice": True,
+        "is_online": True,
+        "last_seen": "Ahora mismo",
+        "device_type": "📱 Celular",
+        "device_name": "Navegador Web"
+    }
+]
 
 DEFAULT_CAMERAS = [
     {
@@ -158,7 +185,7 @@ def _background_5s_autosave_loop():
 
 _autosave_thread = threading.Thread(target=_background_5s_autosave_loop, daemon=True)
 _autosave_thread.start()
-print("🟢 [Base de Datos] Persistencia automática cada 5 segundos INICIADA.")
+print("[Base de Datos] Persistencia automatica cada 5 segundos INICIADA.")
 
 
 @app.get("/manifest.json")
@@ -306,6 +333,30 @@ def create_database_backup():
         return {"status": "SUCCESS", "backup_file": backup_file, "timestamp": timestamp}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error creando copia de respaldo: {e}")
+
+
+@app.post("/api/members")
+def create_or_update_member(member: dict = Body(...)):
+    members = DATA_STORE.get("members", [])
+    if not isinstance(members, list):
+        members = []
+    
+    m_id = member.get("id")
+    m_dni = member.get("dni")
+
+    updated = False
+    for idx, m in enumerate(members):
+        if (m_id and m.get("id") == m_id) or (m_dni and m.get("dni") == m_dni):
+            members[idx] = {**m, **member}
+            updated = True
+            break
+    
+    if not updated:
+        members.append(member)
+
+    DATA_STORE["members"] = members
+    save_data_store(DATA_STORE)
+    return {"status": "SUCCESS", "message": "Miembro guardado en base de datos real", "members": members}
 
 @app.get("/api/members")
 def get_members():

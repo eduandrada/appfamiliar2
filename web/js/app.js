@@ -35,86 +35,20 @@ const DEFAULT_MEMBERS = [
     phone: '+54 9 383 4772960',
     pin: '1234',
     role: 'Padre',
-    trusted_contact_id: 'lucia_andrada',
-    trusted_contact_name: 'Maira Deldado',
-    trusted_contact_phone: '+54 9 383 4017252',
+    trusted_contact_id: null,
+    trusted_contact_name: 'Sin asignar',
+    trusted_contact_phone: '',
     lat: -28.469570,
     lng: -65.785240,
     battery: 100,
     speed: 0.0,
-    zone: 'Valle Chico Av 27 Casa 40 (Catamarca)',
+    zone: 'Valle Chico Av 27 Casa 66 (Catamarca)',
     avatar: 'EA',
     isOnline: true,
     canViewCameras: true,
     canTriggerCameraAlarm: true,
     canSendCameraVoice: true,
-    lastSeen: 'Ahora'
-  },
-  {
-    id: 'lucia_andrada',
-    name: 'Maira Deldado',
-    dni: '35501054',
-    phone: '+54 9 383 4017252',
-    pin: '1234',
-    role: 'Madre',
-    trusted_contact_id: 'carlos_andrada',
-    trusted_contact_name: 'Eduardo Andrada',
-    trusted_contact_phone: '+54 9 383 4772960',
-    lat: -28.476500,
-    lng: -65.771200,
-    battery: 78,
-    speed: 42.5,
-    zone: 'La Chacarita (Catamarca)',
-    avatar: 'MD',
-    isOnline: true,
-    canViewCameras: true,
-    canTriggerCameraAlarm: true,
-    canSendCameraVoice: true,
-    lastSeen: 'Hace 2 min'
-  },
-  {
-    id: 'mateo_andrada',
-    name: 'Jere Andrada',
-    dni: '45.123.456',
-    phone: '+54 9 383 478-9012',
-    pin: '1234',
-    role: 'Hijo',
-    trusted_contact_id: 'sofia_andrada',
-    trusted_contact_name: 'Josefina Andrada',
-    trusted_contact_phone: '+54 9 383 489-0123',
-    lat: -28.463200,
-    lng: -65.781100,
-    battery: 64,
-    speed: 0.0,
-    zone: 'Colegio Quintana (Catamarca)',
-    avatar: 'JA',
-    isOnline: true,
-    canViewCameras: true,
-    canTriggerCameraAlarm: true,
-    canSendCameraVoice: true,
-    lastSeen: 'Ahora'
-  },
-  {
-    id: 'sofia_andrada',
-    name: 'Josefina Andrada',
-    dni: '48.987.654',
-    phone: '+54 9 383 489-0123',
-    pin: '1234',
-    role: 'Hija',
-    trusted_contact_id: 'carlos_andrada',
-    trusted_contact_name: 'Eduardo Andrada',
-    trusted_contact_phone: '+54 9 383 4772960',
-    lat: -28.459400,
-    lng: -65.789100,
-    battery: 45,
-    speed: 0.0,
-    zone: 'UNCA Universidad (Catamarca)',
-    avatar: 'JA',
-    isOnline: false,
-    canViewCameras: true,
-    canTriggerCameraAlarm: true,
-    canSendCameraVoice: true,
-    lastSeen: 'Hace 18 min'
+    lastSeen: 'Ahora mismo'
   }
 ];
 
@@ -6822,3 +6756,40 @@ async function handleAdminAddMemberSubmit(e) {
 window.toggleAdminAddMemberForm = toggleAdminAddMemberForm;
 window.handleAdminAddMemberSubmit = handleAdminAddMemberSubmit;
 
+
+
+// ==================== CERRAR SESIÓN FLUIDO Y COMPATIBLE MÓVIL ====================
+function handleLogoutUser() {
+  if (!activeUser) {
+    if (typeof openLoginModal === 'function') openLoginModal();
+    return;
+  }
+
+  const userName = activeUser.name || 'Usuario';
+
+  // Limpiar sesión local y storage
+  localStorage.removeItem('andrada_active_session');
+  localStorage.removeItem('app_familiar_auth');
+  sessionStorage.removeItem('app_familiar_session');
+  sessionStorage.removeItem('andrada_active_session');
+
+  activeUser = null;
+
+  // Actualizar UI
+  const nameEl = document.getElementById('activeUserName');
+  if (nameEl) nameEl.textContent = 'Ingresar';
+
+  const headerBtn = document.getElementById('btnLogoutHeader');
+  if (headerBtn) headerBtn.classList.add('hidden');
+
+  if (typeof showToast === 'function') {
+    showToast(`👋 Sesión de ${userName} cerrada correctamente.`, 'info');
+  }
+
+  // Abrir modal de inicio de sesión
+  if (typeof openLoginModal === 'function') {
+    openLoginModal();
+  }
+}
+
+window.handleLogoutUser = handleLogoutUser;

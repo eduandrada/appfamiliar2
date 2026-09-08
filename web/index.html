@@ -70,8 +70,8 @@
           <span id="activeUserName">Ingresar</span>
           <span id="activeUserOnlineDot" style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#10B981; margin-left:4px;"></span>
         </button>
-        <button id="btnLogoutHeader" class="icon-touch-btn logout-btn hidden" title="Cerrar Sesión" aria-label="Cerrar sesión" onclick="handlePinProtectedLogout()">
-          <i class="fa-solid fa-arrow-right-from-bracket" style="color: #EF4444;" aria-hidden="true"></i>
+        <button id="btnLogoutHeader" class="btn-logout-header hidden" title="Cerrar Sesión" aria-label="Cerrar sesión" onclick="handleLogoutUser()">
+          <i class="fa-solid fa-power-off"></i> <span>Salir</span>
         </button>
         <button id="btnBellNotify" class="icon-touch-btn" title="Activar Notificaciones al Celular" aria-label="Notificaciones" onclick="initPushNotifications()">
           <i class="fa-solid fa-bell" aria-hidden="true"></i>
@@ -786,9 +786,9 @@
                 <span class="badge-role" id="profileRole">Padre</span>
               </div>
             </div>
-            <div class="profile-buttons" style="display: flex; gap: 8px;">
-              <button class="btn-profile-action" style="flex: 1;" onclick="openMemberProfileModal()"><i class="fa-solid fa-user-pen"></i> Mi Perfil y PIN</button>
-              <button class="btn-profile-action" style="flex: 1;" onclick="openLoginModal()"><i class="fa-solid fa-arrows-rotate"></i> Cambiar Usuario</button>
+            <div class="profile-buttons" style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button class="btn-profile-action" style="flex: 1; min-width: 120px;" onclick="openMemberProfileModal()"><i class="fa-solid fa-user-pen"></i> Mi Perfil & PIN</button>
+              <button class="btn-profile-action" style="flex: 1; min-width: 120px; background: linear-gradient(135deg, #EF4444, #DC2626); color: #fff; border: none; font-weight: 800;" onclick="handleLogoutUser()"><i class="fa-solid fa-power-off"></i> Cerrar Sesión</button>
             </div>
           </div>
 
@@ -2395,6 +2395,6 @@
   </script>
   <script src="js/robot_chat.js"></script>
   <script src="https://maps.googleapis.com/maps/api/js?libraries=places,marker&v=beta&loading=async" async defer></script>
-  <script src="js/app.js?v=2026.3.16"></script>
+  <script src="js/app.js?v=2026.3.17"></script>
 </body>
 </html>
