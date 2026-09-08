@@ -508,52 +508,43 @@
       <!-- TAB 3: VENÍ A BUSCARME & CHAT EN VIVO -->
             <!-- TAB 4: VENÍ A BUSCARME EN LA CALLE & CHAT EN TIEMPO REAL -->
       <section id="tab-pickup" class="tab-pane">
-        <div class="pane-scrollable">
-          <div class="section-banner pickup-banner">
-            <div class="banner-icon"><i class="fa-solid fa-car-side"></i></div>
-            <div>
-              <h2>Vení a Buscarme en la Calle</h2>
-              <p>¿Poca batería o necesitas un auto? Envía tu ubicación al familiar más cercano y conversa en vivo.</p>
-            </div>
-          </div>
+        <div class="pane-scrollable" style="display: flex; flex-direction: column; gap: 8px; height: 100%;">
+          
+          <!-- BARRA ULTRA-COMPACTA SUPERIOR: BOTÓN RESCATE & CHECK-INS -->
+          <div style="display: flex; flex-direction: column; gap: 6px; flex-shrink: 0;">
+            <!-- BOTÓN ¡VENÍ A BUSCARME AQUÍ! (CÁPSULA SLIM RÁPIDA) -->
+            <div class="glass-card pickup-action-card" style="padding: 8px 12px; margin: 0; background: linear-gradient(135deg, rgba(2, 132, 199, 0.35), rgba(56, 189, 248, 0.25)); border: 1px solid rgba(56, 189, 248, 0.45); border-radius: 12px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <button class="btn-big-pickup" onclick="triggerPickupRequest()" style="flex: 1; min-width: 200px; padding: 6px 10px; margin: 0; border: none; background: transparent; display: flex; align-items: center; gap: 8px; cursor: pointer; text-align: left;">
+                  <i class="fa-solid fa-location-arrow" style="font-size: 18px; color: #38BDF8; flex-shrink: 0;"></i>
+                  <div>
+                    <span style="font-size: 13.5px; font-weight: 800; color: #fff; display: block; line-height: 1.1;">¡VENÍ A BUSCARME AQUÍ!</span>
+                    <small style="font-size: 9.5px; color: #94A3B8;">GPS + Batería en 1-clic</small>
+                  </div>
+                </button>
 
-          <!-- BARRA DE CHECK-INS RÁPIDOS (1-TOQUE) -->
-          <div class="glass-card quick-checkin-card" style="padding: 12px; margin-bottom: 10px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <span style="font-size: 12px; font-weight: 700; color: #fff;"><i class="fa-solid fa-bell" style="color: var(--accent-blue);"></i> Check-ins Rápidos (1-Toque):</span>
-              <span id="speedometerBadge" class="badge-tag" style="background: rgba(16, 185, 129, 0.18); color: #10B981; font-size: 11px;">0 km/h</span>
+                <div id="nearestFamilyBanner" style="font-size: 10px; color: #34D399; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); padding: 4px 8px; border-radius: 6px; font-weight: 700; flex-shrink: 0; display: flex; align-items: center; gap: 4px;">
+                  <i class="fa-solid fa-person-walking-dashed-line-arrow-right"></i> <span id="nearestMemberName">Lucía (a 850m)</span>
+                </div>
+              </div>
             </div>
-            <div class="quick-checkin-buttons" style="display: flex; gap: 8px;">
-              <button class="btn-checkin btn-checkin-green" onclick="sendQuickCheckIn('Llegué bien')">
+
+            <!-- CHECK-INS RÁPIDOS (1-LINEA COMPACTA) -->
+            <div class="quick-checkin-buttons" style="display: flex; gap: 6px; flex-shrink: 0;">
+              <button class="btn-checkin btn-checkin-green" style="flex: 1; padding: 6px 4px; font-size: 10.5px; margin: 0;" onclick="sendQuickCheckIn('Llegué bien')">
                 <i class="fa-solid fa-circle-check"></i> Llegué bien
               </button>
-              <button class="btn-checkin btn-checkin-amber" onclick="sendQuickCheckIn('Demorado/a')">
+              <button class="btn-checkin btn-checkin-amber" style="flex: 1; padding: 6px 4px; font-size: 10.5px; margin: 0;" onclick="sendQuickCheckIn('Demorado/a')">
                 <i class="fa-solid fa-clock"></i> Demorado/a
               </button>
-              <button class="btn-checkin btn-checkin-blue" onclick="sendQuickCheckIn('En camino')">
+              <button class="btn-checkin btn-checkin-blue" style="flex: 1; padding: 6px 4px; font-size: 10.5px; margin: 0;" onclick="sendQuickCheckIn('En camino')">
                 <i class="fa-solid fa-person-walking"></i> En camino
               </button>
             </div>
           </div>
 
-          <!-- TARJETA COMPACTA DE RESCATE (UBICADA ARRIBA DEL CHAT) -->
-          <div class="glass-card pickup-action-card" style="padding: 8px 12px; margin-bottom: 8px;">
-            <button class="btn-big-pickup" onclick="triggerPickupRequest()">
-              <i class="fa-solid fa-location-arrow"></i>
-              <div style="display: flex; flex-direction: row; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center;">
-                <span style="font-size: 13.5px; font-weight: 800; color: #fff;">¡VENÍ A BUSCARME AQUÍ!</span>
-                <small style="font-size: 10px; color: #94A3B8;">(GPS + Batería)</small>
-              </div>
-            </button>
-
-            <div id="nearestFamilyBanner" class="nearest-family-box" style="padding: 4px 8px; font-size: 10.5px;">
-              <i class="fa-solid fa-person-walking-dashed-line-arrow-right" style="color: #38BDF8;"></i>
-              <span>Familiar más cercano: <strong id="nearestMemberName">Lucía Andrada (a 850m)</strong></span>
-            </div>
-          </div>
-
-          <!-- VENTANA DE CHAT UNIFICADO Y EN TIEMPO REAL -->
-          <div class="glass-card chat-container" style="margin-bottom: 12px;">
+          <!-- VENTANA PRINCIPAL DE CHAT (VISIBLE 100% DE INMEDIATO SIN SCROLL) -->
+          <div class="glass-card chat-container" style="flex: 1; min-height: 380px; margin-bottom: 8px;">
             <div class="chat-header">
               <div class="chat-title">
                 <div class="chat-avatar-icon">
@@ -602,75 +593,47 @@
             </form>
           </div>
 
-          <!-- TARJETA DE SOLICITUD DE UBER / TAXI INSTANTÁNEO -->
-          <div class="glass-card uber-request-card" style="padding: 14px; margin-bottom: 12px; border: 1px solid rgba(245, 158, 11, 0.4); background: linear-gradient(135deg, rgba(30, 20, 10, 0.85), rgba(15, 23, 42, 0.95)); border-radius: 14px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <!-- TARJETA DE SOLICITUD DE UBER / TAXI INSTANTÁNEO (UBICADA DEBAJO DEL CHAT) -->
+          <div class="glass-card uber-request-card" style="padding: 12px; margin-bottom: 8px; border: 1px solid rgba(245, 158, 11, 0.4); background: linear-gradient(135deg, rgba(30, 20, 10, 0.85), rgba(15, 23, 42, 0.95)); border-radius: 14px; flex-shrink: 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
               <div style="display: flex; align-items: center; gap: 8px;">
-                <div style="width: 36px; height: 36px; border-radius: 10px; background: rgba(245, 158, 11, 0.2); display: flex; align-items: center; justify-content: center; color: #F59E0B; font-size: 18px;">
+                <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(245, 158, 11, 0.2); display: flex; align-items: center; justify-content: center; color: #F59E0B; font-size: 16px;">
                   <i class="fa-solid fa-taxi"></i>
                 </div>
                 <div>
-                  <h3 style="font-size: 14px; font-weight: 800; color: #fff; margin: 0;">Solicitar Uber / Taxi de Auxilio</h3>
-                  <p style="font-size: 11px; color: var(--text-secondary); margin: 2px 0 0;">Pedir un vehículo hacia tu posición GPS en 1-clic.</p>
+                  <h3 style="font-size: 13px; font-weight: 800; color: #fff; margin: 0;">Solicitar Uber / Taxi de Auxilio</h3>
+                  <p style="font-size: 10.5px; color: var(--text-secondary); margin: 1px 0 0;">Pedir un vehículo hacia tu posición GPS en 1-clic.</p>
                 </div>
               </div>
               <span class="badge-tag" style="background: rgba(245, 158, 11, 0.2); color: #F59E0B; font-size: 10px; font-weight: 800;">🚖 Uber Express</span>
             </div>
 
-            <div style="margin-bottom: 10px;">
-              <label style="font-size: 11px; font-weight: 700; color: #F59E0B; display: block; margin-bottom: 4px;">Puntos de Destino Frecuentes:</label>
-              <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px;">
-                <button type="button" class="btn-sm" style="background: rgba(255,255,255,0.08); color: #fff; border: 1px solid var(--border-glass); border-radius: 8px; padding: 6px 10px; font-size: 11px; cursor: pointer;" onclick="selectUberDest('Casa Andrada')">🏠 Casa Andrada</button>
-                <button type="button" class="btn-sm" style="background: rgba(255,255,255,0.08); color: #fff; border: 1px solid var(--border-glass); border-radius: 8px; padding: 6px 10px; font-size: 11px; cursor: pointer;" onclick="selectUberDest('UNCA / Facultad')">🎓 UNCA Facultad</button>
-                <button type="button" class="btn-sm" style="background: rgba(255,255,255,0.08); color: #fff; border: 1px solid var(--border-glass); border-radius: 8px; padding: 6px 10px; font-size: 11px; cursor: pointer;" onclick="selectUberDest('Colegio / Escuela')">🏫 Colegio</button>
+            <div style="margin-bottom: 8px;">
+              <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px;">
+                <button type="button" class="btn-sm" style="background: rgba(255,255,255,0.08); color: #fff; border: 1px solid var(--border-glass); border-radius: 6px; padding: 4px 8px; font-size: 10.5px; cursor: pointer;" onclick="selectUberDest('Casa Andrada')">🏠 Casa Andrada</button>
+                <button type="button" class="btn-sm" style="background: rgba(255,255,255,0.08); color: #fff; border: 1px solid var(--border-glass); border-radius: 6px; padding: 4px 8px; font-size: 10.5px; cursor: pointer;" onclick="selectUberDest('UNCA / Facultad')">🎓 UNCA Facultad</button>
+                <button type="button" class="btn-sm" style="background: rgba(255,255,255,0.08); color: #fff; border: 1px solid var(--border-glass); border-radius: 6px; padding: 4px 8px; font-size: 10.5px; cursor: pointer;" onclick="selectUberDest('Colegio / Escuela')">🏫 Colegio</button>
               </div>
-              <input type="text" id="uberDestInput" class="mobile-input" placeholder="O ingresa un destino personalizado (ej: Av. Italia 450)..." style="width: 100%; padding: 8px 12px; font-size: 12px; border-radius: 8px;" />
+              <input type="text" id="uberDestInput" class="mobile-input" placeholder="O ingresa un destino personalizado..." style="width: 100%; padding: 6px 10px; font-size: 11px; border-radius: 6px;" />
             </div>
 
-            <button type="button" class="btn-mobile-submit" style="background: linear-gradient(135deg, #F59E0B, #D97706); color: #000; font-weight: 800; font-size: 13px; padding: 10px; margin: 0; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;" onclick="triggerUberRequest()">
+            <button type="button" class="btn-mobile-submit" style="background: linear-gradient(135deg, #F59E0B, #D97706); color: #000; font-weight: 800; font-size: 12px; padding: 8px; margin: 0; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;" onclick="triggerUberRequest()">
               <i class="fa-solid fa-car-side"></i> <span>Pedir Uber a Mi Ubicación GPS (1-Clic)</span>
             </button>
           </div>
 
-          <!-- TARJETA ACOMPÁÑAME (SAFE WALK) CON TEMPORIZADOR Y PIN DE COACCIÓN (ABAJO DEL CHAT) -->
-          <div class="glass-card safe-walk-card" style="padding: 14px; margin-bottom: 12px;">
-            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <h3 style="font-size: 14px; margin: 0;"><i class="fa-solid fa-person-walking-luggage" style="color: var(--accent-cyan);"></i> Acompáñame (Safe Walk)</h3>
-              <span class="badge-tag" id="safeWalkStatusBadge" style="background: rgba(56, 189, 248, 0.15); color: var(--accent-cyan); font-size: 11px;">Inactivo</span>
+          <!-- TARJETA ACOMPÁÑAME (SAFE WALK) ABAJO DEL CHAT -->
+          <div class="glass-card safe-walk-card" style="padding: 12px; margin-bottom: 8px; flex-shrink: 0;">
+            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <h3 style="font-size: 13px; margin: 0;"><i class="fa-solid fa-person-walking-luggage" style="color: var(--accent-cyan);"></i> Acompáñame (Safe Walk)</h3>
+              <span class="badge-tag" id="safeWalkStatusBadge" style="background: rgba(56, 189, 248, 0.15); color: var(--accent-cyan); font-size: 10.5px;">Inactivo</span>
             </div>
-            <p class="card-desc" style="font-size: 11px; margin-bottom: 10px;">Inicia un trayecto supervisado por la familia. Si no confirmas tu llegada a tiempo con tu PIN, se activará la alerta preventiva.</p>
-
-            <div id="safeWalkSetupForm">
-              <div class="form-group" style="margin-bottom: 8px;">
-                <input type="text" id="safeWalkDestination" class="mobile-input" placeholder="Ej: Facultad a Casa (20 min)" style="padding: 8px 12px; font-size: 12px;" />
-              </div>
-              <div style="display: flex; gap: 6px; margin-bottom: 10px;">
-                <button type="button" class="btn-walk-time active" onclick="selectSafeWalkDuration(15, this)">15 min</button>
-                <button type="button" class="btn-walk-time" onclick="selectSafeWalkDuration(30, this)">30 min</button>
-                <button type="button" class="btn-walk-time" onclick="selectSafeWalkDuration(45, this)">45 min</button>
-                <button type="button" class="btn-walk-time" onclick="selectSafeWalkDuration(60, this)">60 min</button>
-              </div>
-              <button class="btn-mobile-submit" style="background: linear-gradient(135deg, #0284C7, #06B6D4); padding: 10px; font-size: 13px; margin: 0;" onclick="startSafeWalkTimer()">
-                <i class="fa-solid fa-shield-cat"></i> Iniciar Trayecto Acompáñame
-              </button>
-            </div>
-
-            <!-- Timer activo -->
-            <div id="safeWalkActivePanel" class="hidden" style="text-align: center; padding: 8px 0;">
-              <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">TRAYECTO EN CURSO</div>
-              <div id="safeWalkTimerDisplay" style="font-size: 26px; font-weight: 900; color: var(--accent-cyan); font-family: var(--font-heading); margin-bottom: 8px;">15:00</div>
-              <div style="font-size: 12px; color: #fff; margin-bottom: 12px;" id="safeWalkDestinationLabel">Destino: Facultad a Casa</div>
-
-              <div style="display: flex; gap: 8px;">
-                <button class="btn-mobile-submit" style="background: linear-gradient(135deg, #10B981, #059669); flex: 1; padding: 10px; font-size: 12px; margin: 0;" onclick="openFinishSafeWalkModal()">
-                  <i class="fa-solid fa-check-circle"></i> Llegué a Salvo (Ingresar PIN)
-                </button>
-                <button class="btn-mobile-submit" style="background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.4); width: 110px; padding: 10px; font-size: 12px; margin: 0;" onclick="cancelSafeWalk()">
-                  Cancelar
-                </button>
-              </div>
-            </div>
+            <p class="card-desc" style="font-size: 10.5px; margin-bottom: 8px;">Activa temporizador al caminar solo/a de noche. Si no confirmas tu llegada, envía alerta SOS.</p>
+            <button class="btn-mobile-submit" style="background: linear-gradient(135deg, #0284C7, #06B6D4); font-size: 12px; padding: 8px; margin: 0;" onclick="openSafeWalkTimerModal()">
+              <i class="fa-solid fa-stopwatch"></i> Activar Monitoreo de Trayecto
+            </button>
           </div>
+
         </div>
       </section>
 
