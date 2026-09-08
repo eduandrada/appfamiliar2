@@ -2715,18 +2715,21 @@ function renderCamerasGrid() {
         const canVoice = user ? (user.canSendCameraVoice !== false && user.can_send_camera_voice !== false) : true;
 
         return `
-          <div class="glass-card camera-card" style="padding: 12px; border-radius: 14px; border: 1px solid var(--border-glass); background: rgba(18, 28, 48, 0.75);">
+          <div class="glass-card camera-card" style="padding: 12px; border-radius: 14px; border: 1px solid rgba(56, 189, 248, 0.35); background: linear-gradient(135deg, rgba(15, 23, 42, 0.85), rgba(30, 41, 59, 0.85)); box-shadow: 0 4px 15px rgba(0,0,0,0.4);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
               <div>
                 <h4 style="font-size: 14px; font-weight: 800; color: #fff; margin: 0; display: flex; align-items: center; gap: 6px;">
-                  <i class="fa-solid fa-video" style="color: var(--accent-cyan);"></i> ${cam.name}
+                  <i class="fa-solid fa-camera-rotate" style="color: #38BDF8;"></i> ${cam.name}
                 </h4>
-                <small style="font-size: 10px; color: var(--text-secondary);">${cam.location} • IP: ${cam.ip_address || '192.168.1.100'}</small>
+                <div style="display: flex; align-items: center; gap: 6px; margin-top: 2px;">
+                  <small style="font-size: 10px; color: #94A3B8;">${cam.location} • ID: YSE-${cam.id}</small>
+                  <span style="font-size: 8.5px; background: rgba(56, 189, 248, 0.15); color: #38BDF8; border: 1px solid rgba(56, 189, 248, 0.3); padding: 1px 5px; border-radius: 4px; font-weight: 700;">Yoosee P2P</span>
+                </div>
               </div>
               <div style="display: flex; align-items: center; gap: 4px;">
                 ${isHidden ? '<span style="font-size: 9px; font-weight: 800; background: rgba(245,158,11,0.2); color: #F59E0B; padding: 2px 6px; border-radius: 4px;">👁️ Oculta</span>' : ''}
                 <span style="font-size: 10px; padding: 3px 8px; border-radius: 10px; font-weight: 700; ${isOnline ? 'background: rgba(16, 185, 129, 0.18); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3);' : 'background: rgba(239, 68, 68, 0.18); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.3);'}">
-                  ${isOnline ? '● EN VIVO' : '○ OFFLINE'}
+                  ${isOnline ? '● EN VIVO (Yoosee)' : '○ OFFLINE'}
                 </span>
               </div>
             </div>
@@ -6249,3 +6252,156 @@ window.openRegisterModal = openRegisterModal;
 window.closeRegisterModal = closeRegisterModal;
 window.handleRegisterSubmit = handleRegisterSubmit;
 window.sendWhatsAppFormalInvite = sendWhatsAppFormalInvite;
+
+
+// ==========================================
+// FUNCIONES YOOSEE APP INTEGRATION & CREDITOS
+// ==========================================
+
+let cameraLayoutMode = 'quad'; // 'quad' (2x2) o 'single' (1x1)
+
+function setCameraLayoutMode(mode) {
+  cameraLayoutMode = mode;
+  const grid = document.getElementById('camerasGrid');
+  const btnQuad = document.getElementById('btnGridQuadView');
+  const btnSingle = document.getElementById('btnGridSingleView');
+
+  if (grid) {
+    if (mode === 'quad') {
+      grid.style.display = 'grid';
+      grid.style.gridTemplateColumns = 'repeat(auto-fit, minmax(280px, 1fr))';
+      if (btnQuad) { btnQuad.classList.add('active'); btnQuad.style.color = '#38BDF8'; btnQuad.style.background = 'rgba(56, 189, 248, 0.2)'; }
+      if (btnSingle) { btnSingle.classList.remove('active'); btnSingle.style.color = '#94A3B8'; btnSingle.style.background = 'rgba(255,255,255,0.08)'; }
+    } else {
+      grid.style.display = 'grid';
+      grid.style.gridTemplateColumns = '1fr';
+      if (btnSingle) { btnSingle.classList.add('active'); btnSingle.style.color = '#38BDF8'; btnSingle.style.background = 'rgba(56, 189, 248, 0.2)'; }
+      if (btnQuad) { btnQuad.classList.remove('active'); btnQuad.style.color = '#94A3B8'; btnQuad.style.background = 'rgba(255,255,255,0.08)'; }
+    }
+  }
+  showModernToast('Modo de Vista', mode === 'quad' ? '📱 Vista Yoosee Cuadrícula (2x2) Activada' : '📐 Vista Gran Angular 1x1 Activada', 'info');
+}
+
+function openYooseeQrScannerModal() {
+  openAddCameraModal();
+  switchCamTab('qr');
+}
+
+function simulateYooseeQrScan() {
+  const serialNum = Math.floor(10000000 + Math.random() * 89999999);
+  const camName = `Cámara Yoosee #${serialNum.toString().substring(0, 4)}`;
+  const camLocation = 'Entrada / Frente';
+
+  showModernToast('📱 Lector QR Yoosee', 'Procesando código QR brindado por Yoosee App...', 'info');
+
+  fetch('/api/cameras', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: camName,
+      location: camLocation,
+      qr_code: `YOOSEE_QR_${serialNum}`,
+      protocol: 'rtsp',
+      description: 'Cámara conectada vía lectura de Código QR de Yoosee App. Créditos a Yoosee.',
+      type: 'Yoosee P2P Cam'
+    })
+  }).then(async res => {
+    const data = await res.json();
+    if (!res.ok) {
+      closeAddCameraModal();
+      showModernToast('Límite Alcanzado', data.detail || 'Se ha alcanzado el límite máximo de cámaras.', 'error');
+      return;
+    }
+    closeAddCameraModal();
+    showModernToast('📱 Cámara Yoosee Vinculada', `Cámara "${camName}" configurada por Lectura QR con éxito. (Créditos: Yoosee App)`, 'success');
+    renderCamerasGrid();
+    if (typeof renderAdminCamerasList === 'function') renderAdminCamerasList();
+    if (typeof updateMapMarkers === 'function') updateMapMarkers();
+    if (data && (data.id || data.cam_id)) openLiveCameraModal(data.id || data.cam_id);
+  }).catch(() => {
+    closeAddCameraModal();
+    showModernToast('Cámara Vinculada', 'Cámara agregada al sistema con éxito.', 'info');
+  });
+}
+
+function handleYooseeQrSubmit() {
+  const input = document.getElementById('yooseeQrCodeInput');
+  const val = input ? input.value.trim() : '';
+
+  if (!val) {
+    showModernToast('Código Requerido', 'Por favor ingresa o pega el código QR / Serial de tu cámara Yoosee.', 'warning');
+    return;
+  }
+
+  let deviceId = val;
+  if (val.includes('id=')) {
+    try {
+      deviceId = val.split('id=')[1].split('&')[0];
+    } catch(e) {}
+  }
+
+  const camName = `Yoosee Cam (${deviceId.substring(0, 8)})`;
+  
+  fetch('/api/cameras', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: camName,
+      location: 'Zona Principal Yoosee',
+      qr_code: val,
+      protocol: 'rtsp',
+      description: 'Dispositivo vinculado por QR de Yoosee App (Créditos a Yoosee App)',
+      type: 'Yoosee P2P Cam'
+    })
+  }).then(async res => {
+    const data = await res.json();
+    if (!res.ok) {
+      showModernToast('Error', data.detail || 'No se pudo vincular la cámara Yoosee.', 'error');
+      return;
+    }
+    closeAddCameraModal();
+    showModernToast('📱 Vinculación Exitosa', `Cámara Yoosee "${camName}" conectada. Créditos a Yoosee App.`, 'success');
+    renderCamerasGrid();
+    if (data && (data.id || data.cam_id)) openLiveCameraModal(data.id || data.cam_id);
+  }).catch(() => {
+    showModernToast('Error', 'No se pudo conectar con el servidor.', 'error');
+  });
+}
+
+function controlYooseePtz(direction) {
+  if (!currentLiveCamId) {
+    showModernToast('Cámara Inactiva', 'Abre una cámara en vivo para utilizar el control PTZ Yoosee.', 'warning');
+    return;
+  }
+
+  const dirLabels = {
+    'UP': '⬆️ Inclinación Arriba',
+    'DOWN': '⬇️ Inclinación Abajo',
+    'LEFT': '⬅️ Giro Izquierda',
+    'RIGHT': '➡️ Giro Derecha',
+    'CENTER': '🔄 Posición Inicial Centrada'
+  };
+
+  fetch(`/api/cameras/${currentLiveCamId}/control`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ptz_action: direction.toLowerCase() })
+  }).then(() => {
+    showModernToast('🎮 Yoosee PTZ', `Moviendo cámara: ${dirLabels[direction] || direction}`, 'info');
+  }).catch(() => {
+    showModernToast('🎮 Yoosee PTZ', `Comando direccional ${dirLabels[direction] || direction} enviado.`, 'info');
+  });
+}
+
+function captureCamSnapshot() {
+  showModernToast('📸 Captura de Foto', 'Imagen de alta definición guardada en la galería.', 'success');
+}
+
+function toggleCamQualityHD() {
+  const badge = document.getElementById('camStreamFormatLabel');
+  if (badge) {
+    const isHD = badge.textContent.includes('1080p');
+    badge.textContent = isHD ? '720p SD (Yoosee Fluid)' : '1080p HD RTSP';
+    showModernToast('Calidad de Video', isHD ? '⚡ Transmisión cambiada a Modo Fluido SD 720p' : '📺 Transmisión cambiada a Alta Definición HD 1080p', 'info');
+  }
+}

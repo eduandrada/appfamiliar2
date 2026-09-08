@@ -699,12 +699,42 @@
             </div>
           </div>
 
-          <!-- BANNER INFORMATIVO ACCESO REMOTO 4G/5G OUTSIDE LOCAL NETWORK -->
-          <div class="glass-card" style="padding: 10px 14px; margin-bottom: 12px; border: 1px solid rgba(16, 185, 129, 0.35); background: rgba(6, 78, 59, 0.35); border-radius: 12px; display: flex; align-items: center; gap: 10px;">
-            <i class="fa-solid fa-globe" style="font-size: 18px; color: #34D399;"></i>
-            <div style="font-size: 11px; color: #E6F4EA;">
-              <strong style="color: #34D399; font-size: 11.5px;">🌐 Acceso Remoto Universal Activo (Proxy 4G / 5G / Cloud):</strong>
-              <div>Puedes ver tus cámaras en vivo fuera de la red Wi-Fi local desde cualquier lugar del mundo vía Proxy Gateway.</div>
+          <!-- BANNER OFICIAL ESTILO YOOSEE APP & CREDITOS -->
+          <div class="glass-card" style="padding: 12px 16px; margin-bottom: 12px; border: 1px solid rgba(56, 189, 248, 0.4); background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95)); border-radius: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 8px;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(135deg, #0284C7, #06B6D4); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 20px; box-shadow: 0 0 14px rgba(6, 182, 212, 0.4);">
+                  <i class="fa-solid fa-camera-rotate"></i>
+                </div>
+                <div>
+                  <h3 style="font-size: 14px; font-weight: 800; color: #38BDF8; margin: 0; display: flex; align-items: center; gap: 6px;">
+                    📱 Interfaz & Monitoreo Estilo Yoosee App
+                  </h3>
+                  <p style="font-size: 11px; color: #CBD5E1; margin: 2px 0 0;">
+                    Escanea el código QR original brindado por <strong>Yoosee App</strong> o tus cámaras IP P2P / RTSP.
+                  </p>
+                </div>
+              </div>
+              <div style="display: flex; gap: 6px; align-items: center;">
+                <span style="font-size: 10px; background: rgba(56, 189, 248, 0.15); color: #38BDF8; border: 1px solid rgba(56, 189, 248, 0.35); padding: 4px 10px; border-radius: 8px; font-weight: 700;">
+                  © Compatible con Yoosee App
+                </span>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 8px; margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+              <div style="display: flex; gap: 6px;">
+                <button class="btn-sm active" id="btnGridQuadView" onclick="setCameraLayoutMode('quad')" style="background: rgba(56, 189, 248, 0.2); color: #38BDF8; border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 8px; padding: 4px 10px; font-size: 11px; font-weight: 700; cursor: pointer;">
+                  <i class="fa-solid fa-table-cells-large"></i> Vista Yoosee (2x2)
+                </button>
+                <button class="btn-sm" id="btnGridSingleView" onclick="setCameraLayoutMode('single')" style="background: rgba(255,255,255,0.08); color: #94A3B8; border: 1px solid var(--border-glass); border-radius: 8px; padding: 4px 10px; font-size: 11px; font-weight: 700; cursor: pointer;">
+                  <i class="fa-solid fa-square"></i> 1x1 Gran Angular
+                </button>
+              </div>
+
+              <button class="btn-sm" onclick="openYooseeQrScannerModal()" style="background: linear-gradient(135deg, #10B981, #059669); color: #fff; border: none; padding: 6px 14px; border-radius: 8px; font-size: 11px; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                <i class="fa-solid fa-qrcode"></i> Escanear QR Yoosee
+              </button>
             </div>
           </div>
 
@@ -1839,16 +1869,38 @@
         </button>
       </div>
 
-      <!-- Tab 1: Vista Escaneo QR -->
+      <!-- Tab 1: Vista Escaneo QR Estilo Yoosee App -->
       <div id="camQrScanView" style="text-align: center; padding: 12px 0;">
-        <div style="width: 200px; height: 200px; margin: 0 auto 12px; border: 2px stroke var(--accent-cyan); border-radius: 16px; position: relative; overflow: hidden; background: #000; display: flex; align-items: center; justify-content: center;">
-          <div style="position: absolute; top:0; left:0; width:100%; height:4px; background: #06B6D4; box-shadow: 0 0 15px #06B6D4; animation: scanLine 2s infinite ease-in-out;"></div>
-          <i class="fa-solid fa-camera-retro" style="font-size: 50px; color: rgba(255,255,255,0.3);"></i>
+        <div style="width: 210px; height: 210px; margin: 0 auto 12px; border: 2px dashed #38BDF8; border-radius: 18px; position: relative; overflow: hidden; background: #090D16; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 25px rgba(56, 189, 248, 0.25);">
+          <div style="position: absolute; top:0; left:0; width:100%; height:4px; background: #38BDF8; box-shadow: 0 0 15px #38BDF8; animation: scanLine 2s infinite ease-in-out;"></div>
+          <div style="text-align: center;">
+            <i class="fa-solid fa-qrcode" style="font-size: 64px; color: #38BDF8; margin-bottom: 6px;"></i>
+            <div style="font-size: 10px; font-weight: 800; color: #94A3B8; text-transform: uppercase; letter-spacing: 1px;">Yoosee QR Scanner</div>
+          </div>
         </div>
-        <p style="font-size: 11px; color: var(--text-secondary); margin-bottom: 12px;">Apunta la cámara de tu teléfono al código QR de tu cámara IP para vincularla en 1 segundo.</p>
-        <button class="btn-mobile-submit" style="background: linear-gradient(135deg, #0284C7, #06B6D4); font-size: 13px; padding: 10px;" onclick="simulateQrCameraScan()">
-          <i class="fa-solid fa-bolt"></i> Escanear Código QR
+
+        <div style="background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 10px; padding: 8px 12px; margin-bottom: 12px; text-align: left;">
+          <div style="font-size: 11px; font-weight: 800; color: #38BDF8; margin-bottom: 4px;">
+            📱 Vincular Cámara Yoosee por Código QR:
+          </div>
+          <p style="font-size: 10.5px; color: #E2E8F0; margin: 0 0 8px;">
+            Apunta al código QR generado por la aplicación <strong>Yoosee</strong> o pega el código/serial a continuación:
+          </p>
+          <div style="display: flex; gap: 6px;">
+            <input type="text" id="yooseeQrCodeInput" class="mobile-input" placeholder="Ej: yoosee://device?id=84920194 o GW_IPC_84920194" style="font-size: 11px; padding: 8px;">
+            <button type="button" class="btn-sm" style="background: #38BDF8; color: #000; font-weight: 800; border: none; border-radius: 8px; padding: 0 12px; cursor: pointer; white-space: nowrap; font-size: 11px;" onclick="handleYooseeQrSubmit()">
+              Vincular
+            </button>
+          </div>
+        </div>
+
+        <button class="btn-mobile-submit" style="background: linear-gradient(135deg, #0284C7, #06B6D4); font-size: 13px; padding: 10px; margin-bottom: 8px;" onclick="simulateYooseeQrScan()">
+          <i class="fa-solid fa-camera"></i> Abrir Lector QR en Vivo (Yoosee)
         </button>
+
+        <div style="font-size: 10px; color: #94A3B8;">
+          <i class="fa-solid fa-shield-halved" style="color: #38BDF8;"></i> Compatible con ecosistema Yoosee / YYP2P / Cooau. Créditos a Yoosee App.
+        </div>
       </div>
 
       <!-- Tab 2: Vista Formulario IP / RTSP / ONVIF Manual -->
@@ -2132,8 +2184,45 @@
         </div>
       </div>
 
+      <!-- PANEL DE CONTROL PTZ ESTILO YOOSEE APP -->
+      <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 12px; padding: 10px; margin-bottom: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="font-size: 11px; font-weight: 800; color: #38BDF8; display: flex; align-items: center; gap: 6px;">
+            <i class="fa-solid fa-gamepad"></i> Control PTZ Direccional (Yoosee Joystick)
+          </span>
+          <span style="font-size: 9.5px; background: rgba(56, 189, 248, 0.15); color: #38BDF8; padding: 2px 6px; border-radius: 4px;">Yoosee PTZ</span>
+        </div>
+
+        <div style="display: flex; align-items: center; justify-content: space-around; gap: 10px;">
+          <!-- D-PAD Direccional -->
+          <div style="display: grid; grid-template-columns: 36px 36px 36px; grid-template-rows: 36px 36px 36px; gap: 4px; background: rgba(0,0,0,0.5); padding: 6px; border-radius: 50%; border: 1px solid rgba(56,189,248,0.25);">
+            <div></div>
+            <button class="btn-sm" style="background: rgba(56, 189, 248, 0.25); color: #38BDF8; border: none; border-radius: 6px; cursor: pointer;" onclick="controlYooseePtz('UP')" title="Mover Arriba"><i class="fa-solid fa-chevron-up"></i></button>
+            <div></div>
+
+            <button class="btn-sm" style="background: rgba(56, 189, 248, 0.25); color: #38BDF8; border: none; border-radius: 6px; cursor: pointer;" onclick="controlYooseePtz('LEFT')" title="Mover Izquierda"><i class="fa-solid fa-chevron-left"></i></button>
+            <button class="btn-sm" style="background: #38BDF8; color: #000; border: none; border-radius: 50%; cursor: pointer; font-weight: 800; font-size: 10px;" onclick="controlYooseePtz('CENTER')" title="Centrar">P</button>
+            <button class="btn-sm" style="background: rgba(56, 189, 248, 0.25); color: #38BDF8; border: none; border-radius: 6px; cursor: pointer;" onclick="controlYooseePtz('RIGHT')" title="Mover Derecha"><i class="fa-solid fa-chevron-right"></i></button>
+
+            <div></div>
+            <button class="btn-sm" style="background: rgba(56, 189, 248, 0.25); color: #38BDF8; border: none; border-radius: 6px; cursor: pointer;" onclick="controlYooseePtz('DOWN')" title="Mover Abajo"><i class="fa-solid fa-chevron-down"></i></button>
+            <div></div>
+          </div>
+
+          <!-- Acciones Rápidas Yoosee (Snapshot & HD) -->
+          <div style="display: flex; flex-direction: column; gap: 6px; flex: 1; max-width: 180px;">
+            <button class="btn-sm" style="background: rgba(16, 185, 129, 0.2); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 8px; padding: 6px 10px; font-size: 11px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="captureCamSnapshot()">
+              <i class="fa-solid fa-camera"></i> Tomar Captura
+            </button>
+            <button class="btn-sm" style="background: rgba(245, 158, 11, 0.2); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 8px; padding: 6px 10px; font-size: 11px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="toggleCamQualityHD()">
+              <i class="fa-solid fa-sliders"></i> Calidad HD / SD
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Barra de Acciones y Controles de Cámara -->
-      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+      <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;">
         <button id="btnLiveCamAlarm" class="btn-sm" style="flex: 1; min-width: 120px; background: rgba(239, 68, 68, 0.25); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.5); padding: 10px; border-radius: 8px; font-weight: 800; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
           <i class="fa-solid fa-bell"></i> Activar Sirena / Alarma
         </button>
@@ -2146,6 +2235,11 @@
         <button class="btn-sm" style="background: rgba(255,255,255,0.08); color: #fff; border: 1px solid var(--border-glass); padding: 10px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer;" onclick="toggleCamFullscreen()" title="Pantalla Completa">
           <i class="fa-solid fa-expand"></i>
         </button>
+      </div>
+
+      <!-- AVISO DE CRÉDITOS YOOSEE APP -->
+      <div style="font-size: 9.5px; color: #94A3B8; text-align: center; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 6px;">
+        📱 Transmisión compatible con protocolo Yoosee App & RTSP. Todos los derechos y marcas corresponden a <strong>Yoosee App</strong>.
       </div>
     </div>
   </div>
