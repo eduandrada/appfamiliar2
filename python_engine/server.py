@@ -7,7 +7,7 @@ import uvicorn
 from fastapi import FastAPI, Query, Response, HTTPException, Request, WebSocket, WebSocketDisconnect, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, HTMLResponse
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 
@@ -1685,3 +1685,116 @@ def member_disconnect(data: DisconnectPayload):
         DATA_STORE["members"] = members
         return {"success": True, "status": "DISCONNECTED", "last_seen": formatted_time}
     return {"success": False, "detail": "Member not found"}
+
+
+# ==============================================================================
+# INTEGRACIÓN MAPA INTELIGENTE FOLIUM REAL-TIME DE ALTA PRECISIÓN (2026)
+# ==============================================================================
+@app.get("/api/map/folium", response_class=HTMLResponse)
+@app.get("/map/folium", response_class=HTMLResponse)
+def get_folium_interactive_map():
+    try:
+        import folium
+        from folium.plugins import MarkerCluster
+    except ImportError:
+        return HTMLResponse("<h3>Error: Folium no esta disponible en el servidor python.</h3>", status_code=500)
+
+    members = DATA_STORE.get("members", DEFAULT_MEMBERS)
+    cameras = DATA_STORE.get("cameras", DEFAULT_CAMERAS)
+
+    center_lat, center_lng = -28.46957, -65.78524
+
+    valid_coords = [(m["lat"], m["lng"]) for m in members if isinstance(m.get("lat"), (int, float)) and isinstance(m.get("lng"), (int, float))]
+    if valid_coords:
+        center_lat = sum(c[0] for c in valid_coords) / len(valid_coords)
+        center_lng = sum(c[1] for c in valid_coords) / len(valid_coords)
+
+    # Crear mapa inteligente Folium con capa oscura Cyber 2026
+    f_map = folium.Map(
+        location=[center_lat, center_lng],
+        zoom_start=15,
+        tiles="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+        attr='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a> | Familia Andrada Folium Realtime'
+    )
+
+    # Cluster para miembros
+    member_cluster = MarkerCluster(name="👥 Miembros Círculo Familiar").add_to(f_map)
+
+    for m in members:
+        lat = m.get("lat")
+        lng = m.get("lng")
+        if lat is None or lng is None:
+            continue
+
+        name = m.get("name", "Miembro")
+        role = m.get("role", "Familiar")
+        battery = m.get("battery", 100)
+        phone = m.get("phone", "")
+        zone = m.get("zone", "Catamarca")
+        is_online = m.get("is_online", True)
+        last_seen = m.get("last_seen", "Reciente")
+
+        color = "green" if is_online else "red"
+
+        popup_html = f"""
+        <div style="font-family: Arial, sans-serif; min-width: 210px; padding: 8px; color: #1E293B;">
+            <h4 style="margin: 0 0 6px 0; color: #0284C7; font-weight: 800;">👤 {name}</h4>
+            <div style="font-size: 11px; margin-bottom: 4px; background: #E2E8F0; padding: 2px 6px; border-radius: 4px; display: inline-block;">
+                <b>{role}</b>
+            </div>
+            <p style="margin: 3px 0; font-size: 11px; color: #475569;">📍 <b>Zona:</b> {zone}</p>
+            <p style="margin: 3px 0; font-size: 11px; color: #475569;">🔋 <b>Batería:</b> {battery}%</p>
+            <p style="margin: 3px 0; font-size: 11px; color: #475569;">📞 <b>Teléfono:</b> {phone}</p>
+            <p style="margin: 3px 0; font-size: 11px; color: #475569;">🕒 <b>Última Visto:</b> {last_seen}</p>
+            <div style="margin-top: 6px; font-size: 10px; font-weight: bold; color: {'#10B981' if is_online else '#EF4444'}; background: {'rgba(16,185,129,0.1)' if is_online else 'rgba(239,68,68,0.1)'}; padding: 4px; border-radius: 4px; text-align: center;">
+                ● {'GPS EN TIEMPO REAL ACTIVO' if is_online else 'DESCONECTADO'}
+            </div>
+        </div>
+        """
+
+        # Círculo de alta precisión GPS (Geocerca 45m)
+        folium.Circle(
+            location=[lat, lng],
+            radius=45,
+            color="#38BDF8" if is_online else "#EF4444",
+            fill=True,
+            fill_color="#38BDF8" if is_online else "#EF4444",
+            fill_opacity=0.18,
+            popup=f"Zona de Precisión GPS: {name}"
+        ).add_to(f_map)
+
+        folium.Marker(
+            location=[lat, lng],
+            popup=folium.Popup(popup_html, max_width=250),
+            tooltip=f"📍 {name} ({role}) - {battery}% Batería",
+            icon=folium.Icon(color=color, icon="user", prefix="fa")
+        ).add_to(member_cluster)
+
+    # Grupo de Cámaras
+    cam_group = folium.FeatureGroup(name="📹 Cámaras IP / Yoosee").add_to(f_map)
+    for cam in cameras:
+        c_lat = cam.get("lat")
+        c_lng = cam.get("lng")
+        if c_lat and c_lng:
+            c_name = cam.get("name", "Cámara")
+            c_loc = cam.get("location", "Ubicación")
+            cam_popup = f"""
+            <div style="font-family: Arial, sans-serif; min-width: 190px; padding: 6px;">
+                <h4 style="margin:0 0 4px 0; color:#06B6D4;">📹 {c_name}</h4>
+                <p style="margin:2px 0; font-size:11px; color:#475569;">📍 {c_loc}</p>
+                <div style="margin-top:4px; font-size:10px; font-weight:bold; color:#10B981; background:rgba(16,185,129,0.1); padding:3px; border-radius:4px; text-align:center;">
+                    ● STREAMING 1080P HD ACTIVO
+                </div>
+            </div>
+            """
+            folium.Marker(
+                location=[c_lat, c_lng],
+                popup=folium.Popup(cam_popup, max_width=230),
+                tooltip=f"📹 Cámara: {c_name}",
+                icon=folium.Icon(color="blue", icon="video-camera", prefix="fa")
+            ).add_to(cam_group)
+
+    folium.LayerControl().add_to(f_map)
+
+    map_html = f_map._repr_html_()
+    return HTMLResponse(content=map_html)

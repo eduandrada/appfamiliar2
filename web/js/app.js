@@ -6793,3 +6793,73 @@ function handleLogoutUser() {
 }
 
 window.handleLogoutUser = handleLogoutUser;
+
+
+// ==================== CONMUTADOR DE MAPA FOLIUM REAL-TIME ====================
+let activeMapView = 'leaflet';
+
+function switchMapView(mode) {
+  activeMapView = mode;
+  const leafletDiv = document.getElementById('map');
+  const foliumDiv = document.getElementById('foliumMapContainer');
+  const foliumFrame = document.getElementById('foliumMapFrame');
+  const btnLeaflet = document.getElementById('btnMapLeaflet');
+  const btnFolium = document.getElementById('btnMapFolium');
+
+  if (mode === 'folium') {
+    if (leafletDiv) leafletDiv.classList.add('hidden');
+    if (foliumDiv) foliumDiv.classList.remove('hidden');
+
+    if (btnLeaflet) {
+      btnLeaflet.classList.remove('active');
+      btnLeaflet.style.background = 'rgba(255,255,255,0.08)';
+      btnLeaflet.style.color = '#fff';
+      btnLeaflet.style.borderColor = 'var(--border-glass)';
+    }
+    if (btnFolium) {
+      btnFolium.classList.add('active');
+      btnFolium.style.background = 'rgba(56, 189, 248, 0.2)';
+      btnFolium.style.color = 'var(--accent-cyan)';
+      btnFolium.style.borderColor = 'var(--accent-cyan)';
+    }
+
+    if (foliumFrame) {
+      foliumFrame.src = '/api/map/folium?t=' + Date.now();
+    }
+    if (typeof showToast === 'function') {
+      showToast('🛰️ Cargando Mapa Inteligente Folium Alta Precisión...', 'info');
+    }
+  } else {
+    if (foliumDiv) foliumDiv.classList.add('hidden');
+    if (leafletDiv) leafletDiv.classList.remove('hidden');
+
+    if (btnFolium) {
+      btnFolium.classList.remove('active');
+      btnFolium.style.background = 'rgba(255,255,255,0.08)';
+      btnFolium.style.color = '#fff';
+      btnFolium.style.borderColor = 'var(--border-glass)';
+    }
+    if (btnLeaflet) {
+      btnLeaflet.classList.add('active');
+      btnLeaflet.style.background = 'rgba(56, 189, 248, 0.2)';
+      btnLeaflet.style.color = 'var(--accent-cyan)';
+      btnLeaflet.style.borderColor = 'var(--accent-cyan)';
+    }
+
+    if (map) {
+      setTimeout(() => map.invalidateSize(), 200);
+    }
+  }
+}
+
+function refreshFoliumMapIfActive() {
+  if (activeMapView === 'folium') {
+    const foliumFrame = document.getElementById('foliumMapFrame');
+    if (foliumFrame) {
+      foliumFrame.src = '/api/map/folium?t=' + Date.now();
+    }
+  }
+}
+
+window.switchMapView = switchMapView;
+window.refreshFoliumMapIfActive = refreshFoliumMapIfActive;
