@@ -26,7 +26,7 @@ python --version
 
 echo.
 echo [2/3] Verificando dependencias (FastAPI, Uvicorn, etc.)...
-python -c "import fastapi, uvicorn" >nul 2>nul
+python -c "import fastapi, uvicorn, websockets" >nul 2>nul
 if %errorlevel% neq 0 (
     echo Instalando dependencias necesarias desde requirements.txt...
     pip install -r requirements.txt
