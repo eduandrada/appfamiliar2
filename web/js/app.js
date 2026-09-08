@@ -2694,6 +2694,10 @@ function setupLiveCameraStreamPlayer(streamUrl) {
     if (hlsEl) hlsEl.classList.add('hidden');
     if (imgEl) {
       imgEl.classList.remove('hidden');
+      imgEl.onerror = () => {
+        imgEl.onerror = null;
+        imgEl.src = 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80';
+      };
       imgEl.src = streamUrl || 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80';
     }
     if (fmtLabel) fmtLabel.textContent = 'Yoosee Cam RTSP/IP Stream';

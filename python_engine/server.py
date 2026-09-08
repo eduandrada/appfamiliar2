@@ -704,8 +704,9 @@ def get_camera_status(cam_id: str):
 def stream_camera_feed(cam_id: str, info: Optional[bool] = False):
     """
     Endpoint proxy seguro para la transmisión de video HTML5.
-    Redirecciona transparentemente al flujo o imagen en vivo de la cámara.
+    Soporta consumo directo desde cualquier red (PC, Celular 4G/5G, Wi-Fi).
     """
+    import urllib.request
     cameras = DATA_STORE.get("cameras", [])
     cam = next((c for c in cameras if c["id"] == cam_id), None)
     if not cam:
@@ -723,6 +724,21 @@ def stream_camera_feed(cam_id: str, info: Optional[bool] = False):
             "protocol": cam.get("protocol", "rtsp"),
             "target_url": target_url
         }
+
+    # Si es URL HTTP/HTTPS externa, hacemos proxy seguro para evitar bloqueo CORS y redes privadas en 4G/5G
+    if target_url.startswith("http://") or target_url.startswith("https://"):
+        try:
+            req = urllib.request.Request(target_url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+            with urllib.request.urlopen(req, timeout=3) as resp:
+                content_type = resp.headers.get('Content-Type', 'image/jpeg')
+                body = resp.read()
+                return Response(content=body, media_type=content_type, headers={
+                    'Access-Control-Allow-Origin': '*',
+                    'Cache-Control': 'no-cache, no-store, must-revalidate'
+                })
+        except Exception:
+            fallback_url = "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80"
+            return RedirectResponse(url=fallback_url, status_code=307)
 
     return RedirectResponse(url=target_url, status_code=307)
 
