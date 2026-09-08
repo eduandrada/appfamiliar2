@@ -522,6 +522,57 @@
               <span style="font-size: 12px; font-weight: 700; color: #fff;"><i class="fa-solid fa-bell" style="color: var(--accent-blue);"></i> Check-ins Rápidos (1-Toque):</span>
               <span id="speedometerBadge" class="badge-tag" style="background: rgba(16, 185, 129, 0.18); color: #10B981; font-size: 11px;">0 km/h</span>
             </div>
+
+          <!-- VENTANA DE CHAT UNIFICADO Y EN TIEMPO REAL -->
+          <div class="glass-card chat-container">
+            <div class="chat-header">
+              <div class="chat-title">
+                <div class="chat-avatar-icon">
+                  <i class="fa-solid fa-robot"></i>
+                </div>
+                <div>
+                  <div style="line-height: 1.2;">Chat Círculo & Asistente IA</div>
+                  <span style="font-size: 10px; color: var(--text-secondary); font-weight: 600;">Canal Inteligente 24/7</span>
+                </div>
+              </div>
+              <span class="chat-online-badge"><span class="mini-dot"></span> En Vivo</span>
+            </div>
+
+            <div class="chat-messages" id="chatMessages">
+              <div class="msg-system">
+                <i class="fa-solid fa-shield-halved" style="margin-right: 4px;"></i> Canal de comunicación familiar seguro activo. Respuestas instantáneas y alertas en vivo.
+              </div>
+            </div>
+
+            <!-- Respuestas Rápidas Requeridas de 1-toque -->
+            <div class="quick-replies-bar">
+              <button type="button" class="quick-reply-pill" style="background: rgba(56, 189, 248, 0.15); color: #38BDF8; border-color: rgba(56, 189, 248, 0.3);" onclick="sendPhoneQuickShare()">
+                <i class="fa-solid fa-phone"></i> Enviar Teléfono
+              </button>
+              <button type="button" class="quick-reply-pill" style="background: rgba(245, 158, 11, 0.15); color: #F59E0B; border-color: rgba(245, 158, 11, 0.3);" onclick="sendQuickReply('📍 ¡Hola a todos! Por favor envíen su ubicación actual en el mapa.')">
+                <i class="fa-solid fa-map-pin"></i> Pedir Ubicación
+              </button>
+              <button type="button" class="quick-reply-pill" style="background: rgba(16, 185, 129, 0.15); color: #10B981; border-color: rgba(16, 185, 129, 0.3);" onclick="sendLocationQuickShare()">
+                <i class="fa-solid fa-location-dot"></i> Mi Ubicación GPS
+              </button>
+              <button type="button" class="quick-reply-pill" style="background: rgba(239, 68, 68, 0.15); color: #FCA5A5; border-color: rgba(239, 68, 68, 0.3);" onclick="triggerUberRequest()">
+                <i class="fa-solid fa-taxi"></i> Pedir Uber / Taxi
+              </button>
+            </div>
+
+            <!-- Campo de Texto para Chatear -->
+            <form class="chat-input-row" onsubmit="handleSendCustomMessage(event)">
+              <button type="button" class="btn-chat-action-input" title="Compartir Ubicación GPS" onclick="sendLocationQuickShare()">
+                <i class="fa-solid fa-location-dot"></i>
+              </button>
+              <button type="button" id="btnVoiceDictation" class="btn-chat-action-input" title="Dictar Mensaje por Voz" onclick="toggleChatVoiceDictation()">
+                <i class="fa-solid fa-microphone"></i>
+              </button>
+              <input type="text" id="customChatInput" placeholder="Escribe un mensaje o consulta al Asistente IA..." autocomplete="off">
+              <button type="submit" class="btn-chat-send" title="Enviar Mensaje"><i class="fa-solid fa-paper-plane"></i></button>
+            </form>
+          </div>
+
             <div class="quick-checkin-buttons" style="display: flex; gap: 8px;">
               <button class="btn-checkin btn-checkin-green" onclick="sendQuickCheckIn('Llegué bien')">
                 <i class="fa-solid fa-circle-check"></i> Llegué bien
@@ -577,56 +628,6 @@
             <button type="button" class="btn-mobile-submit" style="background: linear-gradient(135deg, #F59E0B, #D97706); color: #000; font-weight: 800; font-size: 13px; padding: 10px; margin: 0; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;" onclick="triggerUberRequest()">
               <i class="fa-solid fa-car-side"></i> <span>Pedir Uber a Mi Ubicación GPS (1-Clic)</span>
             </button>
-          </div>
-
-          <!-- VENTANA DE CHAT UNIFICADO Y EN TIEMPO REAL -->
-          <div class="glass-card chat-container">
-            <div class="chat-header">
-              <div class="chat-title">
-                <div class="chat-avatar-icon">
-                  <i class="fa-solid fa-robot"></i>
-                </div>
-                <div>
-                  <div style="line-height: 1.2;">Chat Círculo & Asistente IA</div>
-                  <span style="font-size: 10px; color: var(--text-secondary); font-weight: 600;">Canal Inteligente 24/7</span>
-                </div>
-              </div>
-              <span class="chat-online-badge"><span class="mini-dot"></span> En Vivo</span>
-            </div>
-
-            <div class="chat-messages" id="chatMessages">
-              <div class="msg-system">
-                <i class="fa-solid fa-shield-halved" style="margin-right: 4px;"></i> Canal de comunicación familiar seguro activo. Respuestas instantáneas y alertas en vivo.
-              </div>
-            </div>
-
-            <!-- Respuestas Rápidas Requeridas de 1-toque -->
-            <div class="quick-replies-bar">
-              <button type="button" class="quick-reply-pill" style="background: rgba(56, 189, 248, 0.15); color: #38BDF8; border-color: rgba(56, 189, 248, 0.3);" onclick="sendPhoneQuickShare()">
-                <i class="fa-solid fa-phone"></i> Enviar Teléfono
-              </button>
-              <button type="button" class="quick-reply-pill" style="background: rgba(245, 158, 11, 0.15); color: #F59E0B; border-color: rgba(245, 158, 11, 0.3);" onclick="sendQuickReply('📍 ¡Hola a todos! Por favor envíen su ubicación actual en el mapa.')">
-                <i class="fa-solid fa-map-pin"></i> Pedir Ubicación
-              </button>
-              <button type="button" class="quick-reply-pill" style="background: rgba(16, 185, 129, 0.15); color: #10B981; border-color: rgba(16, 185, 129, 0.3);" onclick="sendLocationQuickShare()">
-                <i class="fa-solid fa-location-dot"></i> Mi Ubicación GPS
-              </button>
-              <button type="button" class="quick-reply-pill" style="background: rgba(239, 68, 68, 0.15); color: #FCA5A5; border-color: rgba(239, 68, 68, 0.3);" onclick="triggerUberRequest()">
-                <i class="fa-solid fa-taxi"></i> Pedir Uber / Taxi
-              </button>
-            </div>
-
-            <!-- Campo de Texto para Chatear -->
-            <form class="chat-input-row" onsubmit="handleSendCustomMessage(event)">
-              <button type="button" class="btn-chat-action-input" title="Compartir Ubicación GPS" onclick="sendLocationQuickShare()">
-                <i class="fa-solid fa-location-dot"></i>
-              </button>
-              <button type="button" id="btnVoiceDictation" class="btn-chat-action-input" title="Dictar Mensaje por Voz" onclick="toggleChatVoiceDictation()">
-                <i class="fa-solid fa-microphone"></i>
-              </button>
-              <input type="text" id="customChatInput" placeholder="Escribe un mensaje o consulta al Asistente IA..." autocomplete="off">
-              <button type="submit" class="btn-chat-send" title="Enviar Mensaje"><i class="fa-solid fa-paper-plane"></i></button>
-            </form>
           </div>
 
           <!-- TARJETA ACOMPÁÑAME (SAFE WALK) CON TEMPORIZADOR Y PIN DE COACCIÓN (ABAJO DEL CHAT) -->
@@ -2388,6 +2389,6 @@
   </script>
   <script src="js/robot_chat.js"></script>
   <script src="https://maps.googleapis.com/maps/api/js?libraries=places,marker&v=beta&loading=async" async defer></script>
-  <script src="js/app.js?v=2026.3.1"></script>
+  <script src="js/app.js?v=2026.3.2"></script>
 </body>
 </html>

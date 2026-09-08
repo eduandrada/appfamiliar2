@@ -3620,3 +3620,33 @@ select option, optgroup {
 
 
 
+
+
+/* ==================== DESKTOP & TABLET ADAPTIVE LAYOUT (PC RESPONSIVE) ==================== */
+@media (min-width: 768px) {
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 12px;
+    background: #030712;
+  }
+
+  .mobile-app-shell {
+    max-width: 640px !important;
+    height: 94vh !important;
+    max-height: 900px !important;
+    border-radius: 24px !important;
+    border: 1px solid rgba(56, 189, 248, 0.25) !important;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 40px rgba(56, 189, 248, 0.15) !important;
+  }
+
+  .chat-container {
+    height: clamp(480px, 58vh, 640px) !important;
+  }
+
+  .chat-messages {
+    max-height: 480px !important;
+  }
+}
