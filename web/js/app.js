@@ -464,33 +464,26 @@ function switchTab(tabId) {
 // ==================== UNIFIED HIGH-PRECISION MAP ENGINE (LEAFLET + FOLIUM) ====================
 let currentMapEngine = 'unified';
 let currentTileLayer = null;
-let currentTileMode = 'dark'; // 'dark' | 'satellite' | 'street'
+let currentTileMode = 'street'; // 'street' | 'satellite'
 
 const MAP_TILE_SOURCES = {
-  dark: {
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
-    attr: '&copy; Esri &copy; OpenStreetMap',
-    label: 'Mapa Oscuro'
+  street: {
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attr: '&copy; OpenStreetMap contributors',
+    label: 'Mapa Callejero OSM'
   },
   satellite: {
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     attr: '&copy; Esri World Imagery',
     label: 'Vista Satelital'
-  },
-  street: {
-    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    attr: '&copy; OpenStreetMap',
-    label: 'Mapa Callejero'
   }
 };
 
 function toggleMapTileLayer() {
-  if (currentTileMode === 'dark') {
+  if (currentTileMode === 'street') {
     currentTileMode = 'satellite';
-  } else if (currentTileMode === 'satellite') {
-    currentTileMode = 'street';
   } else {
-    currentTileMode = 'dark';
+    currentTileMode = 'street';
   }
 
   if (map && currentTileLayer) {
