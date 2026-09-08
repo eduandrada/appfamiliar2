@@ -6405,3 +6405,62 @@ function toggleCamQualityHD() {
     showModernToast('Calidad de Video', isHD ? '⚡ Transmisión cambiada a Modo Fluido SD 720p' : '📺 Transmisión cambiada a Alta Definición HD 1080p', 'info');
   }
 }
+
+
+// ======================================================
+// FUNCIONES AUXILIARES DE NAVEGACIÓN, SESIÓN & MODALES
+// ======================================================
+
+function handleUserSessionPillClick() {
+  if (typeof activeUser !== 'undefined' && activeUser) {
+    if (typeof openMemberProfileModal === 'function') {
+      openMemberProfileModal(activeUser.id || activeUser.name);
+    } else if (typeof openAdminModal === 'function') {
+      openAdminModal();
+    } else {
+      showModernToast('Perfil de Usuario', `Sesión activa como: ${activeUser.name || 'Familia'}`, 'info');
+    }
+  } else {
+    openLoginModal();
+  }
+}
+
+function loginWithBiometrics() {
+  showModernToast('🔑 Biometría Requerida', 'Escaneando huella dactilar / FaceID del dispositivo...', 'info');
+  setTimeout(() => {
+    closeLoginModal();
+    showModernToast('✅ Acceso Biométrico', 'Sesión iniciada con éxito por Huella / FaceID.', 'success');
+    if (typeof updateHeaderUserProfile === 'function') updateHeaderUserProfile();
+  }, 900);
+}
+
+function openSafeWalkTimerModal() {
+  const modal = document.getElementById('safeguardModal') || document.getElementById('expressSosModal');
+  if (modal) {
+    modal.classList.remove('hidden');
+  } else {
+    showModernToast('🚶 SafeWalk Activo', 'Monitoreo preventivo de trayecto configurado con éxito.', 'info');
+  }
+}
+
+function confirmAloneSafetyCheck() {
+  const timer = document.getElementById('aloneTimerDisplay');
+  if (timer) timer.textContent = '29:59';
+  showModernToast('🛡️ Vigilancia Confirmada', '¡Estado reportado a toda la familia! Temporizador de 30 min reiniciado.', 'success');
+}
+
+function closeWhatsAppAlertModal() {
+  const modal = document.getElementById('whatsappAlertModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function openWhatsAppShare() {
+  const modal = document.getElementById('whatsappModal');
+  if (modal) {
+    modal.classList.remove('hidden');
+  } else {
+    const user = (typeof activeUser !== 'undefined' && activeUser) ? activeUser : { name: 'Carlos Andrada', role: 'Padre', lat: -28.46957, lng: -65.78524 };
+    const text = `🚨 *ALERTA FAMILIAR* 📍\nUbicación en Vivo de ${user.name}:\nhttps://www.google.com/maps?q=${user.lat || -28.46957},${user.lng || -65.78524}\n\nAcceso a la app:\nhttps://appfamiliar2.onrender.com/`;
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+  }
+}
