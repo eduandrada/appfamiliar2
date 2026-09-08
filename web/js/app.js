@@ -1841,69 +1841,7 @@ async function submitRecoverPin() {
 
 // --- Perfil Completo del Miembro con Historial de Inicios de Sesión ---
 function showFullMemberDetails(memberId) {
-  const member = familyMembers.find(m => m.id === memberId) || activeUser || familyMembers[0];
-  const modal = document.getElementById('fullMemberDetailModal');
-  const content = document.getElementById('fullMemberDetailContent');
-  if (!modal || !content) return;
-
-  const isOnline = member.isOnline !== undefined ? member.isOnline : true;
-
-  // Cargar historial de logons del backend para este miembro
-  fetch(`/api/logs/login?member_id=${member.id}`)
-    .then(res => res.json())
-    .then(data => {
-      const logs = data.logs || [];
-      const logsHtml = logs.length > 0 ? logs.map(l => `
-        <div style="font-size: 10px; border-bottom: 1px solid rgba(255,255,255,0.06); padding: 4px 0; display: flex; justify-content: space-between;">
-          <span>🌐 ${l.ip} • 🔋${l.battery}%</span>
-          <span style="color: var(--text-muted);">${new Date(l.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
-        </div>
-      `).join('') : '<div style="font-size: 10px; color: var(--text-muted);">Sin ingresos recientes grabados.</div>';
-
-      content.innerHTML = `
-        <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #0284C7, #06B6D4); color: #fff; font-size: 28px; font-weight: 800; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; border: 3px solid var(--accent-cyan); box-shadow: 0 0 20px rgba(6, 182, 212, 0.4);">
-          ${member.avatar || member.name.charAt(0)}
-        </div>
-
-        <h2 style="font-size: 18px; font-weight: 900; color: #fff; margin: 0 0 4px;">${member.name}</h2>
-        <span class="badge-role" style="font-size: 12px; display: inline-block; margin-bottom: 12px;">${member.role}</span>
-
-        <div style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 12px; border: 1px solid var(--border-glass); text-align: left; margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px; font-size: 12px;">
-          <div><strong>Estado de Red:</strong> ${isOnline ? '🟢 En Línea (Tiempo Real)' : '🔴 Offline'}</div>
-          <div><strong>DNI:</strong> ${member.dni || 'No especificado'}</div>
-          <div><strong>Teléfono WhatsApp:</strong> ${member.phone}</div>
-          <div><strong>🌐 IP Registrada:</strong> ${member.last_ip || '190.18.24.112'}</div>
-          <div><strong>Ubicación Actual:</strong> 📍 ${member.zone || 'Catamarca'}</div>
-          <div><strong>Batería Dispositivo:</strong> 🔋 ${member.battery}% ${member.isCharging ? '⚡ (Cargando)' : ''}</div>
-          <div><strong>Velocidad:</strong> ⚡ ${member.speed || 0} km/h</div>
-          <div><strong>Salud / Movimiento:</strong> ⌚ ${userHealthData.activityState} • ${userHealthData.heartRate} bpm</div>
-        </div>
-
-        <!-- Historial de Inicios de Sesión del Miembro -->
-        <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 10px; border: 1px solid var(--border-glass); text-align: left; margin-bottom: 14px;">
-          <div style="font-size: 11px; font-weight: 800; color: var(--accent-cyan); margin-bottom: 6px;">
-            <i class="fa-solid fa-list-check"></i> Historial de Inicios de Sesión de este Miembro:
-          </div>
-          <div style="max-height: 80px; overflow-y: auto;">
-            ${logsHtml}
-          </div>
-        </div>
-
-        <div style="display: flex; gap: 8px;">
-          <a href="tel:${member.phone.replace(/\s+/g, '')}" class="btn-mobile-submit" style="flex: 1; background: linear-gradient(135deg, #0284C7, #06B6D4); padding: 10px; font-size: 12px; margin: 0; text-decoration: none; text-align: center; color: #fff; display: flex; align-items: center; justify-content: center; gap: 6px;">
-            <i class="fa-solid fa-phone"></i> Llamar
-          </a>
-          <button class="btn-mobile-submit" style="flex: 1; background: linear-gradient(135deg, #25D366, #128C7E); padding: 10px; font-size: 12px; margin: 0;" onclick="closeFullMemberDetailModal(); switchTab('tab-whatsapp'); loadWaTemplate('GPS');">
-            <i class="fa-brands fa-whatsapp"></i> Mensaje
-          </button>
-        </div>
-      `;
-
-      modal.classList.remove('hidden');
-    })
-    .catch(() => {
-      modal.classList.remove('hidden');
-    });
+  openFullMemberDetailModal(memberId);
 }
 
 function closeFullMemberDetailModal() {
@@ -3166,6 +3104,7 @@ function openFullMemberDetailModal(memberId) {
 
   const netLabel = member.network_label || (member.zone && member.zone.includes('Casa') ? '🟢 WiFi Casa' : '📶 4G/5G Datos');
   const lastSeenStr = formatLastSeen(member.last_seen || member.lastSeen);
+  const isOnline = member.isOnline !== undefined ? member.isOnline : true;
 
   const trustedMember = getTrustedContactMember(member);
   const trustedNameStr = trustedMember ? trustedMember.name : 'Sin asignar';
@@ -3176,87 +3115,154 @@ function openFullMemberDetailModal(memberId) {
   let starActionHtml = '';
   if (isMyTrustedContact) {
     starActionHtml = `
-      <div style="background: rgba(245, 158, 11, 0.25); border: 1px solid rgba(245, 158, 11, 0.5); color: #F59E0B; border-radius: 8px; padding: 8px 12px; font-weight: 800; font-size: 12px; margin-bottom: 10px; text-align: center;">
-        ⭐ Es tu Persona de Confianza Seleccionada
+      <div style="background: rgba(245, 158, 11, 0.2); border: 1px solid rgba(245, 158, 11, 0.5); color: #F59E0B; border-radius: 10px; padding: 8px 12px; font-weight: 800; font-size: 11px; margin-bottom: 12px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+        <i class="fa-solid fa-star"></i> Persona de Confianza Seleccionada
       </div>`;
   } else if (!isMe) {
     starActionHtml = `
-      <div style="margin-bottom: 10px;">
-        <button class="btn-sm" style="width: 100%; background: linear-gradient(135deg, #F59E0B, #D97706); color: #fff; border: none; border-radius: 8px; padding: 10px; font-size: 12px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="setAsTrustedContact('${member.id}'); closeFullMemberDetailModal();">
+      <div style="margin-bottom: 12px;">
+        <button class="btn-sm" style="width: 100%; background: linear-gradient(135deg, #F59E0B, #D97706); color: #fff; border: none; border-radius: 10px; padding: 9px 12px; font-size: 11px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 4px 12px rgba(245,158,11,0.3);" onclick="setAsTrustedContact('${member.id}'); closeFullMemberDetailModal();">
           <i class="fa-solid fa-star"></i> Marcar a ${member.name.split(' ')[0]} como mi Persona de Confianza ⭐
         </button>
       </div>`;
   }
 
-  content.innerHTML = `
-    <div style="margin-bottom: 14px;">
-      <div style="margin: 0 auto 10px; display: inline-block;">
-        ${getAvatarHtml(member, 64)}
-      </div>
-      <h3 style="font-size: 18px; font-weight: 800; color: #fff; margin-bottom: 4px;">${member.name}</h3>
-      <div style="display: flex; justify-content: center; gap: 6px; align-items: center; flex-wrap: wrap;">
-        <span style="font-size: 11px; padding: 3px 10px; border-radius: 12px; background: rgba(56, 189, 248, 0.15); color: #38BDF8; font-weight: 700; border: 1px solid rgba(56, 189, 248, 0.3);">${member.role}</span>
-      </div>
-    </div>
+  // Cargar historial de logons
+  fetch(`/api/logs/login?member_id=${member.id}`)
+    .then(res => res.json())
+    .then(data => renderProfile(data.logs || []))
+    .catch(() => renderProfile([]));
 
-    ${starActionHtml}
+  function renderProfile(logs) {
+    const logsHtml = logs.length > 0 ? logs.slice(0, 5).map(l => `
+      <div style="font-size: 10px; border-bottom: 1px solid rgba(255,255,255,0.06); padding: 4px 0; display: flex; justify-content: space-between; align-items: center;">
+        <span>🌐 ${l.ip || '127.0.0.1'} • 🔋${l.battery || 100}%</span>
+        <span style="color: var(--text-muted);">${l.timestamp ? new Date(l.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : 'Reciente'}</span>
+      </div>
+    `).join('') : '<div style="font-size: 10px; color: var(--text-muted); text-align: center; padding: 4px;">Sin inicios de sesión recientes grabados.</div>';
 
-    <div style="background: rgba(18, 28, 48, 0.6); border: 1px solid var(--border-glass); border-radius: 12px; padding: 12px; text-align: left; font-size: 12px; margin-bottom: 14px;">
-      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-        <span style="color: var(--text-secondary);">DNI:</span>
-        <strong style="color: #fff;">${member.dni}</strong>
-      </div>
-      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-        <span style="color: var(--text-secondary);">Teléfono:</span>
-        <strong style="color: #fff;">${member.phone}</strong>
-      </div>
-      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-        <span style="color: var(--text-secondary);">⭐ Persona de Confianza:</span>
-        <strong style="color: #F59E0B;">⭐ ${trustedNameStr}</strong>
-      </div>
-      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-        <span style="color: var(--text-secondary);">Última Conexión:</span>
-        <strong style="color: #10B981;">${lastSeenStr}</strong>
-      </div>
-      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-        <span style="color: var(--text-secondary);">Zona Actual:</span>
-        <strong style="color: #38BDF8;">${member.zone || 'En Vivo'}</strong>
-      </div>
-      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-        <span style="color: var(--text-secondary);">Batería Teléfono:</span>
-        <strong style="color: #10B981;">🔋 ${member.battery}%</strong>
-      </div>
-      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-        <span style="color: var(--text-secondary);">Dispositivo / Sesión:</span>
-        <strong style="color: #38BDF8;">${member.device_type || '📱 Celular'} (${member.device_name || 'Navegador Web'})</strong>
-      </div>
-      <div style="display: flex; justify-content: space-between;">
-        <span style="color: var(--text-secondary);">Conexión de Red:</span>
-        <strong style="color: #10B981;">${netLabel}</strong>
-      </div>
-    </div>
+    const battColor = member.battery <= 20 ? '#EF4444' : member.battery <= 50 ? '#F59E0B' : '#10B981';
 
-    <div style="margin-bottom: 10px;">
-      <button class="btn-sm" style="width: 100%; background: linear-gradient(135deg, #F59E0B, #D97706); color: #fff; border: none; border-radius: 8px; padding: 10px; font-size: 12px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;" onclick="sendTrustedContactAlert('${member.id}'); closeFullMemberDetailModal();">
-        <i class="fa-solid fa-triangle-exclamation" style="font-size: 14px;"></i> Enviar GPS por Sospecha a Persona de Confianza
-      </button>
-    </div>
+    content.innerHTML = `
+      <!-- TARJETA SUPERIOR HEADER PERFIL 2026 -->
+      <div style="background: linear-gradient(135deg, rgba(15, 23, 42, 0.8), rgba(30, 41, 59, 0.9)); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 16px; padding: 14px; margin-bottom: 12px; position: relative; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,0.4);">
+        <div style="position: absolute; top: -20px; right: -20px; width: 100px; height: 100px; background: rgba(56, 189, 248, 0.15); border-radius: 50%; filter: blur(20px);"></div>
+        
+        <div style="position: relative; z-index: 2; display: flex; align-items: center; gap: 14px; text-align: left;">
+          <div style="position: relative; flex: none;">
+            ${getAvatarHtml(member, 64)}
+            <span style="position: absolute; bottom: 0; right: 0; width: 14px; height: 14px; border-radius: 50%; background: ${isOnline ? '#10B981' : '#64748B'}; border: 2px solid #0F172A;" title="${isOnline ? 'En Línea' : 'Offline'}"></span>
+          </div>
 
-    <div style="display: flex; gap: 8px;">
-      <button class="btn-sm" style="flex: 1; background: rgba(37, 211, 102, 0.18); color: #25D366; border: 1px solid rgba(37, 211, 102, 0.4); border-radius: 8px; padding: 10px; font-size: 12px; font-weight: 700; cursor: pointer;" onclick="sendDirectMemberWhatsApp('${member.id}'); closeFullMemberDetailModal();">
-        <i class="fa-brands fa-whatsapp"></i> WhatsApp
-      </button>
-      <button class="btn-sm" style="flex: 1; background: rgba(56, 189, 248, 0.18); color: #38BDF8; border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 8px; padding: 10px; font-size: 12px; font-weight: 700; cursor: pointer;" onclick="selectMember('${member.id}'); closeFullMemberDetailModal(); switchTab('tab-map');">
-        <i class="fa-solid fa-map-location-dot"></i> Ver en Mapa
-      </button>
-      <button class="btn-sm" style="background: rgba(255, 255, 255, 0.08); color: #fff; border: 1px solid var(--border-glass); border-radius: 8px; padding: 10px 14px; font-size: 12px; cursor: pointer;" onclick="callMemberPhone('${member.phone}')" title="Llamar">
-        <i class="fa-solid fa-phone"></i>
-      </button>
-    </div>
-  `;
+          <div style="flex: 1; min-width: 0;">
+            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+              <h3 style="font-size: 17px; font-weight: 900; color: #fff; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${member.name}</h3>
+              <i class="fa-solid fa-circle-check" style="color: #38BDF8; font-size: 13px;" title="Verificado"></i>
+            </div>
+            <div style="margin-top: 4px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+              <span style="font-size: 10px; padding: 2px 8px; border-radius: 10px; background: rgba(56, 189, 248, 0.2); color: #38BDF8; font-weight: 800; border: 1px solid rgba(56, 189, 248, 0.4);">${member.role}</span>
+              <span style="font-size: 10px; padding: 2px 8px; border-radius: 10px; background: rgba(16, 185, 129, 0.15); color: #10B981; font-weight: 700;">${isOnline ? '🟢 En línea' : '🔴 Offline'}</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
-  const modal = document.getElementById('fullMemberDetailModal');
-  if (modal) modal.classList.remove('hidden');
+      ${starActionHtml}
+
+      <!-- MÉTRICAS DE TELEMETRÍA 2X2 REJILLA COMPACTA -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+        <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-glass); border-radius: 12px; padding: 10px; text-align: left;">
+          <div style="font-size: 10px; color: var(--text-secondary); font-weight: 700; display: flex; align-items: center; gap: 4px;">
+            <i class="fa-solid fa-battery-half" style="color: ${battColor};"></i> Batería Dispositivo
+          </div>
+          <div style="font-size: 14px; font-weight: 900; color: #fff; margin-top: 2px;">
+            🔋 ${member.battery}% <small style="font-size: 10px; color: ${battColor};">${member.isCharging ? '⚡ Cargando' : ''}</small>
+          </div>
+        </div>
+
+        <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-glass); border-radius: 12px; padding: 10px; text-align: left;">
+          <div style="font-size: 10px; color: var(--text-secondary); font-weight: 700; display: flex; align-items: center; gap: 4px;">
+            <i class="fa-solid fa-location-dot" style="color: #38BDF8;"></i> Zona Actual
+          </div>
+          <div style="font-size: 11px; font-weight: 800; color: #38BDF8; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${member.zone}">
+            ${member.zone || 'En Vivo'}
+          </div>
+        </div>
+
+        <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-glass); border-radius: 12px; padding: 10px; text-align: left;">
+          <div style="font-size: 10px; color: var(--text-secondary); font-weight: 700; display: flex; align-items: center; gap: 4px;">
+            <i class="fa-solid fa-wifi" style="color: #10B981;"></i> Conexión Red
+          </div>
+          <div style="font-size: 11px; font-weight: 800; color: #10B981; margin-top: 4px;">
+            ${netLabel}
+          </div>
+        </div>
+
+        <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-glass); border-radius: 12px; padding: 10px; text-align: left;">
+          <div style="font-size: 10px; color: var(--text-secondary); font-weight: 700; display: flex; align-items: center; gap: 4px;">
+            <i class="fa-solid fa-clock" style="color: #A855F7;"></i> Última Conexión
+          </div>
+          <div style="font-size: 11px; font-weight: 800; color: #E2E8F0; margin-top: 4px;">
+            ${lastSeenStr}
+          </div>
+        </div>
+      </div>
+
+      <!-- DETALLES DE IDENTIDAD Y CONTACTO -->
+      <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-glass); border-radius: 12px; padding: 10px 12px; text-align: left; font-size: 11px; margin-bottom: 12px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+          <span style="color: var(--text-secondary);"><i class="fa-solid fa-id-card"></i> DNI:</span>
+          <strong style="color: #fff;">${member.dni || '35388342'}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+          <span style="color: var(--text-secondary);"><i class="fa-solid fa-phone"></i> Teléfono WhatsApp:</span>
+          <strong style="color: #fff;">${member.phone}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+          <span style="color: var(--text-secondary);"><i class="fa-solid fa-star" style="color: #F59E0B;"></i> Persona de Confianza:</span>
+          <strong style="color: #F59E0B;">⭐ ${trustedNameStr}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: var(--text-secondary);"><i class="fa-solid fa-mobile-screen-button"></i> Dispositivo:</span>
+          <strong style="color: #38BDF8;">${member.device_type || '📱 Celular'} (${member.device_name || 'Web'})</strong>
+        </div>
+      </div>
+
+      <!-- HISTORIAL DE SESIONES RECIENTES -->
+      <div style="background: rgba(0,0,0,0.35); padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border-glass); text-align: left; margin-bottom: 12px;">
+        <div style="font-size: 10px; font-weight: 800; color: var(--accent-cyan); margin-bottom: 4px; display: flex; align-items: center; justify-content: space-between;">
+          <span><i class="fa-solid fa-list-check"></i> Registro Reciente de Accesos</span>
+          <span style="font-size: 9px; color: var(--text-muted);">IP & Batería</span>
+        </div>
+        <div style="max-height: 65px; overflow-y: auto;">
+          ${logsHtml}
+        </div>
+      </div>
+
+      <!-- BOTÓN SOS SOSPECHA A PERSONA DE CONFIANZA -->
+      <div style="margin-bottom: 8px;">
+        <button class="btn-sm" style="width: 100%; background: linear-gradient(135deg, #F59E0B, #D97706); color: #fff; border: none; border-radius: 10px; padding: 10px; font-size: 11px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 4px 12px rgba(245,158,11,0.25);" onclick="sendTrustedContactAlert('${member.id}'); closeFullMemberDetailModal();">
+          <i class="fa-solid fa-triangle-exclamation" style="font-size: 13px;"></i> Enviar GPS por Sospecha a Persona de Confianza
+        </button>
+      </div>
+
+      <!-- BARRA DE ACCIONES RÁPIDAS MODERNA -->
+      <div style="display: flex; gap: 6px;">
+        <button class="btn-sm" style="flex: 1; background: rgba(37, 211, 102, 0.18); color: #25D366; border: 1px solid rgba(37, 211, 102, 0.4); border-radius: 10px; padding: 9px; font-size: 11px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;" onclick="sendDirectMemberWhatsApp('${member.id}'); closeFullMemberDetailModal();">
+          <i class="fa-brands fa-whatsapp"></i> WhatsApp
+        </button>
+        <button class="btn-sm" style="flex: 1; background: rgba(56, 189, 248, 0.18); color: #38BDF8; border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 10px; padding: 9px; font-size: 11px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;" onclick="selectMember('${member.id}'); closeFullMemberDetailModal(); switchTab('tab-map');">
+          <i class="fa-solid fa-map-location-dot"></i> Ver Mapa
+        </button>
+        <button class="btn-sm" style="background: rgba(255, 255, 255, 0.08); color: #fff; border: 1px solid var(--border-glass); border-radius: 10px; padding: 9px 12px; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center;" onclick="callMemberPhone('${member.phone}')" title="Llamar">
+          <i class="fa-solid fa-phone"></i>
+        </button>
+      </div>
+    `;
+
+    const modal = document.getElementById('fullMemberDetailModal');
+    if (modal) modal.classList.remove('hidden');
+  }
 }
 
 function sendTrustedContactAlert(memberId) {
