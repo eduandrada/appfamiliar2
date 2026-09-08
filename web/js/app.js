@@ -2659,26 +2659,33 @@ function renderCamerasGrid() {
 let hlsPlayerInstance = null;
 let currentCamQualityIsHD = true;
 
-function setupLiveCameraStreamPlayer(streamUrl) {
+function setupLiveCameraStreamPlayer(camObjOrUrl, camId) {
   const imgEl = document.getElementById('liveCamImageStream');
   const hlsEl = document.getElementById('liveCamHlsPlayer');
   const webcamEl = document.getElementById('liveCamWebcamStream');
   const fmtLabel = document.getElementById('camStreamFormatLabel');
 
-  if (webcamEl) webcamEl.classList.add('hidden');
+  if (webcamEl) {
+    try { webcamEl.pause(); } catch(e) {}
+    webcamEl.srcObject = null;
+    webcamEl.classList.add('hidden');
+  }
+  isWebcamActiveInModal = false;
+
   if (hlsPlayerInstance) {
     try { hlsPlayerInstance.destroy(); } catch(e) {}
     hlsPlayerInstance = null;
   }
 
-  const defaultLiveStream = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8";
-  let targetUrl = streamUrl;
-  if (!targetUrl || targetUrl === 'undefined' || targetUrl.includes('unsplash') || targetUrl.includes('placeholder')) {
-    targetUrl = defaultLiveStream;
+  let streamUrl = typeof camObjOrUrl === 'string' ? camObjOrUrl : (camObjOrUrl ? (camObjOrUrl.stream_url || camObjOrUrl.raw_stream_url) : null);
+  let id = camId || (typeof camObjOrUrl === 'object' && camObjOrUrl ? camObjOrUrl.id : currentLiveCamId) || 'cam_01';
+
+  if (!streamUrl || streamUrl === 'undefined' || streamUrl.includes('mux.dev') || streamUrl.includes('unsplash') || streamUrl.includes('placeholder')) {
+    streamUrl = `/api/cameras/${id}/feed`;
   }
 
-  const isHls = targetUrl && (targetUrl.includes('.m3u8') || targetUrl.includes('hls') || targetUrl === defaultLiveStream);
-  const isMp4 = targetUrl && (targetUrl.includes('.mp4') || targetUrl.includes('.webm'));
+  const isHls = streamUrl && streamUrl.includes('.m3u8');
+  const isMp4 = streamUrl && (streamUrl.includes('.mp4') || streamUrl.includes('.webm'));
 
   if (isHls && typeof Hls !== 'undefined' && Hls.isSupported() && hlsEl) {
     if (imgEl) imgEl.classList.add('hidden');
@@ -2689,35 +2696,32 @@ function setupLiveCameraStreamPlayer(streamUrl) {
       liveMaxLatencyDurationCount: 5,
       enableWorker: true
     });
-    hlsPlayerInstance.loadSource(targetUrl);
+    hlsPlayerInstance.loadSource(streamUrl);
     hlsPlayerInstance.attachMedia(hlsEl);
     hlsEl.play().catch(() => {});
 
-    if (fmtLabel) fmtLabel.textContent = '1080p Yoosee HLS Live Stream';
+    if (fmtLabel) fmtLabel.textContent = '1080p HLS Stream';
   } else if (isMp4 && hlsEl) {
     if (imgEl) imgEl.classList.add('hidden');
     hlsEl.classList.remove('hidden');
-    hlsEl.src = targetUrl;
+    hlsEl.src = streamUrl;
     hlsEl.play().catch(() => {});
-    if (fmtLabel) fmtLabel.textContent = '1080p MP4 HD Stream';
+    if (fmtLabel) fmtLabel.textContent = '1080p MP4 Stream';
   } else {
-    if (hlsEl) hlsEl.classList.add('hidden');
+    if (hlsEl) {
+      try { hlsEl.pause(); } catch(e) {}
+      hlsEl.removeAttribute('src');
+      hlsEl.classList.add('hidden');
+    }
     if (imgEl) {
       imgEl.classList.remove('hidden');
       imgEl.onerror = () => {
         imgEl.onerror = null;
-        if (hlsEl && typeof Hls !== 'undefined' && Hls.isSupported()) {
-          imgEl.classList.add('hidden');
-          hlsEl.classList.remove('hidden');
-          hlsPlayerInstance = new Hls();
-          hlsPlayerInstance.loadSource(defaultLiveStream);
-          hlsPlayerInstance.attachMedia(hlsEl);
-          hlsEl.play().catch(() => {});
-        }
+        imgEl.src = `/api/cameras/${id}/feed?t=` + Date.now();
       };
-      imgEl.src = targetUrl;
+      imgEl.src = (streamUrl.startsWith('http') || streamUrl.startsWith('/api')) ? streamUrl : `/api/cameras/${id}/feed`;
     }
-    if (fmtLabel) fmtLabel.textContent = 'Yoosee Cam RTSP Stream';
+    if (fmtLabel) fmtLabel.textContent = 'Yoosee Cam RTSP (En Vivo)';
   }
 }
 
@@ -2743,7 +2747,7 @@ function openLiveCameraModal(camId) {
       const btnVoice = document.getElementById('btnLiveCamVoice');
 
       if (title) title.textContent = `${cam.name} (En Vivo Yoosee)`;
-      setupLiveCameraStreamPlayer(cam.stream_url);
+      setupLiveCameraStreamPlayer(cam, cam.id);
       if (locText) locText.textContent = `📍 Ubicación: ${cam.location} (IP: ${cam.ip_address || '192.168.1.100'})`;
 
       if (btnAlarm) {
@@ -2765,6 +2769,11 @@ function openLiveCameraModal(camId) {
           clock.textContent = now.toTimeString().split(' ')[0] + ' Yoosee RTSP';
         }
       }, 1000);
+    }).catch(() => {
+      currentLiveCamId = camId || 'cam_01';
+      setupLiveCameraStreamPlayer(null, currentLiveCamId);
+      const modal = document.getElementById('cameraLiveModal');
+      if (modal) modal.classList.remove('hidden');
     });
 }
 
@@ -2773,6 +2782,17 @@ function closeLiveCameraModal() {
   if (hlsPlayerInstance) {
     try { hlsPlayerInstance.destroy(); } catch(e) {}
     hlsPlayerInstance = null;
+  }
+  const hlsEl = document.getElementById('liveCamHlsPlayer');
+  if (hlsEl) {
+    try { hlsEl.pause(); } catch(e) {}
+    hlsEl.removeAttribute('src');
+    hlsEl.classList.add('hidden');
+  }
+  const imgEl = document.getElementById('liveCamImageStream');
+  if (imgEl) {
+    imgEl.removeAttribute('src');
+    imgEl.classList.add('hidden');
   }
   const modal = document.getElementById('cameraLiveModal');
   if (modal) modal.classList.add('hidden');
@@ -2868,6 +2888,7 @@ function toggleCamFullscreen() {
 function toggleWebcamInCamModal() {
   const videoEl = document.getElementById('liveCamWebcamStream');
   const imgEl = document.getElementById('liveCamImageStream');
+  const hlsEl = document.getElementById('liveCamHlsPlayer');
   const btn = document.getElementById('btnToggleWebcam');
   const fmtLabel = document.getElementById('camStreamFormatLabel');
 
@@ -2876,30 +2897,53 @@ function toggleWebcamInCamModal() {
       showModernToast('Webcam no Soportada', 'Tu navegador no permite acceso a la cámara.', 'warning');
       return;
     }
-    navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+
+    if (hlsPlayerInstance) {
+      try { hlsPlayerInstance.destroy(); } catch(e) {}
+      hlsPlayerInstance = null;
+    }
+    if (hlsEl) {
+      try { hlsEl.pause(); } catch(e) {}
+      hlsEl.classList.add('hidden');
+    }
+    if (imgEl) {
+      imgEl.classList.add('hidden');
+    }
+
+    navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false })
       .then(stream => {
         modalWebcamStream = stream;
         isWebcamActiveInModal = true;
         if (videoEl) {
           videoEl.srcObject = stream;
           videoEl.classList.remove('hidden');
+          videoEl.play().catch(err => console.log("Webcam play error:", err));
         }
-        if (imgEl) imgEl.classList.add('hidden');
         if (btn) {
           btn.innerHTML = '<i class="fa-solid fa-stop"></i> Detener Webcam';
           btn.style.background = 'rgba(239, 68, 68, 0.25)';
           btn.style.color = '#EF4444';
           btn.style.borderColor = 'rgba(239, 68, 68, 0.5)';
         }
-        if (fmtLabel) fmtLabel.textContent = 'Dispositivo Local (Webcam)';
-        showModernToast('📹 Webcam Activa', 'Transmitiendo cámara web en vivo.', 'success');
+        if (fmtLabel) fmtLabel.textContent = 'Dispositivo Local (Webcam En Vivo)';
+        showModernToast('📹 Webcam Activa', 'Transmitiendo cámara web local en vivo.', 'success');
       })
       .catch(err => {
-        showModernToast('Error de Cámara', 'No se pudo acceder a la webcam: ' + err.message, 'error');
+        console.error("Error al acceder a la webcam:", err);
+        let msg = err.message || 'No se pudo acceder a la cámara';
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          msg = 'Permiso denegado por el usuario o navegador.';
+        } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+          msg = 'No se detectó ninguna cámara conectada en tu equipo.';
+        }
+        showModernToast('Error de Cámara', msg, 'error');
       });
   } else {
     stopWebcamInCamModal();
-    showModernToast('Stream Restaurado', 'Cámara web desactivada, mostrando feed IP.', 'info');
+    if (currentLiveCamId) {
+      setupLiveCameraStreamPlayer(null, currentLiveCamId);
+    }
+    showModernToast('Stream Restaurado', 'Cámara web desactivada.', 'info');
   }
 }
 
@@ -2910,13 +2954,17 @@ function stopWebcamInCamModal() {
   const fmtLabel = document.getElementById('camStreamFormatLabel');
 
   if (modalWebcamStream) {
-    modalWebcamStream.getTracks().forEach(track => track.stop());
+    try {
+      modalWebcamStream.getTracks().forEach(track => {
+        track.stop();
+      });
+    } catch(e) {}
     modalWebcamStream = null;
   }
   isWebcamActiveInModal = false;
 
   if (videoEl) {
-    videoEl.pause();
+    try { videoEl.pause(); } catch(e) {}
     videoEl.srcObject = null;
     videoEl.classList.add('hidden');
   }
@@ -2927,7 +2975,7 @@ function stopWebcamInCamModal() {
     btn.style.color = '#38BDF8';
     btn.style.borderColor = 'rgba(56, 189, 248, 0.4)';
   }
-  if (fmtLabel) fmtLabel.textContent = '1080p RTSP';
+  if (fmtLabel) fmtLabel.textContent = 'Yoosee Cam RTSP';
 }
 
 function triggerCameraAlarm(camId) {

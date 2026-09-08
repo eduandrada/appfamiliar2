@@ -25,10 +25,9 @@ def sanitize_camera_dict(camera: Dict[str, Any], is_admin: bool = False) -> Dict
     """
     sanitized = dict(camera)
     
-    DEFAULT_LIVE_STREAM = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
-    orig_stream = camera.get("raw_stream_url") or camera.get("stream_url") or DEFAULT_LIVE_STREAM
-    if str(orig_stream).startswith("/api/cameras") or str(orig_stream) in ["undefined", "null", "none", ""]:
-        orig_stream = DEFAULT_LIVE_STREAM
+    orig_stream = camera.get("raw_stream_url") or camera.get("stream_url") or ""
+    if str(orig_stream).startswith("/api/cameras") or str(orig_stream) in ["undefined", "null", "none", "", "None"]:
+        orig_stream = f"/api/cameras/{sanitized.get('id', 'unknown')}/feed"
     sanitized["raw_stream_url"] = orig_stream
 
     # Asegurar valores por defecto para coordenadas GPS y estado
