@@ -1758,10 +1758,17 @@
           <div id="profPhotoPreviewBox" style="width: 76px; height: 76px; border-radius: 50%; margin: 0 auto 8px; overflow: hidden; border: 2px solid var(--accent-blue); display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); box-shadow: 0 0 15px rgba(56, 189, 248, 0.3);">
             <i class="fa-solid fa-camera" style="font-size: 24px; color: var(--text-secondary);"></i>
           </div>
-          <label for="profPhotoFileInput" class="btn-sm" style="background: rgba(56, 189, 248, 0.18); color: var(--accent-blue); border: 1px solid rgba(56, 189, 248, 0.4); padding: 6px 14px; border-radius: 8px; cursor: pointer; display: inline-block; font-size: 12px; font-weight: 700;">
-            <i class="fa-solid fa-upload"></i> Subir Foto de Perfil
-          </label>
-          <input type="file" id="profPhotoFileInput" accept="image/*" style="display: none;" onchange="handleMemberPhotoUpload(event)">
+          <div style="display: flex; gap: 8px; justify-content: center; margin-top: 6px;">
+            <label for="profPhotoCameraInput" class="btn-sm" style="background: linear-gradient(135deg, #0284C7, #06B6D4); color: #fff; border: none; padding: 7px 12px; border-radius: 8px; cursor: pointer; font-size: 11px; font-weight: 800; display: flex; align-items: center; gap: 5px;">
+              <i class="fa-solid fa-camera"></i> 📷 Tomar Foto / Selfie
+            </label>
+            <input type="file" id="profPhotoCameraInput" accept="image/*" capture="user" style="display: none;" onchange="handleMemberPhotoUpload(event)">
+
+            <label for="profPhotoFileInput" class="btn-sm" style="background: rgba(255, 255, 255, 0.08); color: #38BDF8; border: 1px solid rgba(56, 189, 248, 0.4); padding: 7px 12px; border-radius: 8px; cursor: pointer; font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 5px;">
+              <i class="fa-solid fa-image"></i> 🖼️ Galería
+            </label>
+            <input type="file" id="profPhotoFileInput" accept="image/*" style="display: none;" onchange="handleMemberPhotoUpload(event)">
+          </div>
         </div>
 
         <div class="form-group">
@@ -2388,6 +2395,6 @@
   </script>
   <script src="js/robot_chat.js"></script>
   <script src="https://maps.googleapis.com/maps/api/js?libraries=places,marker&v=beta&loading=async" async defer></script>
-  <script src="js/app.js?v=2026.3.15"></script>
+  <script src="js/app.js?v=2026.3.16"></script>
 </body>
 </html>

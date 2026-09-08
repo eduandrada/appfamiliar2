@@ -6494,6 +6494,20 @@ function openWhatsAppShare() {
 let qrMediaStream = null;
 let qrScanInterval = null;
 
+let currentQrFacingMode = 'environment';
+
+async function toggleQrCameraFacing() {
+  currentQrFacingMode = (currentQrFacingMode === 'environment') ? 'user' : 'environment';
+  if (qrMediaStream) {
+    qrMediaStream.getTracks().forEach(track => track.stop());
+    qrMediaStream = null;
+  }
+  const modeLabel = currentQrFacingMode === 'user' ? 'Frontal (Selfie)' : 'Trasera';
+  if (typeof showModernToast === 'function') showModernToast('📷 Cambiando Cámara', `Activando cámara ${modeLabel}...`, 'info');
+  await startRealWebcamQrScan();
+}
+window.toggleQrCameraFacing = toggleQrCameraFacing;
+
 async function startRealWebcamQrScan() {
   const video = document.getElementById('qrCameraVideoPreview');
   const placeholder = document.getElementById('qrScanPlaceholder');
@@ -6504,12 +6518,12 @@ async function startRealWebcamQrScan() {
     return;
   }
 
-  showModernToast('📷 Activando Cámara', 'Solicitando permiso de cámara al teléfono...', 'info');
+  const modeLabel = currentQrFacingMode === 'user' ? 'Frontal' : 'Trasera';
+  showModernToast('📷 Activando Cámara', `Solicitando acceso a cámara ${modeLabel}...`, 'info');
 
   try {
-    // Solicitar cámara trasera (facingMode environment) para teléfonos móviles
     qrMediaStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } }
+      video: { facingMode: { ideal: currentQrFacingMode }, width: { ideal: 1280 }, height: { ideal: 720 } }
     });
 
     if (video) {
