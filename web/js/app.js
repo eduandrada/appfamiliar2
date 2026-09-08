@@ -2455,6 +2455,11 @@ async function addDiscoveredCameraToSystem(ipAddress, camName, protocol) {
 }
 
 function openAddCameraModal() {
+  if (typeof isAdminLoggedIn === 'undefined' || !isAdminLoggedIn) {
+    showModernToast('🔒 Gestión Exclusiva Admin', 'Únicamente el Administrador puede vincular o agregar cámaras. Todos los miembros pueden visualizar las transmisiones en vivo.', 'warning');
+    openAdminModal();
+    return;
+  }
   const modal = document.getElementById('addCameraModal');
   if (modal) modal.classList.remove('hidden');
   const notice = document.getElementById('qrDuplicateNotice');
@@ -2709,7 +2714,7 @@ function renderCamerasGrid() {
 
   const user = activeUser || (familyMembers && familyMembers.length > 0 ? familyMembers[0] : null);
   const canView = user ? (user.canViewCameras !== false && user.can_view_cameras !== false) : true;
-  const isAdmin = (user && (user.role === 'admin' || (user.role && user.role.includes('Padre'))));
+  const isAdmin = (typeof isAdminLoggedIn !== 'undefined' && isAdminLoggedIn === true) || (user && user.role === 'admin');
 
   if (!canView) {
     grid.innerHTML = `
@@ -6685,3 +6690,31 @@ function handleQrImageUpload(e) {
   };
   reader.readAsDataURL(file);
 }
+
+
+// ======================================================
+// TELEMETRÍA DE DESCONEXIÓN & REGISTRO DE ÚLTIMA HORA/FECHA
+// ======================================================
+
+function sendDisconnectionBeacon() {
+  if (!activeUser || !activeUser.id) return;
+  const payload = JSON.stringify({
+    member_id: activeUser.id,
+    lat: activeUser.lat || -28.46957,
+    lng: activeUser.lng || -65.78524
+  });
+  if (navigator.sendBeacon) {
+    const blob = new Blob([payload], { type: 'application/json' });
+    navigator.sendBeacon('/api/telemetry/disconnect', blob);
+  } else {
+    fetch('/api/telemetry/disconnect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: payload,
+      keepalive: true
+    });
+  }
+}
+
+window.addEventListener('beforeunload', sendDisconnectionBeacon);
+window.addEventListener('pagehide', sendDisconnectionBeacon);

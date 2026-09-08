@@ -1673,3 +1673,27 @@ def secure_admin_login(data: AdminLoginPayload):
         }
     else:
         raise HTTPException(status_code=401, detail="Credenciales de Administrador incorrectas")
+
+
+# ENDPOINT DE DESCONEXIÓN & TELEMETRÍA DE ÚLTIMA UBICACIÓN Y HORA
+class DisconnectPayload(BaseModel):
+    member_id: str
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+
+@app.post("/api/telemetry/disconnect")
+def member_disconnect(data: DisconnectPayload):
+    members = DATA_STORE.get("members", [])
+    m = next((item for item in members if item["id"] == data.member_id), None)
+    if m:
+        m["isOnline"] = False
+        m["is_background"] = True
+        now_dt = datetime.now()
+        formatted_time = now_dt.strftime("%d/%m/%Y a las %H:%M hs")
+        m["last_seen"] = formatted_time
+        m["last_seen_iso"] = now_dt.isoformat()
+        if data.lat is not None: m["lat"] = data.lat
+        if data.lng is not None: m["lng"] = data.lng
+        DATA_STORE["members"] = members
+        return {"success": True, "status": "DISCONNECTED", "last_seen": formatted_time}
+    return {"success": False, "detail": "Member not found"}
