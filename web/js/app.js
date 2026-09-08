@@ -461,112 +461,70 @@ function switchTab(tabId) {
   }
 }
 
-// Source: Google Maps Platform Code Assist
-// ==================== DUAL MAP ENGINE: GOOGLE MAPS PLATFORM & LEAFLET ====================
-let googleMap = null;
-let googleMapMarkers = {};
-let currentMapEngine = 'leaflet'; // 'leaflet' | 'google'
+// ==================== UNIFIED HIGH-PRECISION MAP ENGINE (LEAFLET + FOLIUM) ====================
+let currentMapEngine = 'unified';
+let currentTileLayer = null;
+let currentTileMode = 'dark'; // 'dark' | 'satellite' | 'street'
 
-function initGoogleMap() {
-  const container = document.getElementById('familyMap');
-  if (!container) return;
+const MAP_TILE_SOURCES = {
+  dark: {
+    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    attr: '&copy; CARTO &copy; OpenStreetMap',
+    label: 'Mapa Oscuro'
+  },
+  satellite: {
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attr: '&copy; Esri World Imagery',
+    label: 'Vista Satelital'
+  },
+  street: {
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attr: '&copy; OpenStreetMap',
+    label: 'Mapa Callejero'
+  }
+};
 
-  if (typeof google === 'undefined' || !google.maps) {
-    console.log('[Google Maps] Cargando SDK o usando Leaflet fallback...');
-    initMap();
-    return;
+function toggleMapTileLayer() {
+  if (currentTileMode === 'dark') {
+    currentTileMode = 'satellite';
+  } else if (currentTileMode === 'satellite') {
+    currentTileMode = 'street';
+  } else {
+    currentTileMode = 'dark';
   }
 
-  try {
-    const centerLatLng = { lat: -28.46957, lng: -65.78524 };
-    googleMap = new google.maps.Map(container, {
-      center: centerLatLng,
-      zoom: 16,
-      mapId: "DEMO_MAP_ID",
-      disableDefaultUI: false,
-      zoomControl: true,
-      mapTypeControl: false,
-      streetViewControl: false,
-      internalUsageAttributionIds: ["gmp_git_agentskills_v1"]
-    });
-
-    updateGoogleMapMarkers();
-    const label = document.getElementById('mapEngineLabel');
-    if (label) label.textContent = 'Google Maps';
-  } catch (err) {
-    console.warn('[Google Maps] Fallback a Leaflet:', err.message);
-    initMap();
+  if (map && currentTileLayer) {
+    try { map.removeLayer(currentTileLayer); } catch(e) {}
   }
-}
 
-function updateGoogleMapMarkers() {
-  if (!googleMap || typeof google === 'undefined' || !google.maps) return;
+  const tileConfig = MAP_TILE_SOURCES[currentTileMode];
+  if (map) {
+    currentTileLayer = L.tileLayer(tileConfig.url, {
+      attribution: tileConfig.attr,
+      maxZoom: 19
+    }).addTo(map);
+  }
 
-  // Actualizar marcadores de miembros familiares
-  (familyMembers || []).forEach(member => {
-    const pos = { lat: parseFloat(member.lat), lng: parseFloat(member.lng) };
-    let marker = googleMapMarkers[member.id];
-
-    if (google.maps.marker && google.maps.marker.AdvancedMarkerElement) {
-      if (!marker) {
-        const pinElement = document.createElement('div');
-        pinElement.style.cssText = 'background: #0284C7; color: #fff; border-radius: 20px; padding: 4px 8px; font-size: 11px; font-weight: 800; border: 2px solid #fff; box-shadow: 0 0 10px rgba(6,182,212,0.8); cursor: pointer;';
-        pinElement.innerHTML = `👤 ${member.name.split(' ')[0]} (${member.battery || 100}%)`;
-
-        marker = new google.maps.marker.AdvancedMarkerElement({
-          map: googleMap,
-          position: pos,
-          title: `${member.name} • ${member.battery || 100}% Batería`,
-          content: pinElement
-        });
-
-        marker.addListener('click', () => {
-          selectMember(member.id);
-        });
-
-        googleMapMarkers[member.id] = marker;
-      } else {
-        marker.position = pos;
-      }
-    } else {
-      if (!marker) {
-        marker = new google.maps.Marker({
-          position: pos,
-          map: googleMap,
-          title: member.name
-        });
-        marker.addListener('click', () => {
-          selectMember(member.id);
-        });
-        googleMapMarkers[member.id] = marker;
-      } else {
-        marker.setPosition(pos);
-      }
-    }
-  });
+  const label = document.getElementById('tileLayerLabel');
+  if (label) label.textContent = tileConfig.label;
+  if (typeof showModernToast === 'function') {
+    showModernToast('🗺️ Capa de Mapa', `Cambiado a ${tileConfig.label}`, 'info');
+  }
 }
 
 function toggleMapEngine() {
-  const label = document.getElementById('mapEngineLabel');
-  if (currentMapEngine === 'google') {
-    currentMapEngine = 'leaflet';
-    if (label) label.textContent = 'Leaflet Map';
-    showModernToast('Motor de Mapa', 'Cambiado a Leaflet Map (Dark Mode CARTO)', 'info');
-    initMap();
-  } else {
-    currentMapEngine = 'google';
-    if (label) label.textContent = 'Google Maps';
-    showModernToast('Motor de Mapa', 'Cambiado a Google Maps Platform (3D & Traffic)', 'success');
-    initGoogleMap();
-  }
+  toggleMapTileLayer();
 }
 
-// ==================== MAPA LEAFLET EN VIVO ====================
+// ==================== MAPA LEAFLET + FOLIUM EN TIEMPO REAL ====================
 function initMap() {
   if (map) {
     try { map.remove(); } catch(e) {}
     map = null;
   }
+
+  const container = document.getElementById('familyMap');
+  if (!container) return;
 
   map = L.map('familyMap', {
     center: [-28.46957, -65.78524],
@@ -574,8 +532,9 @@ function initMap() {
     zoomControl: false
   });
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; CARTO',
+  const tileConfig = MAP_TILE_SOURCES[currentTileMode] || MAP_TILE_SOURCES.dark;
+  currentTileLayer = L.tileLayer(tileConfig.url, {
+    attribution: tileConfig.attr,
     maxZoom: 19
   }).addTo(map);
 

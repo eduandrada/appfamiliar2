@@ -255,10 +255,6 @@
 
           <!-- BARRA DE CONTROLES DEL MAPA RESPONSIVE (PC Y MÓVIL) -->
           <div class="map-controls-toolbar-responsive">
-            <button class="btn-map-control-pill" id="btnToggleMapEngine" onclick="toggleMapEngine()" title="Alternar entre Google Maps Platform y Leaflet">
-              <i class="fa-solid fa-map-location-dot" style="color: #C084FC;"></i> <span id="mapEngineLabel">Google Maps</span>
-            </button>
-            
             <button class="btn-map-control-pill" id="btnRefreshMap" onclick="refreshMapLocation()" title="Refrescar Mapa y Ubicación GPS">
               <i class="fa-solid fa-rotate-right" style="color: #10B981;"></i> <span>Refrescar</span>
             </button>
@@ -279,18 +275,15 @@
               <i class="fa-solid fa-layer-group" style="color: #A855F7;"></i> <span>Zonas</span>
             </button>
 
-            <button class="btn-map-control-pill" id="btnToggleFolium" onclick="switchMapView()" title="Mapa Inteligente Folium Alta Precisión (Python Engine)">
-              <i class="fa-solid fa-satellite" style="color: #EC4899;"></i> <span id="foliumLabel">Folium Realtime</span>
+            <button class="btn-map-control-pill" id="btnToggleTileLayer" onclick="toggleMapTileLayer()" title="Cambiar Capa del Mapa (Oscuro / Satelital / Callejero)">
+              <i class="fa-solid fa-earth-americas" style="color: #EC4899;"></i> <span id="tileLayerLabel">Mapa Satelital</span>
             </button>
           </div>
 
-          <!-- Contenedor del Mapa Leaflet / Google Maps -->
+          <!-- Contenedor del Mapa Unificado Leaflet / Folium -->
           <div class="mobile-map-container" style="min-height: 380px; height: 380px; flex: none; position: relative;">
             <div id="familyMap" class="map-surface"></div>
-            <!-- CAPA MAPA INTELIGENTE FOLIUM REAL-TIME (PYTHON ENGINE) -->
-            <div id="foliumMapContainer" class="map-surface hidden" style="position: absolute; top:0; left:0; width:100%; height:100%; z-index: 10; background: #0F172A;">
-              <iframe id="foliumMapFrame" src="about:blank" style="width:100%; height:100%; border:none; border-radius: inherit;"></iframe>
-            </div>
+            
             
             <div class="map-floating-status">
               <div class="radar-dot"></div>
