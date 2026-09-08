@@ -786,86 +786,13 @@ function updateMapMarkers() {
     }
   });
 
-  // --- Render Security Cameras on Leaflet Map ---
-  if (!window.cameraMarkers) window.cameraMarkers = {};
-  const currentCams = (typeof camerasStore !== 'undefined' && camerasStore.length) ? camerasStore : [
-    { id: 'cam_01', name: 'Cámara Entrada Principal', location: 'Entrada / Porche (Av 27)', lat: -28.469600, lng: -65.785200, is_online: true },
-    { id: 'cam_02', name: 'Cámara Patio / Jardín', location: 'Patio Trasero y Parrilla', lat: -28.469480, lng: -65.785350, is_online: true },
-    { id: 'cam_03', name: 'Cámara Portón / Cochera', location: 'Fachada y Cochera Exterior', lat: -28.469720, lng: -65.785110, is_online: true }
-  ];
-
-  currentCams.forEach(cam => {
-    if (!cam.lat || !cam.lng) return;
-    if (cam.is_hidden) {
-      if (window.cameraMarkers[cam.id]) {
-        map.removeLayer(window.cameraMarkers[cam.id]);
-        delete window.cameraMarkers[cam.id];
-      }
-      return;
-    }
-
-    const camIconHtml = `
-      <div style="
-        background: linear-gradient(135deg, #0F172A, #1E293B);
-        border: 2.5px solid ${cam.is_online ? '#06B6D4' : '#64748B'};
-        border-radius: 50%;
-        width: 36px;
-        height: 36px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: ${cam.is_online ? '#38BDF8' : '#94A3B8'};
-        font-size: 15px;
-        box-shadow: 0 0 14px ${cam.is_online ? 'rgba(6, 182, 212, 0.8)' : 'rgba(0,0,0,0.5)'};
-        position: relative;
-      ">
-        <i class="fa-solid fa-video"></i>
-        <span style="position: absolute; top: -2px; right: -2px; width: 10px; height: 10px; border-radius: 50%; background: ${cam.is_online ? '#10B981' : '#EF4444'}; border: 1.5px solid #fff;"></span>
-      </div>
-    `;
-
-    const camIcon = L.divIcon({
-      html: camIconHtml,
-      className: 'custom-camera-pin',
-      iconSize: [36, 36],
-      iconAnchor: [18, 18]
+  // --- Limpiar marcadores de cámaras del mapa (las cámaras se gestionan exclusivamente en la pestaña Cámaras) ---
+  if (window.cameraMarkers) {
+    Object.keys(window.cameraMarkers).forEach(id => {
+      if (window.cameraMarkers[id] && map) map.removeLayer(window.cameraMarkers[id]);
     });
-
-    const camPopupHtml = `
-      <div style="min-width: 210px; font-family: sans-serif; padding: 4px; color: #0F172A;">
-        <div style="font-weight: 800; font-size: 14px; color: #0284C7; display: flex; align-items: center; gap: 6px;">
-          <i class="fa-solid fa-video"></i> ${cam.name}
-        </div>
-        <div style="font-size: 11px; color: #475569; margin-top: 2px;">📍 ${cam.location || 'Acceso'}</div>
-        <div style="font-size: 10px; font-weight: 700; margin: 4px 0; color: ${cam.is_online ? '#059669' : '#DC2626'};">
-          ${cam.is_online ? '🟢 Transmisión En Vivo HD' : '🔴 Fuera de Línea'}
-        </div>
-        <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 8px;">
-          <button style="background: #0284C7; color: #fff; border: none; border-radius: 6px; padding: 6px; font-size: 11px; font-weight: 700; cursor: pointer;" onclick="openLiveCameraModal('${cam.id}')">
-            🎬 Ver Transmisión en Vivo
-          </button>
-          <div style="display: flex; gap: 4px;">
-            <button style="flex: 1; background: #DC2626; color: #fff; border: none; border-radius: 6px; padding: 5px; font-size: 10px; font-weight: 700; cursor: pointer;" onclick="triggerCameraAlarm('${cam.id}')">
-              🚨 Sirena 110dB
-            </button>
-            <button style="flex: 1; background: #0D9488; color: #fff; border: none; border-radius: 6px; padding: 5px; font-size: 10px; font-weight: 700; cursor: pointer;" onclick="openCameraVoiceModal('${cam.id}')">
-              🎙️ Audio / Voz
-            </button>
-          </div>
-        </div>
-      </div>
-    `;
-
-    if (window.cameraMarkers[cam.id]) {
-      window.cameraMarkers[cam.id].setLatLng([cam.lat, cam.lng]);
-      window.cameraMarkers[cam.id].setIcon(camIcon);
-      window.cameraMarkers[cam.id].setPopupContent(camPopupHtml);
-    } else {
-      const camMarker = L.marker([cam.lat, cam.lng], { icon: camIcon }).addTo(map);
-      camMarker.bindPopup(camPopupHtml);
-      window.cameraMarkers[cam.id] = camMarker;
-    }
-  });
+    window.cameraMarkers = {};
+  }
 
   // Dibujar red inteligente de conexión (Mesh Links) entre familiares en el mapa
   if (familyMembers.length > 1) {
