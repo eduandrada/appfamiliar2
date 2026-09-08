@@ -2759,7 +2759,10 @@ function openLiveCameraModal(camId) {
         btnVoice.style.display = (cam.has_sound !== false && cam.hasSound !== false) ? 'flex' : 'none';
       }
 
-      if (modal) modal.classList.remove('hidden');
+      if (modal) {
+        modal.style.display = 'flex';
+        modal.classList.remove('hidden');
+      }
 
       if (liveCamClockInterval) clearInterval(liveCamClockInterval);
       liveCamClockInterval = setInterval(() => {
@@ -2773,35 +2776,73 @@ function openLiveCameraModal(camId) {
       currentLiveCamId = camId || 'cam_01';
       setupLiveCameraStreamPlayer(null, currentLiveCamId);
       const modal = document.getElementById('cameraLiveModal');
-      if (modal) modal.classList.remove('hidden');
+      if (modal) {
+        modal.style.display = 'flex';
+        modal.classList.remove('hidden');
+      }
     });
 }
 
 function closeLiveCameraModal() {
-  stopWebcamInCamModal();
+  try {
+    stopWebcamInCamModal();
+  } catch(e) {}
+
   if (hlsPlayerInstance) {
     try { hlsPlayerInstance.destroy(); } catch(e) {}
     hlsPlayerInstance = null;
   }
+
   const hlsEl = document.getElementById('liveCamHlsPlayer');
   if (hlsEl) {
     try { hlsEl.pause(); } catch(e) {}
-    hlsEl.removeAttribute('src');
+    try { hlsEl.removeAttribute('src'); hlsEl.load(); } catch(e) {}
     hlsEl.classList.add('hidden');
+    hlsEl.style.display = 'none';
   }
+
   const imgEl = document.getElementById('liveCamImageStream');
   if (imgEl) {
-    imgEl.removeAttribute('src');
+    try { imgEl.removeAttribute('src'); } catch(e) {}
     imgEl.classList.add('hidden');
+    imgEl.style.display = 'none';
   }
+
+  const webcamEl = document.getElementById('liveCamWebcamStream');
+  if (webcamEl) {
+    try {
+      webcamEl.pause();
+      if (webcamEl.srcObject) {
+        const tracks = webcamEl.srcObject.getTracks();
+        tracks.forEach(t => t.stop());
+      }
+      webcamEl.srcObject = null;
+    } catch(e) {}
+    webcamEl.classList.add('hidden');
+    webcamEl.style.display = 'none';
+  }
+
   const modal = document.getElementById('cameraLiveModal');
-  if (modal) modal.classList.add('hidden');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.style.display = 'none';
+  }
+
   if (liveCamClockInterval) {
     clearInterval(liveCamClockInterval);
     liveCamClockInterval = null;
   }
   currentLiveCamId = null;
 }
+
+window.closeLiveCameraModal = closeLiveCameraModal;
+window.openLiveCameraModal = openLiveCameraModal;
+
+window.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' || e.key === 'Esc') {
+    closeLiveCameraModal();
+  }
+});
 
 function controlYooseePtz(direction) {
   const camId = currentLiveCamId || 'cam_01';
