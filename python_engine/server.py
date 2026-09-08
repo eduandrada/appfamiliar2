@@ -1,3 +1,5 @@
+import threading
+import time
 import os
 import json
 from datetime import datetime
@@ -234,6 +236,23 @@ def save_data_store(data: dict):
         print(f"Error guardando data_store.json: {e}")
 
 DATA_STORE = load_data_store()
+
+# ==============================================================================
+# HILO DE BASE DE DATOS: GUARDADO AUTOMÁTICO CADA 5 SEGUNDOS (PERSISTENCIA TOTAL)
+# ==============================================================================
+def _background_5s_autosave_loop():
+    while True:
+        try:
+            time.sleep(5)
+            if 'DATA_STORE' in globals() and DATA_STORE:
+                save_data_store(DATA_STORE)
+        except Exception as e:
+            print(f"[BD 5s AutoSave] Excepción en ciclo de guardado: {e}")
+
+_autosave_thread = threading.Thread(target=_background_5s_autosave_loop, daemon=True)
+_autosave_thread.start()
+print("🟢 [Base de Datos] Persistencia automática cada 5 segundos INICIADA.")
+
 
 @app.get("/manifest.json")
 def get_manifest():
