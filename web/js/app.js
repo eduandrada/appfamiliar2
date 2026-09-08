@@ -1,3 +1,27 @@
+
+// Helper para apodos personalizados de familiares
+function getViewerCustomNickname(memberId) {
+  if (!memberId) return '';
+  try {
+    const stored = localStorage.getItem('andrada_custom_nicknames');
+    if (stored) {
+      const nickMap = JSON.parse(stored);
+      return nickMap[memberId] || '';
+    }
+  } catch (e) {}
+  return '';
+}
+window.getViewerCustomNickname = getViewerCustomNickname;
+
+// Helper para notificaciones rápidas tipo alerta toast
+function showToastAlert(message, title = 'Notificación') {
+  if (typeof showModernToast === 'function') {
+    showModernToast(title, message, 'info');
+  } else {
+    console.log('[Toast]', title, message);
+  }
+}
+window.showToastAlert = showToastAlert;
 // ==============================================================================
 // FAMILIA ANDRADA - LÓGICA DE APLICACIÓN MOBILE-FIRST COMPLETA (2026)
 // ==============================================================================
@@ -303,20 +327,20 @@ function saveActiveUserSession(isNewLogin = false) {
 }
 
 function loadStoredSession() {
-  // 1. Intentar cargar sesión persistente (si seleccionó "Recordar inicio de sesión")
-  let savedData = localStorage.getItem('app_familiar_auth') || localStorage.getItem('andrada_active_session');
+  // 1. Cargar sesión persistente únicamente si se eligió "Recordar mi dispositivo"
+  let savedAuth = localStorage.getItem('app_familiar_auth');
   let memberId = null;
 
-  if (savedData) {
+  if (savedAuth) {
     try {
-      const parsed = JSON.parse(savedData);
+      const parsed = JSON.parse(savedAuth);
       memberId = parsed.memberId || parsed.id;
     } catch (e) {}
   }
 
-  // 2. Intentar cargar sesión temporal (si la pestaña/navegador no se cerró)
+  // 2. Cargar sesión de pestaña activa
   if (!memberId) {
-    const tempSession = sessionStorage.getItem('app_familiar_session');
+    const tempSession = sessionStorage.getItem('app_familiar_session') || sessionStorage.getItem('andrada_active_session');
     if (tempSession) {
       try {
         const parsed = JSON.parse(tempSession);
@@ -337,7 +361,6 @@ function loadStoredSession() {
       if (typeof updateActiveUserUI === 'function') updateActiveUserUI();
       if (typeof forceRealBatteryUpdate === 'function') forceRealBatteryUpdate();
 
-      // INICIAR RASTREO GPS Y SINCRONIZACIÓN ÚNICAMENTE POST-AUTENTICACIÓN
       if (typeof startCloudSyncLoop === 'function') startCloudSyncLoop();
       if (typeof initRealtimeGpsTracker === 'function') initRealtimeGpsTracker();
 
@@ -350,7 +373,7 @@ function loadStoredSession() {
     }
   }
 
-  // Si no hay sesión válida: BLOQUEAR APLICACIÓN Y SOLICITAR ACCESO OBLIGATORIO
+  // SI NO HAY SESIÓN AUTENTICADA: BLOQUEAR INTERFAZ Y REQUERIR LOGIN OBLIGATORIO
   activeUser = null;
   activeMemberId = null;
   updateHeaderSessionUI();
@@ -358,7 +381,7 @@ function loadStoredSession() {
 
   setTimeout(() => {
     openLoginModal();
-  }, 300);
+  }, 100);
 }
 
 function getAvatarHtml(member, size = 40) {
@@ -367,6 +390,25 @@ function getAvatarHtml(member, size = 40) {
   }
   const initials = member ? (member.avatar || member.name.substring(0, 2).toUpperCase()) : 'FA';
   return `<div style="width:${size}px; height:${size}px; border-radius:50%; background:linear-gradient(135deg, #0284C7, #38BDF8); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:${Math.round(size * 0.35)}px; box-shadow:0 0 10px rgba(56, 189, 248, 0.3);">${initials}</div>`;
+}
+
+function updateHeaderSessionUI() {
+  const nameEl = document.getElementById('activeUserName');
+  const btnLogout = document.getElementById('btnLogoutHeader');
+  const dotEl = document.getElementById('activeUserOnlineDot');
+  if (nameEl) {
+    nameEl.textContent = activeUser ? activeUser.name.split(' ')[0] : 'Ingresar';
+  }
+  if (btnLogout) {
+    if (activeUser) {
+      btnLogout.classList.remove('hidden');
+    } else {
+      btnLogout.classList.add('hidden');
+    }
+  }
+  if (dotEl) {
+    dotEl.style.background = activeUser ? '#10B981' : '#EF4444';
+  }
 }
 
 function updateActiveUserUI() {
