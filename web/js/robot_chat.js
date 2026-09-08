@@ -4,6 +4,8 @@
 
 let renderedMessageIds = new Set();
 let chatSyncTimer = null;
+let speechRecognitionInstance = null;
+let isDictatingVoice = false;
 
 function getAiModal() {
   return document.getElementById('aiAssistantModal');
@@ -107,7 +109,32 @@ function broadcastSystemAlertToChat(title, detail, type = 'warning', member = nu
   sendMessageToPythonBot(`🚨 [ALERTA SISTEMA] ${title} - ${u.name}: ${detail}. Ver posición: ${mapsUrl}`);
 }
 
-appendChatMessage = function(type, text, senderName = '', timestamp = '') {
+function showTypingIndicator() {
+  removeTypingIndicator();
+  const container = getChatMessagesTab();
+  if (!container) return;
+
+  const typingDiv = document.createElement('div');
+  typingDiv.id = 'aiTypingIndicator';
+  typingDiv.className = 'chat-msg-row incoming';
+  typingDiv.innerHTML = `
+    <div class="chat-avatar-bubble" style="background: rgba(168, 85, 247, 0.2); border-color: rgba(168, 85, 247, 0.5);">🤖</div>
+    <div class="chat-msg msg-bot" style="font-style: italic; color: #C084FC;">
+      <span class="msg-sender-tag" style="color: #C084FC;">🤖 Asistente Búscame AI</span>
+      <div><i class="fa-solid fa-circle-notch fa-spin"></i> Procesando consulta...</div>
+    </div>
+  `;
+  container.appendChild(typingDiv);
+  container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+}
+
+function removeTypingIndicator() {
+  const el = document.getElementById('aiTypingIndicator');
+  if (el) el.remove();
+}
+
+function appendChatMessage(type, text, senderName = '', timestamp = '') {
+  removeTypingIndicator();
   const container = getChatMessagesTab();
   if (!container) return;
 
@@ -169,7 +196,7 @@ appendChatMessage = function(type, text, senderName = '', timestamp = '') {
 
   container.appendChild(rowDiv);
   container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
-};
+}
 
 async function sendMessageToPythonBot(messageText) {
   if (!messageText || !messageText.trim()) return;
@@ -182,7 +209,10 @@ async function sendMessageToPythonBot(messageText) {
   // 1. Renderizar localmente en pantalla de inmediato
   appendChatMessage('outgoing', cleanMsg, user.name);
 
-  // 2. Guardar mensaje en backend Python
+  // 2. Mostrar indicador de escritura del bot AI
+  showTypingIndicator();
+
+  // 3. Guardar mensaje en backend Python
   try {
     const sendRes = await fetch('/api/chat/send', {
       method: 'POST',
@@ -203,7 +233,7 @@ async function sendMessageToPythonBot(messageText) {
     console.warn('[Chat] Servidor offline enviando mensaje:', e);
   }
 
-  // 3. Consultar al Bot de Inteligencia IA en Python
+  // 4. Consultar al Bot de Inteligencia IA en Python
   try {
     const botRes = await fetch('/api/chat/bot_reply', {
       method: 'POST',
@@ -223,9 +253,12 @@ async function sendMessageToPythonBot(messageText) {
       if (typeof notifyInPhone === 'function') {
         notifyInPhone('🤖 Asistente Búscame AI', replyText);
       }
+    } else {
+      removeTypingIndicator();
     }
   } catch (err) {
     console.warn('[Chat] Fallback respuesta local:', err);
+    removeTypingIndicator();
     const fallbackText = `📍 ${user.name}: Tu mensaje "${cleanMsg}" fue registrado. El canal de comunicación familiar está activo.`;
     appendChatMessage('incoming', fallbackText, '🤖 Sistema Familia');
   }
@@ -270,6 +303,65 @@ function handleSendMessage(event) {
   sendMessageToPythonBot(msg);
 }
 
+// Dictado por voz mediante Web Speech API
+function toggleChatVoiceDictation() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const btn = document.getElementById('btnVoiceDictation');
+  
+  if (!SpeechRecognition) {
+    if (typeof showModernToast === 'function') {
+      showModernToast('Dictado por Voz', 'El navegador no soporta el reconocimiento de voz nativo.', 'warning');
+    }
+    return;
+  }
+
+  if (isDictatingVoice && speechRecognitionInstance) {
+    speechRecognitionInstance.stop();
+    isDictatingVoice = false;
+    if (btn) btn.style.color = '';
+    return;
+  }
+
+  try {
+    speechRecognitionInstance = new SpeechRecognition();
+    speechRecognitionInstance.lang = 'es-AR';
+    speechRecognitionInstance.continuous = false;
+    speechRecognitionInstance.interimResults = false;
+
+    speechRecognitionInstance.onstart = () => {
+      isDictatingVoice = true;
+      if (btn) btn.style.color = '#EF4444';
+      if (typeof showModernToast === 'function') {
+        showModernToast('Escuchando...', 'Habla ahora para dictar tu mensaje...', 'info');
+      }
+    };
+
+    speechRecognitionInstance.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      const input = getChatInput();
+      if (input && transcript) {
+        input.value = (input.value ? input.value + ' ' : '') + transcript;
+        input.focus();
+      }
+    };
+
+    speechRecognitionInstance.onerror = (e) => {
+      isDictatingVoice = false;
+      if (btn) btn.style.color = '';
+    };
+
+    speechRecognitionInstance.onend = () => {
+      isDictatingVoice = false;
+      if (btn) btn.style.color = '';
+    };
+
+    speechRecognitionInstance.start();
+  } catch (err) {
+    isDictatingVoice = false;
+    if (btn) btn.style.color = '';
+  }
+}
+
 // Inicialización de Listeners al cargar el DOM
 document.addEventListener('DOMContentLoaded', () => {
   const customForm = document.querySelector('.chat-input-row');
@@ -291,4 +383,4 @@ window.triggerUberRequest = triggerUberRequest;
 window.sendPhoneQuickShare = sendPhoneQuickShare;
 window.sendLocationQuickShare = sendLocationQuickShare;
 window.broadcastSystemAlertToChat = broadcastSystemAlertToChat;
-
+window.toggleChatVoiceDictation = toggleChatVoiceDictation;
