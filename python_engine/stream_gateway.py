@@ -25,6 +25,12 @@ def sanitize_camera_dict(camera: Dict[str, Any], is_admin: bool = False) -> Dict
     """
     sanitized = dict(camera)
     
+    # Preservar el stream_url original sin provocar bucles infinitos
+    orig_stream = camera.get("raw_stream_url") or camera.get("stream_url") or "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80"
+    if str(orig_stream).startswith("/api/cameras"):
+        orig_stream = "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80"
+    sanitized["raw_stream_url"] = orig_stream
+
     # Asegurar valores por defecto para coordenadas GPS y estado
     if "latitude" not in sanitized and "lat" in sanitized:
         sanitized["latitude"] = sanitized["lat"]

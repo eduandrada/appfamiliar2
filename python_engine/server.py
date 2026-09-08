@@ -689,30 +689,30 @@ def get_camera_status(cam_id: str):
 
 @app.get("/api/cameras/{cam_id}/feed")
 @app.get("/api/cameras/{cam_id}/stream")
-def stream_camera_feed(cam_id: str):
+def stream_camera_feed(cam_id: str, info: Optional[bool] = False):
     """
     Endpoint proxy seguro para la transmisión de video HTML5.
-    Oculta credenciales RTSP e interactúa como intermediario con el navegador.
+    Redirecciona transparentemente al flujo o imagen en vivo de la cámara.
     """
     cameras = DATA_STORE.get("cameras", [])
     cam = next((c for c in cameras if c["id"] == cam_id), None)
     if not cam:
         raise HTTPException(status_code=404, detail="Cámara no encontrada")
-    if not cam.get("is_active", True) or not cam.get("is_online", True):
-        raise HTTPException(status_code=400, detail="La cámara está desactivada o fuera de línea.")
     
-    stream_url = cam.get("stream_url") or "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80"
-    
-    return {
-        "status": "STREAMING",
-        "id": cam_id,
-        "cam_id": cam_id,
-        "name": cam.get("name"),
-        "protocol": cam.get("protocol", "rtsp"),
-        "stream_url": stream_url,
-        "proxy_type": "HTML5_WEBRTC_HLS_GATEWAY",
-        "network_access": "SECURE_STREAM_PROXY (Encrypted & Sanitized)"
-    }
+    target_url = cam.get("raw_stream_url") or cam.get("stream_url") or "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80"
+    if str(target_url).startswith("/api/cameras"):
+        target_url = "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80"
+
+    if info:
+        return {
+            "status": "STREAMING" if (cam.get("is_active", True) and cam.get("is_online", True)) else "OFFLINE",
+            "id": cam_id,
+            "name": cam.get("name"),
+            "protocol": cam.get("protocol", "rtsp"),
+            "target_url": target_url
+        }
+
+    return RedirectResponse(url=target_url, status_code=307)
 
 @app.post("/api/cameras/{cam_id}/control")
 def control_camera(cam_id: str, data: CameraControlInput):

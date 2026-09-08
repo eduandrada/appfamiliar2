@@ -1827,9 +1827,12 @@ async function addDiscoveredCameraToSystem(ipAddress, camName, protocol) {
 function openAddCameraModal() {
   const modal = document.getElementById('addCameraModal');
   if (modal) modal.classList.remove('hidden');
+  const notice = document.getElementById('qrDuplicateNotice');
+  if (notice) notice.classList.add('hidden');
 }
 
 function closeAddCameraModal() {
+  if (typeof stopCameraQrScan === 'function') stopCameraQrScan();
   const modal = document.getElementById('addCameraModal');
   if (modal) modal.classList.add('hidden');
 }
@@ -2069,10 +2072,13 @@ function copyAppLinkToClipboard() {
 // RENDERIZADO DE CÁMARAS Y VALIDACIÓN DE PERMISOS ADMIN POR MIEMBRO
 function renderCamerasGrid() {
   const grid = document.getElementById('camerasGrid');
+  const countBadge = document.getElementById('camCountText');
+  const addBtn = document.getElementById('btnAddCamBtn');
   if (!grid) return;
 
   const user = activeUser || (familyMembers && familyMembers.length > 0 ? familyMembers[0] : null);
   const canView = user ? (user.canViewCameras !== false && user.can_view_cameras !== false) : true;
+  const isAdmin = (user && (user.role === 'admin' || (user.role && user.role.includes('Padre'))));
 
   if (!canView) {
     grid.innerHTML = `
@@ -2082,17 +2088,24 @@ function renderCamerasGrid() {
         <p style="font-size: 11px; color: var(--text-secondary); max-width: 340px; margin: 0 auto;">El Administrador del círculo familiar ha bloqueado el permiso para visualizar las cámaras en tiempo real en tu perfil.</p>
       </div>
     `;
-    const countLabel = document.getElementById('camCountText');
-    if (countLabel) countLabel.textContent = '🔒 Acceso Bloqueado por Admin';
+    if (countBadge) countBadge.textContent = '🔒 Acceso Bloqueado por Admin';
     return;
   }
 
   fetch('/api/cameras')
     .then(res => res.json())
     .then(data => {
-      const cameras = data.cameras || [];
-      const countLabel = document.getElementById('camCountText');
-      if (countLabel) countLabel.textContent = `${cameras.length} / 6 Cámaras Conectadas`;
+      let cameras = data.cameras || [];
+      if (countBadge) countBadge.textContent = `${cameras.length} / 12 Cámaras Conectadas`;
+
+      if (addBtn) {
+        addBtn.disabled = cameras.length >= 12;
+        addBtn.style.opacity = cameras.length >= 12 ? '0.5' : '1';
+      }
+
+      if (!isAdmin) {
+        cameras = cameras.filter(c => !c.is_hidden);
+      }
 
       if (cameras.length === 0) {
         grid.innerHTML = `
@@ -2110,9 +2123,10 @@ function renderCamerasGrid() {
 
       grid.innerHTML = cameras.map(cam => {
         const isOnline = cam.is_online !== false && cam.status !== 'OFFLINE';
+        const isHidden = cam.is_hidden === true;
         const hasAlarm = cam.has_alarm !== false && cam.hasAlarm !== false;
         const hasSound = cam.has_sound !== false && cam.hasSound !== false;
-        const streamImg = cam.stream_url || 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80';
+        const streamImg = `/api/cameras/${cam.id}/feed`;
 
         const canAlarm = user ? (user.canTriggerCameraAlarm !== false && user.can_trigger_camera_alarm !== false) : true;
         const canVoice = user ? (user.canSendCameraVoice !== false && user.can_send_camera_voice !== false) : true;
@@ -2126,14 +2140,17 @@ function renderCamerasGrid() {
                 </h4>
                 <small style="font-size: 10px; color: var(--text-secondary);">${cam.location} • IP: ${cam.ip_address || '192.168.1.100'}</small>
               </div>
-              <span style="font-size: 10px; padding: 3px 8px; border-radius: 10px; font-weight: 700; ${isOnline ? 'background: rgba(16, 185, 129, 0.18); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3);' : 'background: rgba(239, 68, 68, 0.18); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.3);'}">
-                ${isOnline ? '● EN VIVO' : '○ OFFLINE'}
-              </span>
+              <div style="display: flex; align-items: center; gap: 4px;">
+                ${isHidden ? '<span style="font-size: 9px; font-weight: 800; background: rgba(245,158,11,0.2); color: #F59E0B; padding: 2px 6px; border-radius: 4px;">👁️ Oculta</span>' : ''}
+                <span style="font-size: 10px; padding: 3px 8px; border-radius: 10px; font-weight: 700; ${isOnline ? 'background: rgba(16, 185, 129, 0.18); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3);' : 'background: rgba(239, 68, 68, 0.18); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.3);'}">
+                  ${isOnline ? '● EN VIVO' : '○ OFFLINE'}
+                </span>
+              </div>
             </div>
 
-            <!-- Mini vista previa con Overlay de Tiempo Real -->
+            <!-- Mini vista previa en Vivo -->
             <div style="position: relative; width: 100%; height: 145px; border-radius: 10px; overflow: hidden; background: #000; margin-bottom: 10px; cursor: pointer;" onclick="openLiveCameraModal('${cam.id}')">
-              <img src="${streamImg}" alt="${cam.name}" style="width: 100%; height: 100%; object-fit: cover; opacity: ${isOnline ? '0.9' : '0.4'};">
+              <img src="${streamImg}" alt="${cam.name}" style="width: 100%; height: 100%; object-fit: cover; opacity: ${isOnline ? '0.9' : '0.4'};" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80';">
               
               <div style="position: absolute; top: 8px; left: 8px; display: flex; gap: 4px;">
                 ${hasAlarm ? '<span style="font-size: 9px; padding: 2px 6px; border-radius: 6px; background: rgba(239, 68, 68, 0.85); color: #fff; font-weight: 700;">🚨 Sirena</span>' : ''}
@@ -2154,15 +2171,29 @@ function renderCamerasGrid() {
               </button>
 
               ${hasAlarm ? `
-                <button class="btn-sm" style="flex: 1; background: ${canAlarm ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255,255,255,0.05)'}; color: ${canAlarm ? '#EF4444' : 'var(--text-muted)'}; border: 1px solid ${canAlarm ? 'rgba(239, 68, 68, 0.4)' : 'var(--border-glass)'}; padding: 8px 6px; border-radius: 8px; font-weight: 700; font-size: 11px; cursor: pointer;" onclick="triggerCameraAlarm('${cam.id}')" title="${canAlarm ? 'Activar Alarma de la Cámara' : 'Permiso desactivado por Administrador'}">
+                <button class="btn-sm" style="flex: 1; background: ${canAlarm ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255,255,255,0.05)'}; color: ${canAlarm ? '#EF4444' : 'var(--text-muted)'}; border: 1px solid ${canAlarm ? 'rgba(239, 68, 68, 0.4)' : 'var(--border-glass)'}; padding: 8px 6px; border-radius: 8px; font-weight: 700; font-size: 11px; cursor: pointer;" onclick="triggerCameraAlarm('${cam.id}')" title="${canAlarm ? 'Activar Alarma' : 'Permiso desactivado por Admin'}">
                   <i class="fa-solid fa-bell"></i> Alarma
                 </button>
               ` : ''}
 
               ${hasSound ? `
-                <button class="btn-sm" style="flex: 1; background: ${canVoice ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)'}; color: ${canVoice ? '#10B981' : 'var(--text-muted)'}; border: 1px solid ${canVoice ? 'rgba(16, 185, 129, 0.4)' : 'var(--border-glass)'}; padding: 8px 6px; border-radius: 8px; font-weight: 700; font-size: 11px; cursor: pointer;" onclick="openCameraVoiceModal('${cam.id}')" title="${canVoice ? 'Hablar por Parlante de la Cámara' : 'Permiso desactivado por Administrador'}">
+                <button class="btn-sm" style="flex: 1; background: ${canVoice ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)'}; color: ${canVoice ? '#10B981' : 'var(--text-muted)'}; border: 1px solid ${canVoice ? 'rgba(16, 185, 129, 0.4)' : 'var(--border-glass)'}; padding: 8px 6px; border-radius: 8px; font-weight: 700; font-size: 11px; cursor: pointer;" onclick="openCameraVoiceModal('${cam.id}')" title="${canVoice ? 'Hablar por Parlante' : 'Permiso desactivado por Admin'}">
                   <i class="fa-solid fa-microphone"></i> Voz
                 </button>
+              ` : ''}
+
+              ${isAdmin ? `
+                <div style="display: flex; gap: 4px; width: 100%; margin-top: 4px;">
+                  <button class="btn-sm" style="flex:1; background: ${isOnline ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.2)'}; color: ${isOnline ? '#EF4444' : '#10B981'}; border: 1px solid ${isOnline ? 'rgba(239,68,68,0.4)' : 'rgba(16,185,129,0.4)'}; padding: 4px; border-radius: 6px; font-size: 10px; font-weight:700;" onclick="toggleCameraPower('${cam.id}', ${isOnline})">
+                    <i class="fa-solid ${isOnline ? 'fa-power-off' : 'fa-bolt'}"></i> ${isOnline ? 'Apagar' : 'Encender'}
+                  </button>
+                  <button class="btn-sm" style="flex:1; background: ${isHidden ? 'rgba(56,189,248,0.2)' : 'rgba(245,158,11,0.2)'}; color: ${isHidden ? '#38BDF8' : '#F59E0B'}; border: 1px solid ${isHidden ? 'rgba(56,189,248,0.4)' : 'rgba(245,158,11,0.4)'}; padding: 4px; border-radius: 6px; font-size: 10px; font-weight:700;" onclick="toggleCameraVisibility('${cam.id}', ${isHidden})">
+                    <i class="fa-solid ${isHidden ? 'fa-eye' : 'fa-eye-slash'}"></i> ${isHidden ? 'Mostrar' : 'Ocultar'}
+                  </button>
+                  <button class="btn-sm" style="background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.4); padding: 4px 8px; border-radius: 6px; font-size: 10px;" onclick="deleteCameraFromAdmin('${cam.id}')">
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                </div>
               ` : ''}
             </div>
           </div>
@@ -2406,19 +2437,6 @@ let installedCamerasList = [
 ];
 
 let qrCameraStreamTrack = null;
-
-function openAddCameraModal() {
-  const modal = document.getElementById('addCameraModal');
-  if (modal) modal.classList.remove('hidden');
-  const notice = document.getElementById('qrDuplicateNotice');
-  if (notice) notice.classList.add('hidden');
-}
-
-function closeAddCameraModal() {
-  stopCameraQrScan();
-  const modal = document.getElementById('addCameraModal');
-  if (modal) modal.classList.add('hidden');
-}
 
 function startCameraQrScan() {
   const videoEl = document.getElementById('qrCameraStream');
@@ -4762,101 +4780,7 @@ function switchAdminTab(tabName) {
   }
 }
 
-function renderCamerasGrid() {
-  const grid = document.getElementById('camerasGrid');
-  const countBadge = document.getElementById('camCountText');
-  const addBtn = document.getElementById('btnAddCamBtn');
-  if (!grid) return;
 
-  const isAdmin = (typeof activeUser !== 'undefined' && activeUser && (activeUser.role === 'admin' || (activeUser.role && activeUser.role.includes('Padre'))));
-
-  fetch('/api/cameras')
-    .then(res => res.json())
-    .then(data => {
-      let cams = data.cameras || [];
-      
-      if (countBadge) {
-        countBadge.textContent = `${cams.length} / 6 Cámaras Conectadas`;
-      }
-
-      if (addBtn) {
-        if (cams.length >= 6) {
-          addBtn.disabled = true;
-          addBtn.style.opacity = '0.5';
-          addBtn.style.cursor = 'not-allowed';
-          addBtn.title = 'Límite máximo de 6 cámaras alcanzado';
-        } else {
-          addBtn.disabled = false;
-          addBtn.style.opacity = '1';
-          addBtn.style.cursor = 'pointer';
-          addBtn.title = '';
-        }
-      }
-
-      // Filtrar ocultas si no es Admin
-      if (!isAdmin) {
-        cams = cams.filter(c => !c.is_hidden);
-      }
-
-      if (cams.length === 0) {
-        grid.innerHTML = '<div style="grid-column: 1/-1; font-size: 12px; color: var(--text-muted); text-align: center; padding: 24px; background: rgba(0,0,0,0.2); border-radius: 12px; border: 1px solid var(--border-glass);">No hay cámaras activas visibles. Vincular desde el botón "+ Vincular Cámara".</div>';
-        return;
-      }
-
-      grid.innerHTML = cams.map((c, i) => {
-        const isOnline = c.is_online !== false;
-        const isHidden = c.is_hidden === true;
-        const streamUrl = c.stream_url || "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80";
-        const ipAddr = c.ip_address || "192.168.1.10" + (i + 1);
-
-        return `
-          <div class="camera-card glass-card">
-            <div class="cam-header">
-              <span><i class="fa-solid fa-video" style="color: var(--accent-cyan);"></i> ${c.name}</span>
-              <div style="display: flex; align-items: center; gap: 6px;">
-                ${isHidden ? '<span style="font-size: 9px; font-weight: 800; background: rgba(245,158,11,0.2); color: #F59E0B; padding: 2px 6px; border-radius: 4px;">👁️ Oculta</span>' : ''}
-                ${isOnline ? '<span class="cam-rec"><span class="rec-dot"></span> EN VIVO</span>' : '<span style="font-size: 9px; font-weight: 800; color: #EF4444;">🔴 APAGADA</span>'}
-              </div>
-            </div>
-            <div class="cam-viewport" style="cursor: pointer; position: relative;" onclick="openLiveCameraModal('${c.id}')" title="Tocar para Ver Transmisión HD en Vivo">
-              ${isOnline ? `
-                <img src="${streamUrl}" class="cam-viewport-img" alt="${c.name}">
-                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.55); width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; border: 1px solid rgba(255,255,255,0.3); pointer-events: none;"><i class="fa-solid fa-play"></i></div>
-                <div class="cam-overlay-time">REC ${new Date().toLocaleTimeString()}</div>
-                <div class="cam-overlay-ip">📡 ${ipAddr} (Multi-Red 4G/5G)</div>
-              ` : `
-                <div style="text-align: center; color: var(--text-secondary); padding: 20px;">
-                  <i class="fa-solid fa-power-off" style="font-size: 36px; color: #EF4444; margin-bottom: 8px;"></i>
-                  <div style="font-size: 11px; font-weight: 700;">Cámara Desactivada</div>
-                  <small style="font-size: 9px; opacity: 0.7;">Apagada por el Administrador</small>
-                </div>
-              `}
-            </div>
-            <div class="cam-footer-actions">
-              <span style="font-size: 10px; color: var(--text-secondary);"><i class="fa-solid fa-location-dot"></i> ${c.location}</span>
-              ${isAdmin ? `
-                <div style="display: flex; gap: 4px;">
-                  <button class="btn-sm" style="background: ${isOnline ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.2)'}; color: ${isOnline ? '#EF4444' : '#10B981'}; border: 1px solid ${isOnline ? 'rgba(239,68,68,0.4)' : 'rgba(16,185,129,0.4)'}; padding: 4px 8px; border-radius: 6px; font-size: 11px;" title="${isOnline ? 'Apagar Cámara' : 'Encender Cámara'}" onclick="toggleCameraPower('${c.id}', ${isOnline})">
-                    <i class="fa-solid ${isOnline ? 'fa-power-off' : 'fa-bolt'}"></i>
-                  </button>
-                  <button class="btn-sm" style="background: ${isHidden ? 'rgba(56,189,248,0.2)' : 'rgba(245,158,11,0.2)'}; color: ${isHidden ? '#38BDF8' : '#F59E0B'}; border: 1px solid ${isHidden ? 'rgba(56,189,248,0.4)' : 'rgba(245,158,11,0.4)'}; padding: 4px 8px; border-radius: 6px; font-size: 11px;" title="${isHidden ? 'Mostrar a Miembros' : 'Ocultar a Miembros'}" onclick="toggleCameraVisibility('${c.id}', ${isHidden})">
-                    <i class="fa-solid ${isHidden ? 'fa-eye' : 'fa-eye-slash'}"></i>
-                  </button>
-                  <button class="btn-sm" style="background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.4); padding: 4px 8px; border-radius: 6px; font-size: 11px;" title="Eliminar Cámara" onclick="deleteCameraFromAdmin('${c.id}')">
-                    <i class="fa-solid fa-trash"></i>
-                  </button>
-                </div>
-              ` : `
-                <span style="font-size: 9px; color: var(--accent-emerald); font-weight: 700;"><i class="fa-solid fa-shield-halved"></i> Transmisión Segura</span>
-              `}
-            </div>
-          </div>
-        `;
-      }).join('');
-    }).catch(() => {
-      grid.innerHTML = '<div style="grid-column: 1/-1; font-size: 12px; color: var(--text-muted); text-align: center; padding: 24px;">Servidor no disponible para cargar cámaras en vivo.</div>';
-    });
-}
 
 function toggleCameraPower(camId, currentOnline) {
   fetch(`/api/cameras/${camId}/control`, {
