@@ -25,10 +25,10 @@ def sanitize_camera_dict(camera: Dict[str, Any], is_admin: bool = False) -> Dict
     """
     sanitized = dict(camera)
     
-    # Preservar el stream_url original sin provocar bucles infinitos
-    orig_stream = camera.get("raw_stream_url") or camera.get("stream_url") or "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80"
-    if str(orig_stream).startswith("/api/cameras"):
-        orig_stream = "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80"
+    DEFAULT_LIVE_STREAM = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
+    orig_stream = camera.get("raw_stream_url") or camera.get("stream_url") or DEFAULT_LIVE_STREAM
+    if str(orig_stream).startswith("/api/cameras") or str(orig_stream) in ["undefined", "null", "none", ""]:
+        orig_stream = DEFAULT_LIVE_STREAM
     sanitized["raw_stream_url"] = orig_stream
 
     # Asegurar valores por defecto para coordenadas GPS y estado

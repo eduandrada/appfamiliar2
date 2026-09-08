@@ -712,9 +712,10 @@ def stream_camera_feed(cam_id: str, info: Optional[bool] = False):
     if not cam:
         raise HTTPException(status_code=404, detail="Cámara no encontrada")
     
-    target_url = cam.get("raw_stream_url") or cam.get("stream_url") or "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80"
-    if str(target_url).startswith("/api/cameras"):
-        target_url = "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80"
+    DEFAULT_LIVE_STREAM = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
+    target_url = cam.get("raw_stream_url") or cam.get("stream_url") or DEFAULT_LIVE_STREAM
+    if str(target_url).startswith("/api/cameras") or str(target_url) in ["undefined", "null", "none", ""]:
+        target_url = DEFAULT_LIVE_STREAM
 
     if info:
         return {
@@ -730,15 +731,14 @@ def stream_camera_feed(cam_id: str, info: Optional[bool] = False):
         try:
             req = urllib.request.Request(target_url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
             with urllib.request.urlopen(req, timeout=3) as resp:
-                content_type = resp.headers.get('Content-Type', 'image/jpeg')
+                content_type = resp.headers.get('Content-Type', 'video/mp4')
                 body = resp.read()
                 return Response(content=body, media_type=content_type, headers={
                     'Access-Control-Allow-Origin': '*',
                     'Cache-Control': 'no-cache, no-store, must-revalidate'
                 })
         except Exception:
-            fallback_url = "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80"
-            return RedirectResponse(url=fallback_url, status_code=307)
+            return RedirectResponse(url=DEFAULT_LIVE_STREAM, status_code=307)
 
     return RedirectResponse(url=target_url, status_code=307)
 

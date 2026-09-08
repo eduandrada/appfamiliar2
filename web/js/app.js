@@ -2671,8 +2671,14 @@ function setupLiveCameraStreamPlayer(streamUrl) {
     hlsPlayerInstance = null;
   }
 
-  const isHls = streamUrl && (streamUrl.includes('.m3u8') || streamUrl.includes('hls'));
-  const isMp4 = streamUrl && (streamUrl.includes('.mp4') || streamUrl.includes('.webm'));
+  const defaultLiveStream = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8";
+  let targetUrl = streamUrl;
+  if (!targetUrl || targetUrl === 'undefined' || targetUrl.includes('unsplash') || targetUrl.includes('placeholder')) {
+    targetUrl = defaultLiveStream;
+  }
+
+  const isHls = targetUrl && (targetUrl.includes('.m3u8') || targetUrl.includes('hls') || targetUrl === defaultLiveStream);
+  const isMp4 = targetUrl && (targetUrl.includes('.mp4') || targetUrl.includes('.webm'));
 
   if (isHls && typeof Hls !== 'undefined' && Hls.isSupported() && hlsEl) {
     if (imgEl) imgEl.classList.add('hidden');
@@ -2683,15 +2689,15 @@ function setupLiveCameraStreamPlayer(streamUrl) {
       liveMaxLatencyDurationCount: 5,
       enableWorker: true
     });
-    hlsPlayerInstance.loadSource(streamUrl);
+    hlsPlayerInstance.loadSource(targetUrl);
     hlsPlayerInstance.attachMedia(hlsEl);
     hlsEl.play().catch(() => {});
 
-    if (fmtLabel) fmtLabel.textContent = '1080p Yoosee HLS Live';
+    if (fmtLabel) fmtLabel.textContent = '1080p Yoosee HLS Live Stream';
   } else if (isMp4 && hlsEl) {
     if (imgEl) imgEl.classList.add('hidden');
     hlsEl.classList.remove('hidden');
-    hlsEl.src = streamUrl;
+    hlsEl.src = targetUrl;
     hlsEl.play().catch(() => {});
     if (fmtLabel) fmtLabel.textContent = '1080p MP4 HD Stream';
   } else {
@@ -2700,11 +2706,18 @@ function setupLiveCameraStreamPlayer(streamUrl) {
       imgEl.classList.remove('hidden');
       imgEl.onerror = () => {
         imgEl.onerror = null;
-        imgEl.src = 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80';
+        if (hlsEl && typeof Hls !== 'undefined' && Hls.isSupported()) {
+          imgEl.classList.add('hidden');
+          hlsEl.classList.remove('hidden');
+          hlsPlayerInstance = new Hls();
+          hlsPlayerInstance.loadSource(defaultLiveStream);
+          hlsPlayerInstance.attachMedia(hlsEl);
+          hlsEl.play().catch(() => {});
+        }
       };
-      imgEl.src = streamUrl || 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80';
+      imgEl.src = targetUrl;
     }
-    if (fmtLabel) fmtLabel.textContent = 'Yoosee Cam RTSP/IP Stream';
+    if (fmtLabel) fmtLabel.textContent = 'Yoosee Cam RTSP Stream';
   }
 }
 
