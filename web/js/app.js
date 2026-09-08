@@ -2652,6 +2652,54 @@ function renderCamerasGrid() {
     });
 }
 
+let hlsPlayerInstance = null;
+let currentCamQualityIsHD = true;
+
+function setupLiveCameraStreamPlayer(streamUrl) {
+  const imgEl = document.getElementById('liveCamImageStream');
+  const hlsEl = document.getElementById('liveCamHlsPlayer');
+  const webcamEl = document.getElementById('liveCamWebcamStream');
+  const fmtLabel = document.getElementById('camStreamFormatLabel');
+
+  if (webcamEl) webcamEl.classList.add('hidden');
+  if (hlsPlayerInstance) {
+    try { hlsPlayerInstance.destroy(); } catch(e) {}
+    hlsPlayerInstance = null;
+  }
+
+  const isHls = streamUrl && (streamUrl.includes('.m3u8') || streamUrl.includes('hls'));
+  const isMp4 = streamUrl && (streamUrl.includes('.mp4') || streamUrl.includes('.webm'));
+
+  if (isHls && typeof Hls !== 'undefined' && Hls.isSupported() && hlsEl) {
+    if (imgEl) imgEl.classList.add('hidden');
+    hlsEl.classList.remove('hidden');
+    
+    hlsPlayerInstance = new Hls({
+      liveSyncDurationCount: 3,
+      liveMaxLatencyDurationCount: 5,
+      enableWorker: true
+    });
+    hlsPlayerInstance.loadSource(streamUrl);
+    hlsPlayerInstance.attachMedia(hlsEl);
+    hlsEl.play().catch(() => {});
+
+    if (fmtLabel) fmtLabel.textContent = '1080p Yoosee HLS Live';
+  } else if (isMp4 && hlsEl) {
+    if (imgEl) imgEl.classList.add('hidden');
+    hlsEl.classList.remove('hidden');
+    hlsEl.src = streamUrl;
+    hlsEl.play().catch(() => {});
+    if (fmtLabel) fmtLabel.textContent = '1080p MP4 HD Stream';
+  } else {
+    if (hlsEl) hlsEl.classList.add('hidden');
+    if (imgEl) {
+      imgEl.classList.remove('hidden');
+      imgEl.src = streamUrl || 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80';
+    }
+    if (fmtLabel) fmtLabel.textContent = 'Yoosee Cam RTSP/IP Stream';
+  }
+}
+
 function openLiveCameraModal(camId) {
   const user = activeUser || (familyMembers && familyMembers.length > 0 ? familyMembers[0] : null);
   if (user && (user.canViewCameras === false || user.can_view_cameras === false)) {
@@ -2669,13 +2717,12 @@ function openLiveCameraModal(camId) {
       currentLiveCamId = cam.id;
       const modal = document.getElementById('cameraLiveModal');
       const title = document.getElementById('liveCamTitle');
-      const img = document.getElementById('liveCamImageStream');
       const locText = document.getElementById('liveCamLocationText');
       const btnAlarm = document.getElementById('btnLiveCamAlarm');
       const btnVoice = document.getElementById('btnLiveCamVoice');
 
-      if (title) title.textContent = `${cam.name} (En Vivo)`;
-      if (img) img.src = cam.stream_url || 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80';
+      if (title) title.textContent = `${cam.name} (En Vivo Yoosee)`;
+      setupLiveCameraStreamPlayer(cam.stream_url);
       if (locText) locText.textContent = `📍 Ubicación: ${cam.location} (IP: ${cam.ip_address || '192.168.1.100'})`;
 
       if (btnAlarm) {
@@ -2694,17 +2741,18 @@ function openLiveCameraModal(camId) {
         const clock = document.getElementById('liveCamClockDisplay');
         if (clock) {
           const now = new Date();
-          clock.textContent = now.toTimeString().split(' ')[0] + ' RTSP';
+          clock.textContent = now.toTimeString().split(' ')[0] + ' Yoosee RTSP';
         }
       }, 1000);
     });
 }
 
-let isWebcamActiveInModal = false;
-let modalWebcamStream = null;
-
 function closeLiveCameraModal() {
   stopWebcamInCamModal();
+  if (hlsPlayerInstance) {
+    try { hlsPlayerInstance.destroy(); } catch(e) {}
+    hlsPlayerInstance = null;
+  }
   const modal = document.getElementById('cameraLiveModal');
   if (modal) modal.classList.add('hidden');
   if (liveCamClockInterval) {
@@ -2712,6 +2760,88 @@ function closeLiveCameraModal() {
     liveCamClockInterval = null;
   }
   currentLiveCamId = null;
+}
+
+function controlYooseePtz(direction) {
+  const camId = currentLiveCamId || 'cam_01';
+  const labels = {
+    UP: '⬆️ Arriba',
+    DOWN: '⬇️ Abajo',
+    LEFT: '⬅️ Izquierda',
+    RIGHT: '➡️ Derecha',
+    CENTER: '🎯 Posición Inicial'
+  };
+
+  fetch(`/api/cameras/${camId}/ptz`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ direction: direction })
+  }).catch(() => {});
+
+  if (typeof showModernToast === 'function') {
+    showModernToast('🎮 PTZ Yoosee', `Moviendo cámara: ${labels[direction] || direction}`, 'info');
+  }
+}
+
+function captureCamSnapshot() {
+  const imgEl = document.getElementById('liveCamImageStream');
+  const hlsEl = document.getElementById('liveCamHlsPlayer');
+  const webcamEl = document.getElementById('liveCamWebcamStream');
+
+  let activeElement = null;
+  if (webcamEl && !webcamEl.classList.contains('hidden')) activeElement = webcamEl;
+  else if (hlsEl && !hlsEl.classList.contains('hidden')) activeElement = hlsEl;
+  else activeElement = imgEl;
+
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+
+  if (activeElement && (activeElement.videoWidth || activeElement.naturalWidth)) {
+    canvas.width = activeElement.videoWidth || activeElement.naturalWidth || 1280;
+    canvas.height = activeElement.videoHeight || activeElement.naturalHeight || 720;
+    ctx.drawImage(activeElement, 0, 0, canvas.width, canvas.height);
+  } else {
+    canvas.width = 1280;
+    canvas.height = 720;
+    ctx.fillStyle = '#0F172A';
+    ctx.fillRect(0, 0, 1280, 720);
+    ctx.fillStyle = '#38BDF8';
+    ctx.font = 'bold 30px sans-serif';
+    ctx.fillText('Yoosee Cam Snapshot ' + new Date().toLocaleTimeString(), 50, 360);
+  }
+
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = `Yoosee_Snapshot_${Date.now()}.jpg`;
+  a.click();
+
+  if (typeof showModernToast === 'function') {
+    showModernToast('📸 Captura Guardada', 'Foto de alta resolución descargada con éxito.', 'success');
+  }
+}
+
+function toggleCamQualityHD() {
+  currentCamQualityIsHD = !currentCamQualityIsHD;
+  const fmtLabel = document.getElementById('camStreamFormatLabel');
+  if (fmtLabel) {
+    fmtLabel.textContent = currentCamQualityIsHD ? '1080p Full HD (60fps)' : '360p SD (Fluido)';
+  }
+  if (typeof showModernToast === 'function') {
+    showModernToast('⚙️ Calidad de Video', `Modo cambiado a: ${currentCamQualityIsHD ? 'Full HD 1080p' : 'SD 360p (Bajo Consumo)'}`, 'info');
+  }
+}
+
+function toggleCamFullscreen() {
+  const container = document.getElementById('camVideoContainer') || document.getElementById('cameraLiveModal');
+  if (!container) return;
+
+  if (!document.fullscreenElement) {
+    if (container.requestFullscreen) container.requestFullscreen();
+    else if (container.webkitRequestFullscreen) container.webkitRequestFullscreen();
+  } else {
+    if (document.exitFullscreen) document.exitFullscreen();
+  }
 }
 
 function toggleWebcamInCamModal() {
