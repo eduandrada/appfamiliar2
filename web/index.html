@@ -1834,23 +1834,37 @@
         </button>
       </div>
 
-      <!-- Tab 1: Vista Escaneo QR Estilo Yoosee App -->
-      <div id="camQrScanView" style="text-align: center; padding: 12px 0;">
-        <div style="width: 210px; height: 210px; margin: 0 auto 12px; border: 2px dashed #38BDF8; border-radius: 18px; position: relative; overflow: hidden; background: #090D16; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 25px rgba(56, 189, 248, 0.25);">
-          <div style="position: absolute; top:0; left:0; width:100%; height:4px; background: #38BDF8; box-shadow: 0 0 15px #38BDF8; animation: scanLine 2s infinite ease-in-out;"></div>
-          <div style="text-align: center;">
-            <i class="fa-solid fa-qrcode" style="font-size: 64px; color: #38BDF8; margin-bottom: 6px;"></i>
-            <div style="font-size: 10px; font-weight: 800; color: #94A3B8; text-transform: uppercase; letter-spacing: 1px;">Yoosee QR Scanner</div>
+      <!-- Tab 1: Vista Escaneo QR Real por Cámara Móvil & Galería -->
+      <div id="camQrScanView" style="text-align: center; padding: 10px 0;">
+        <div style="width: 100%; max-width: 280px; height: 210px; margin: 0 auto 12px; border: 2px dashed #38BDF8; border-radius: 18px; position: relative; overflow: hidden; background: #090D16; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 25px rgba(56, 189, 248, 0.25);">
+          
+          <video id="qrCameraVideoPreview" autoplay playsinline muted style="width: 100%; height: 100%; object-fit: cover;" class="hidden"></video>
+          <canvas id="qrScanCanvas" class="hidden"></canvas>
+          
+          <div id="qrScanPlaceholder" style="text-align: center; padding: 12px;">
+            <i class="fa-solid fa-qrcode" style="font-size: 56px; color: #38BDF8; margin-bottom: 6px;"></i>
+            <div style="font-size: 11px; font-weight: 800; color: #fff;">Lector QR Móvil Yoosee</div>
+            <div style="font-size: 10px; color: #94A3B8; margin-top: 2px;">Presiona abajo para solicitar permiso de cámara o subir imagen</div>
           </div>
+
+          <div id="qrLaserLine" class="hidden" style="position: absolute; top:0; left:0; width:100%; height:4px; background: #38BDF8; box-shadow: 0 0 15px #38BDF8; animation: scanLine 2s infinite ease-in-out;"></div>
+        </div>
+
+        <div style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
+          <button class="btn-mobile-submit" style="flex: 1; min-width: 130px; background: linear-gradient(135deg, #0284C7, #06B6D4); font-size: 12px; padding: 10px; margin: 0;" onclick="startRealWebcamQrScan()">
+            <i class="fa-solid fa-camera"></i> Activar Cámara Móvil
+          </button>
+          
+          <button class="btn-mobile-submit" style="flex: 1; min-width: 130px; background: rgba(16, 185, 129, 0.2); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.4); font-size: 12px; padding: 10px; margin: 0;" onclick="triggerQrImageUpload()">
+            <i class="fa-solid fa-file-image"></i> Subir Imagen QR
+          </button>
+          <input type="file" id="qrFileInput" accept="image/*" style="display: none;" onchange="handleQrImageUpload(event)">
         </div>
 
         <div style="background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 10px; padding: 8px 12px; margin-bottom: 12px; text-align: left;">
           <div style="font-size: 11px; font-weight: 800; color: #38BDF8; margin-bottom: 4px;">
-            📱 Vincular Cámara Yoosee por Código QR:
+            📱 O pega el código QR / Serial de tu cámara Yoosee:
           </div>
-          <p style="font-size: 10.5px; color: #E2E8F0; margin: 0 0 8px;">
-            Apunta al código QR generado por la aplicación <strong>Yoosee</strong> o pega el código/serial a continuación:
-          </p>
           <div style="display: flex; gap: 6px;">
             <input type="text" id="yooseeQrCodeInput" class="mobile-input" placeholder="Ej: yoosee://device?id=84920194 o GW_IPC_84920194" style="font-size: 11px; padding: 8px;">
             <button type="button" class="btn-sm" style="background: #38BDF8; color: #000; font-weight: 800; border: none; border-radius: 8px; padding: 0 12px; cursor: pointer; white-space: nowrap; font-size: 11px;" onclick="handleYooseeQrSubmit()">
@@ -1858,10 +1872,6 @@
             </button>
           </div>
         </div>
-
-        <button class="btn-mobile-submit" style="background: linear-gradient(135deg, #0284C7, #06B6D4); font-size: 13px; padding: 10px; margin-bottom: 8px;" onclick="simulateYooseeQrScan()">
-          <i class="fa-solid fa-camera"></i> Abrir Lector QR en Vivo (Yoosee)
-        </button>
 
         <div style="font-size: 10px; color: #94A3B8;">
           <i class="fa-solid fa-shield-halved" style="color: #38BDF8;"></i> Compatible con ecosistema Yoosee / YYP2P / Cooau. Créditos a Yoosee App.
