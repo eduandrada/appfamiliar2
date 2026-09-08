@@ -3201,5 +3201,225 @@ select option, optgroup {
   }
 }
 
+/* ==================== ESTILOS DE LOGIN Y CONTROL DE ACCESO 2026 ==================== */
+.login-modal-card {
+  max-width: 440px;
+  width: 94%;
+  padding: 20px;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: rgba(15, 23, 42, 0.95);
+}
+
+.login-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--border-glass);
+  padding-bottom: 10px;
+}
+
+.login-header-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.login-brand-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, #0284C7, #2563EB);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 18px;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.4);
+}
+
+.login-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: #fff;
+  margin: 0;
+  font-family: var(--font-heading);
+}
+
+.login-subtitle {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin: 2px 0 0;
+}
+
+.login-tabs-bar {
+  display: flex;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 4px;
+  border-radius: var(--radius-md);
+  margin-bottom: 14px;
+  border: 1px solid var(--border-glass);
+}
+
+.login-tab-btn {
+  flex: 1;
+  padding: 8px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.login-tab-btn.active {
+  background: rgba(56, 189, 248, 0.15);
+  color: var(--accent-cyan);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.login-member-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+  max-height: 140px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.login-member-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.login-member-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(56, 189, 248, 0.3);
+}
+
+.login-member-card.selected {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+}
+
+/* Indicador de PIN Luminoso (Dots) */
+.pin-display-container {
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.pin-dots-row {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.pdot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--text-muted);
+  background: transparent;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pdot.filled {
+  background: var(--accent-cyan);
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 10px var(--accent-cyan);
+  transform: scale(1.15);
+}
+
+.pdot.error {
+  background: #EF4444;
+  border-color: #DC2626;
+  box-shadow: 0 0 12px #EF4444;
+  animation: shake 0.3s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+
+/* Teclado Numérico */
+.pin-keypad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+  max-width: 280px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.pin-key-btn {
+  height: 48px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-glass);
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-heading);
+}
+
+.pin-key-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(56, 189, 248, 0.4);
+}
+
+.pin-key-btn:active {
+  transform: scale(0.92);
+  background: rgba(56, 189, 248, 0.3);
+}
+
+.pin-key-btn.action-key {
+  font-size: 14px;
+  color: var(--accent-cyan);
+  background: rgba(6, 182, 212, 0.1);
+}
+
+.login-modal-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-glass);
+  font-size: 10.5px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+
 
 

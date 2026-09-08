@@ -2333,6 +2333,173 @@
     </div>
   </div>
 
+  <!-- MODAL DE INICIO DE SESIÓN / SELECCIÓN DE MIEMBRO (LOGIN 2026) -->
+  <div id="loginModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="loginModalTitle">
+    <div class="modal-card glass-card login-modal-card">
+      <header class="login-modal-header">
+        <div class="login-header-title">
+          <div class="login-brand-icon">
+            <i class="fa-solid fa-shield-halved"></i>
+          </div>
+          <div>
+            <h2 id="loginModalTitle" class="login-title">Control de Acceso Familiar</h2>
+            <p class="login-subtitle">Selecciona tu perfil o ingresa como administrador</p>
+          </div>
+        </div>
+        <button class="btn-sheet-close" onclick="closeLoginModal()" title="Cerrar"><i class="fa-solid fa-xmark"></i></button>
+      </header>
+
+      <!-- Tabs Navegación Modo Member vs Admin -->
+      <div class="login-tabs-bar">
+        <button id="tabLoginMemberBtn" class="login-tab-btn active" onclick="switchLoginMode('member')">
+          <i class="fa-solid fa-users"></i> Acceso Familiar
+        </button>
+        <button id="tabLoginAdminBtn" class="login-tab-btn" onclick="switchLoginMode('admin')">
+          <i class="fa-solid fa-user-gear"></i> Modo Administrador
+        </button>
+      </div>
+
+      <!-- VISTA ACCESO FAMILIAR (MEMBER) -->
+      <div id="loginMemberView" class="login-view-body">
+        <!-- Selector de Miembro -->
+        <div style="margin-bottom: 10px;">
+          <label style="font-size: 11px; font-weight: 700; color: var(--accent-cyan); display: block; margin-bottom: 4px;">Selecciona tu Cuenta:</label>
+          <select id="loginMemberSelect" class="mobile-input" onchange="onLoginMemberSelectChange()" style="width: 100%; font-weight: 700;">
+            <!-- Opciones renderizadas por JS -->
+          </select>
+        </div>
+
+        <!-- Grid Táctil de Miembros -->
+        <div id="loginMemberGrid" class="login-member-grid">
+          <!-- Renderizado dinámico por JS -->
+        </div>
+
+        <!-- Indicador de PIN (5 Dots) -->
+        <div class="pin-display-container">
+          <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Clave Personal (PIN):</label>
+          <div class="pin-dots-row">
+            <div id="pdot-0" class="pdot"></div>
+            <div id="pdot-1" class="pdot"></div>
+            <div id="pdot-2" class="pdot"></div>
+            <div id="pdot-3" class="pdot"></div>
+            <div id="pdot-4" class="pdot"></div>
+          </div>
+          <div id="loginPinDisplay" class="pin-text-fallback hidden"></div>
+          <input type="password" id="loginPinInput" style="position: absolute; opacity: 0; pointer-events: none;" autocomplete="off" />
+        </div>
+
+        <!-- Teclado Numérico Táctil -->
+        <div class="pin-keypad-grid">
+          <button class="pin-key-btn" onclick="pressLoginPin('1')">1</button>
+          <button class="pin-key-btn" onclick="pressLoginPin('2')">2</button>
+          <button class="pin-key-btn" onclick="pressLoginPin('3')">3</button>
+          <button class="pin-key-btn" onclick="pressLoginPin('4')">4</button>
+          <button class="pin-key-btn" onclick="pressLoginPin('5')">5</button>
+          <button class="pin-key-btn" onclick="pressLoginPin('6')">6</button>
+          <button class="pin-key-btn" onclick="pressLoginPin('7')">7</button>
+          <button class="pin-key-btn" onclick="pressLoginPin('8')">8</button>
+          <button class="pin-key-btn" onclick="pressLoginPin('9')">9</button>
+          <button class="pin-key-btn action-key" onclick="openRecoverPinModal()" title="Recuperar PIN con DNI">
+            <i class="fa-solid fa-key" style="font-size: 14px;"></i>
+          </button>
+          <button class="pin-key-btn" onclick="pressLoginPin('0')">0</button>
+          <button class="pin-key-btn action-key" onclick="clearLoginPin(true)" title="Borrar último número">
+            <i class="fa-solid fa-delete-left"></i>
+          </button>
+        </div>
+
+        <!-- Opciones de Recordar y Biometría -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin: 12px 0 8px;">
+          <label style="font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; cursor: pointer;">
+            <input type="checkbox" id="loginRememberMe" checked style="accent-color: var(--accent-blue);" /> Recordar Sesión
+          </label>
+          <button type="button" class="btn-text-link" onclick="loginWithBiometrics()" style="font-size: 11.5px; color: var(--accent-cyan); background: none; border: none; cursor: pointer;">
+            <i class="fa-solid fa-fingerprint"></i> Biometría / Huella
+          </button>
+        </div>
+
+        <!-- Botón de Ingreso -->
+        <button id="btnSubmitLoginAction" class="btn-mobile-submit" onclick="submitStrictLoginPin()" style="background: linear-gradient(135deg, #0284C7, #2563EB); color: #fff; width: 100%; font-size: 14px; padding: 12px; border-radius: 12px; font-weight: 800;">
+          <i class="fa-solid fa-right-to-bracket"></i> Iniciar Sesión Protegida
+        </button>
+      </div>
+
+      <!-- VISTA MODO ADMINISTRADOR (ADMIN) -->
+      <div id="loginAdminView" class="login-view-body hidden">
+        <div style="background: rgba(239, 68, 68, 0.1); border: 1px dashed rgba(239, 68, 68, 0.4); border-radius: 10px; padding: 10px; margin-bottom: 12px;">
+          <div style="font-size: 11.5px; color: #FCA5A5; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+            <i class="fa-solid fa-user-shield"></i> Acceso Maestro de Administración
+          </div>
+          <p style="font-size: 11px; color: #94A3B8; margin: 2px 0 0;">Ingresa con tus credenciales maestras para modificar configuraciones avanzadas del círculo.</p>
+        </div>
+
+        <div style="margin-bottom: 10px;">
+          <label style="font-size: 11px; font-weight: 700; color: #fff; display: block; margin-bottom: 4px;">Usuario Administrador:</label>
+          <input type="text" id="loginAdminUserInput" class="mobile-input" value="admin" style="width: 100%; font-weight: 700;" placeholder="admin" />
+        </div>
+
+        <div style="margin-bottom: 14px;">
+          <label style="font-size: 11px; font-weight: 700; color: #fff; display: block; margin-bottom: 4px;">PIN Maestro (9999):</label>
+          <input type="password" id="loginAdminPinInput" class="mobile-input" style="width: 100%; font-weight: 700;" placeholder="••••" />
+        </div>
+
+        <button class="btn-mobile-submit" onclick="submitAdminLogin()" style="background: linear-gradient(135deg, #DC2626, #991B1B); color: #fff; width: 100%; font-size: 14px; padding: 12px; border-radius: 12px; font-weight: 800;">
+          <i class="fa-solid fa-lock-open"></i> Acceder como Administrador
+        </button>
+      </div>
+
+      <!-- Telemetría y Footer -->
+      <footer class="login-modal-footer">
+        <span id="loginDetectedIp">IP: Detectando...</span>
+        <span id="loginDetectedBattery">Batería: --%</span>
+      </footer>
+    </div>
+  </div>
+
+  <!-- MODAL RECUPERACIÓN DE PIN CON DNI -->
+  <div id="recoverPinModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="recoverModalTitle">
+    <div class="modal-card glass-card" style="max-width: 400px; width: 92%;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 id="recoverModalTitle" style="font-size: 15px; font-weight: 800; color: var(--accent-cyan); display: flex; align-items: center; gap: 8px; margin: 0;">
+          <i class="fa-solid fa-id-card"></i> Recuperación de PIN con DNI
+        </h3>
+        <button class="btn-sheet-close" onclick="closeRecoverPinModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <p style="font-size: 11.5px; color: var(--text-secondary); margin-bottom: 12px;">
+        Ingresa el DNI del familiar seleccionado para validar la identidad y recuperar o restablecer tu PIN personal.
+      </p>
+
+      <div style="margin-bottom: 10px;">
+        <label style="font-size: 11px; font-weight: 700; color: #fff; display: block; margin-bottom: 4px;">Familiar:</label>
+        <select id="recoverMemberSelect" class="mobile-input" style="width: 100%; font-weight: 700;">
+          <!-- Opciones cargadas por JS -->
+        </select>
+      </div>
+
+      <div style="margin-bottom: 10px;">
+        <label style="font-size: 11px; font-weight: 700; color: #fff; display: block; margin-bottom: 4px;">Número de DNI Registrado:</label>
+        <input type="text" id="recoverDniInput" class="mobile-input" placeholder="Ej: 35388342" style="width: 100%;" />
+      </div>
+
+      <div style="margin-bottom: 14px;">
+        <label style="font-size: 11px; font-weight: 700; color: #fff; display: block; margin-bottom: 4px;">Nuevo PIN (Opcional):</label>
+        <input type="password" id="recoverNewPinInput" class="mobile-input" placeholder="Ingresa un nuevo PIN de 4 dígitos" style="width: 100%;" maxLength="8" />
+      </div>
+
+      <div id="recoverResultBox" class="hidden" style="margin-bottom: 12px; padding: 10px; border-radius: 8px; font-size: 12px;"></div>
+
+      <div style="display: flex; gap: 8px;">
+        <button class="btn-mobile-submit" onclick="submitRecoverPin()" style="flex: 1; background: linear-gradient(135deg, #10B981, #059669); color: #fff; font-size: 12px; padding: 10px; font-weight: 800;">
+          <i class="fa-solid fa-check-double"></i> Validar DNI
+        </button>
+        <button class="btn-mobile-submit" onclick="closeRecoverPinModal()" style="background: rgba(255,255,255,0.1); color: #fff; font-size: 12px; padding: 10px;">
+          Cancelar
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <!-- Scripts de la Aplicación -->
@@ -2374,7 +2541,7 @@
     }
   </script>
   <script src="js/robot_chat.js"></script>
-  <script src="https://maps.googleapis.com/maps/api/js?libraries=places,marker&v=beta" async defer></script>
-  <script src="js/app.js"></script>
+  <script src="https://maps.googleapis.com/maps/api/js?libraries=places,marker&v=beta&loading=async" async defer></script>
+  <script src="js/app.js?v=2026.2"></script>
 </body>
 </html>

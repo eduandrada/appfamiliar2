@@ -513,7 +513,7 @@ function updateGoogleMapMarkers() {
         });
 
         marker.addListener('click', () => {
-          showMemberProfileModal(member.id);
+          selectMember(member.id);
         });
 
         googleMapMarkers[member.id] = marker;
@@ -526,6 +526,9 @@ function updateGoogleMapMarkers() {
           position: pos,
           map: googleMap,
           title: member.name
+        });
+        marker.addListener('click', () => {
+          selectMember(member.id);
         });
         googleMapMarkers[member.id] = marker;
       } else {
@@ -1433,19 +1436,6 @@ async function loginWithBiometrics() {
 
   showModernToast('¡Biometría Confirmada!', `Identidad validada: ${activeUser.name}`, 'success');
   notifyInPhone('👆 Biometría Verificada Exitosamente', `Bienvenid@ ${activeUser.name}`);
-}
-
-      alert(`✅ Apodo eliminado para ${nameStr}.`);
-    }
-  } catch (e) {
-    console.error(e);
-  }
-}
-
-function saveCustomViewerNickname(memberId) {
-  const input = document.getElementById(`customViewerNicknameInput_${memberId}`);
-  if (!input) return;
-  setViewerCustomNickname(memberId, input.value);
 }
 
 function pressLoginPin(digit) {
@@ -5437,6 +5427,34 @@ function saveMembers() {
   try {
     localStorage.setItem('app_familiar_members', JSON.stringify(familyMembers));
   } catch (e) {}
+}
+
+function updateHeaderSessionUI() {
+  const activeNameEl = document.getElementById('activeUserName');
+  const logoutBtn = document.getElementById('btnLogoutHeader');
+  if (activeUser) {
+    if (activeNameEl) activeNameEl.textContent = activeUser.name.split(' ')[0];
+    if (logoutBtn) logoutBtn.classList.remove('hidden');
+  } else {
+    if (activeNameEl) activeNameEl.textContent = 'Ingresar';
+    if (logoutBtn) logoutBtn.classList.add('hidden');
+  }
+}
+
+function handleUserSessionPillClick() {
+  openLoginModal();
+}
+
+function handlePinProtectedLogout() {
+  activeUser = null;
+  activeMemberId = null;
+  localStorage.removeItem('app_familiar_auth');
+  localStorage.removeItem('app_familiar_session_token');
+  updateHeaderSessionUI();
+  if (typeof showModernToast === 'function') {
+    showModernToast('Sesión Cerrada', 'Has salido del círculo. Selecciona un familiar para ingresar.', 'info');
+  }
+  openLoginModal();
 }
 
 function loadStoredSession() {
