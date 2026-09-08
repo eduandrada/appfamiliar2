@@ -774,10 +774,7 @@
             </button>
           </div>
 
-          <!-- Botón de Registro de Nuevo Familiar -->
-          <button type="button" class="btn-mobile-submit" style="background: linear-gradient(135deg, #0284C7, #06B6D4); font-size: 13px; font-weight: 800; padding: 10px; margin-bottom: 12px; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;" onclick="openRegisterModal()">
-            <i class="fa-solid fa-user-plus"></i> ➕ Registrar Nuevo Familiar al Círculo
-          </button>
+
 
           <!-- Tarjeta de Perfil del Usuario Activo -->
           <div class="glass-card profile-card" style="margin-bottom: 10px;">
@@ -1242,12 +1239,70 @@
 
         <!-- Admin Tab 1: Miembros -->
         <div id="adminTabMembers">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <span class="sheet-sub" style="margin:0;">Gestiona miembros familiares y sincronización cloud:</span>
-            <button class="btn-sm" style="background: linear-gradient(135deg, #10B981, #059669); color: #fff; border: none; font-weight: 700; padding: 6px 12px; border-radius: 6px; cursor: pointer;" onclick="openRegisterModal()">
-              <i class="fa-solid fa-plus"></i> Añadir Familiar
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <span class="sheet-sub" style="margin:0; font-size:12px; font-weight:700;">Gestión centralizada de miembros del círculo familiar:</span>
+            <button class="btn-sm" style="background: linear-gradient(135deg, #10B981, #059669); color: #fff; border: none; font-weight: 700; padding: 7px 12px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 6px;" onclick="toggleAdminAddMemberForm()">
+              <i class="fa-solid fa-user-plus"></i> <span id="btnToggleAddText">+ Añadir Nuevo Miembro</span>
             </button>
           </div>
+
+          <!-- Formulario Integrado de Alta de Miembro (Admin Only) -->
+          <div id="adminAddMemberFormBox" class="hidden" style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 12px; padding: 14px; margin-bottom: 14px;">
+            <div style="font-size: 13px; font-weight: 800; color: #10B981; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+              <i class="fa-solid fa-address-card"></i> Registrar Nuevo Integrante al Círculo
+            </div>
+            <form onsubmit="handleAdminAddMemberSubmit(event)" style="display: flex; flex-direction: column; gap: 10px;">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div class="form-group" style="margin:0;">
+                  <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Nombre Completo:</label>
+                  <input type="text" id="adminRegName" class="mobile-input" style="padding: 8px 10px; font-size: 12px;" placeholder="Ej: María Andrada" required>
+                </div>
+                <div class="form-group" style="margin:0;">
+                  <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">DNI (Documento):</label>
+                  <input type="text" id="adminRegDni" class="mobile-input" style="padding: 8px 10px; font-size: 12px;" placeholder="DNI de 8 dígitos" required>
+                </div>
+              </div>
+
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div class="form-group" style="margin:0;">
+                  <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Rol Familiar:</label>
+                  <select id="adminRegRole" class="mobile-select" style="padding: 8px 10px; font-size: 12px;">
+                    <option value="Padre">Padre</option>
+                    <option value="Madre">Madre</option>
+                    <option value="Hijo/a">Hijo/a</option>
+                    <option value="Abuelo/a">Abuelo/a</option>
+                    <option value="Tío/a">Tío/a</option>
+                    <option value="Familiar">Familiar</option>
+                  </select>
+                </div>
+                <div class="form-group" style="margin:0;">
+                  <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Teléfono / WhatsApp:</label>
+                  <input type="tel" id="adminRegPhone" class="mobile-input" style="padding: 8px 10px; font-size: 12px;" placeholder="+54 9 383 4772960" required>
+                </div>
+              </div>
+
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div class="form-group" style="margin:0;">
+                  <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">PIN de Acceso (4 dígitos):</label>
+                  <input type="password" id="adminRegPin" class="mobile-input" style="padding: 8px 10px; font-size: 12px;" maxlength="4" placeholder="••••" required>
+                </div>
+                <div class="form-group" style="margin:0;">
+                  <label style="font-size: 11px; font-weight: 700; color: var(--text-secondary);">Contacto de Confianza:</label>
+                  <select id="adminRegTrustedSelect" class="mobile-select" style="padding: 8px 10px; font-size: 12px;">
+                    <option value="">Sin Asignar</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px;">
+                <button type="button" class="btn-sm" style="background: rgba(255,255,255,0.1); color: #fff; border: 1px solid var(--border-glass); padding: 8px 14px; border-radius: 8px;" onclick="toggleAdminAddMemberForm()">Cancelar</button>
+                <button type="submit" class="btn-sm" style="background: linear-gradient(135deg, #10B981, #059669); color: #fff; border: none; font-weight: 800; padding: 8px 16px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                  <i class="fa-solid fa-paper-plane"></i> Guardar y Generar Invitación
+                </button>
+              </div>
+            </form>
+          </div>
+
           <div class="admin-members-table" id="adminMembersTable">
             <!-- Renderizado dinámico en app.js -->
           </div>
@@ -2333,6 +2388,6 @@
   </script>
   <script src="js/robot_chat.js"></script>
   <script src="https://maps.googleapis.com/maps/api/js?libraries=places,marker&v=beta&loading=async" async defer></script>
-  <script src="js/app.js?v=2026.3.10"></script>
+  <script src="js/app.js?v=2026.3.15"></script>
 </body>
 </html>

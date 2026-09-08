@@ -2,7 +2,7 @@
 // FAMILIA ANDRADA - SERVICE WORKER PWA & NOTIFICACIONES EN SEGUNDO PLANO
 // ==============================================================================
 
-const CACHE_NAME = 'familia-andrada-pwa-v2026.3.14';
+const CACHE_NAME = 'familia-andrada-v2026.3.15';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',

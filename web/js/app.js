@@ -6686,3 +6686,125 @@ function sendDisconnectionBeacon() {
 
 window.addEventListener('beforeunload', sendDisconnectionBeacon);
 window.addEventListener('pagehide', sendDisconnectionBeacon);
+
+
+// ==================== GESTIÓN INTEGRADA DE MIEMBROS EN PANEL ADMIN (2026) ====================
+function toggleAdminAddMemberForm() {
+  const formBox = document.getElementById('adminAddMemberFormBox');
+  const btnText = document.getElementById('btnToggleAddText');
+  if (!formBox) return;
+
+  const isHidden = formBox.classList.contains('hidden');
+  if (isHidden) {
+    // Poblar combo de contactos de confianza
+    const trustedSel = document.getElementById('adminRegTrustedSelect');
+    if (trustedSel) {
+      trustedSel.innerHTML = '<option value="">Sin Asignar</option>' + 
+        familyMembers.map(m => `<option value="${m.id}">${m.name} (${m.role})</option>`).join('');
+    }
+    formBox.classList.remove('hidden');
+    if (btnText) btnText.textContent = 'Ocultar Formulario';
+  } else {
+    formBox.classList.add('hidden');
+    if (btnText) btnText.textContent = '+ Añadir Nuevo Miembro';
+  }
+}
+
+async function handleAdminAddMemberSubmit(e) {
+  if (e) e.preventDefault();
+
+  const name = document.getElementById('adminRegName')?.value.trim();
+  const dni = document.getElementById('adminRegDni')?.value.trim();
+  const role = document.getElementById('adminRegRole')?.value || 'Familiar';
+  const phone = document.getElementById('adminRegPhone')?.value.trim();
+  const pin = document.getElementById('adminRegPin')?.value.trim();
+  const trustedContactId = document.getElementById('adminRegTrustedSelect')?.value || null;
+
+  if (!name || !dni || !phone || !pin) {
+    if (typeof showToast === 'function') showToast('Por favor completa todos los campos requeridos.', 'warning');
+    else alert('Por favor completa todos los campos requeridos.');
+    return;
+  }
+
+  if (pin.length < 4 || !/^\d{4}$/.test(pin)) {
+    if (typeof showToast === 'function') showToast('El PIN debe ser un número exacto de 4 dígitos.', 'warning');
+    else alert('El PIN debe ser un número de 4 dígitos.');
+    return;
+  }
+
+  // Verificar duplicados por DNI
+  const exists = familyMembers.some(m => m.dni === dni);
+  if (exists) {
+    if (typeof showToast === 'function') showToast('Ya existe un miembro registrado con ese DNI.', 'warning');
+    else alert('Ya existe un miembro registrado con ese DNI.');
+    return;
+  }
+
+  const newId = `m_${Date.now()}`;
+  const avatarText = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'FM';
+
+  const newMember = {
+    id: newId,
+    name: name,
+    dni: dni,
+    role: role,
+    phone: phone,
+    pin: pin,
+    trustedContactId: trustedContactId,
+    avatar: avatarText,
+    camAccess: 'all',
+    status: 'online',
+    lastSeen: 'Ahora mismo',
+    lat: -28.46957,
+    lng: -65.78524,
+    location: {
+      lat: -28.46957,
+      lng: -65.78524,
+      address: 'San Fernando del Valle de Catamarca'
+    }
+  };
+
+  familyMembers.push(newMember);
+
+  // Guardar en backend FastAPI
+  try {
+    await fetch('/api/members', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newMember)
+    });
+  } catch (err) {
+    console.warn('Backend offline, guardado en memoria local:', err);
+  }
+
+  // Refrescar lista en panel de administración y directorio
+  if (typeof renderAdminTable === 'function') renderAdminTable();
+  if (typeof renderFamilyDirectory === 'function') renderFamilyDirectory();
+  if (typeof updateMapMarkers === 'function') updateMapMarkers();
+
+  // Ocultar formulario y limpiar inputs
+  toggleAdminAddMemberForm();
+  document.getElementById('adminRegName').value = '';
+  document.getElementById('adminRegDni').value = '';
+  document.getElementById('adminRegPhone').value = '';
+  document.getElementById('adminRegPin').value = '';
+
+  const cleanPhone = phone.replace(/[^0-9]/g, '');
+  const appUrl = window.location.origin;
+  const msgText = `Hola ${name}! 🏠 Has sido registrado/a en la App Familia Andrada.\n\nAcceso a la App:\n🔗 ${appUrl}\n📄 DNI: ${dni}\n🔑 PIN: ${pin}\n\nPor favor ingresa para mantener tu ubicación y seguridad sincronizada.`;
+  const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msgText)}`;
+
+  if (typeof showToast === 'function') showToast(`✅ Miembro ${name} registrado con éxito.`, 'success');
+
+  if (cleanPhone.length >= 8) {
+    setTimeout(() => {
+      if (confirm(`¿Deseas enviar la tarjeta de acceso a ${name} por WhatsApp ahora?`)) {
+        window.open(waUrl, '_blank');
+      }
+    }, 400);
+  }
+}
+
+window.toggleAdminAddMemberForm = toggleAdminAddMemberForm;
+window.handleAdminAddMemberSubmit = handleAdminAddMemberSubmit;
+
