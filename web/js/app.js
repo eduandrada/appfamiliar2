@@ -135,8 +135,6 @@ document.addEventListener('DOMContentLoaded', () => {
   initDrillMode();
   initGaitMotionSensor();
   loadStoredAuditLogs();
-  startCloudSyncLoop();
-  initRealtimeGpsTracker();
 });
 
 async function syncMembersFromBackend() {
@@ -305,27 +303,61 @@ function saveActiveUserSession(isNewLogin = false) {
 }
 
 function loadStoredSession() {
-  const savedSession = localStorage.getItem('andrada_active_session');
-  if (savedSession) {
-    try {
-      activeUser = JSON.parse(savedSession);
-    } catch (e) {
-      activeUser = familyMembers[0];
-    }
-  } else {
-    activeUser = familyMembers[0];
-  }
-  if (activeUser && !activeUser.last_login_at) {
-    activeUser.last_login_at = localStorage.getItem('andrada_last_login_at') || new Date().toISOString();
-  }
-  saveActiveUserSession(false);
-  updateActiveUserUI();
+  // 1. Intentar cargar sesión persistente (si seleccionó "Recordar inicio de sesión")
+  let savedData = localStorage.getItem('app_familiar_auth') || localStorage.getItem('andrada_active_session');
+  let memberId = null;
 
-  // Transmitir heartbeat inmediato al restaurar la sesión
-  setTimeout(() => {
-    if (typeof execute5SecondSyncPulse === 'function') {
-      execute5SecondSyncPulse();
+  if (savedData) {
+    try {
+      const parsed = JSON.parse(savedData);
+      memberId = parsed.memberId || parsed.id;
+    } catch (e) {}
+  }
+
+  // 2. Intentar cargar sesión temporal (si la pestaña/navegador no se cerró)
+  if (!memberId) {
+    const tempSession = sessionStorage.getItem('app_familiar_session');
+    if (tempSession) {
+      try {
+        const parsed = JSON.parse(tempSession);
+        memberId = parsed.memberId || parsed.id;
+      } catch (e) {}
     }
+  }
+
+  if (memberId) {
+    const found = familyMembers.find(m => m.id === memberId);
+    if (found) {
+      activeUser = found;
+      activeMemberId = found.id;
+      if (!activeUser.last_login_at) {
+        activeUser.last_login_at = localStorage.getItem('andrada_last_login_at') || new Date().toISOString();
+      }
+      updateHeaderSessionUI();
+      if (typeof updateActiveUserUI === 'function') updateActiveUserUI();
+      if (typeof forceRealBatteryUpdate === 'function') forceRealBatteryUpdate();
+
+      // INICIAR RASTREO GPS Y SINCRONIZACIÓN ÚNICAMENTE POST-AUTENTICACIÓN
+      if (typeof startCloudSyncLoop === 'function') startCloudSyncLoop();
+      if (typeof initRealtimeGpsTracker === 'function') initRealtimeGpsTracker();
+
+      setTimeout(() => {
+        if (typeof execute5SecondSyncPulse === 'function') {
+          execute5SecondSyncPulse();
+        }
+      }, 300);
+      return;
+    }
+  }
+
+  // Si no hay sesión válida: BLOQUEAR APLICACIÓN Y SOLICITAR ACCESO OBLIGATORIO
+  activeUser = null;
+  activeMemberId = null;
+  updateHeaderSessionUI();
+  if (typeof updateActiveUserUI === 'function') updateActiveUserUI();
+
+  setTimeout(() => {
+    openLoginModal();
   }, 300);
 }
 
@@ -5765,7 +5797,11 @@ function handleLoginGlobalKeydown(e) {
     submitStrictLoginPin();
     e.preventDefault();
   } else if (e.key === 'Escape') {
-    closeLoginModal();
+    if (activeUser) {
+      closeLoginModal();
+    } else {
+      showModernToast('Acceso Requerido', 'Selecciona tu familiar e ingresa tu PIN para ingresar.', 'warning');
+    }
     e.preventDefault();
   }
 }
@@ -5795,6 +5831,10 @@ function selectMemberCardForLogin(memberId, updateSelect = true) {
 }
 
 function closeLoginModal() {
+  if (!activeUser) {
+    showModernToast('Acceso Requerido', 'Ingresa tu clave de acceso o PIN para ingresar a la aplicación.', 'warning');
+    return;
+  }
   clearLoginPin();
   const modal = document.getElementById('loginModal');
   if (modal) modal.classList.add('hidden');
@@ -5959,8 +5999,13 @@ async function submitStrictLoginPin() {
     const remember = document.getElementById('loginRememberMe');
     if (remember && remember.checked) {
       localStorage.setItem('app_familiar_auth', JSON.stringify({ memberId: activeUser.id }));
+      localStorage.setItem('andrada_active_session', JSON.stringify(activeUser));
+      sessionStorage.removeItem('app_familiar_session');
     } else {
+      sessionStorage.setItem('app_familiar_session', JSON.stringify({ memberId: activeUser.id }));
+      sessionStorage.setItem('andrada_active_session', JSON.stringify(activeUser));
       localStorage.removeItem('app_familiar_auth');
+      localStorage.removeItem('andrada_active_session');
     }
 
     closeLoginModal();
@@ -5968,6 +6013,9 @@ async function submitStrictLoginPin() {
     renderDirectoryList();
     renderMemberChips();
     updateMapMarkers();
+
+    if (typeof startCloudSyncLoop === 'function') startCloudSyncLoop();
+    if (typeof initRealtimeGpsTracker === 'function') initRealtimeGpsTracker();
 
     showModernToast('¡Acceso Autorizado!', `Bienvenid@ al círculo, ${activeUser.name}`, 'success');
     notifyInPhone('🔑 Sesión Autorizada con PIN', `Bienvenid@ ${activeUser.name}`);
@@ -5979,11 +6027,24 @@ async function submitStrictLoginPin() {
       activeUser.pin = entered;
       saveMembers();
       activeMemberId = activeUser.id;
+      const remember = document.getElementById('loginRememberMe');
+      if (remember && remember.checked) {
+        localStorage.setItem('app_familiar_auth', JSON.stringify({ memberId: activeUser.id }));
+        localStorage.setItem('andrada_active_session', JSON.stringify(activeUser));
+        sessionStorage.removeItem('app_familiar_session');
+      } else {
+        sessionStorage.setItem('app_familiar_session', JSON.stringify({ memberId: activeUser.id }));
+        sessionStorage.setItem('andrada_active_session', JSON.stringify(activeUser));
+        localStorage.removeItem('app_familiar_auth');
+        localStorage.removeItem('andrada_active_session');
+      }
       closeLoginModal();
       updateHeaderSessionUI();
       renderDirectoryList();
       renderMemberChips();
       updateMapMarkers();
+      if (typeof startCloudSyncLoop === 'function') startCloudSyncLoop();
+      if (typeof initRealtimeGpsTracker === 'function') initRealtimeGpsTracker();
       showModernToast('Acceso Offline Autorizado', `Bienvenid@ ${activeUser.name}`, 'success');
     } else {
       showModernToast('PIN Incorrecto', 'La clave ingresada no coincide con el PIN registrado.', 'error');
@@ -6036,12 +6097,16 @@ async function submitAdminLogin() {
       localStorage.setItem('app_familiar_session_token', data.session_token);
     }
     localStorage.setItem('app_familiar_auth', JSON.stringify({ memberId: activeUser.id, isAdmin: true }));
+    localStorage.setItem('andrada_active_session', JSON.stringify(activeUser));
 
     closeLoginModal();
     updateHeaderSessionUI();
     renderDirectoryList();
     renderMemberChips();
     updateMapMarkers();
+
+    if (typeof startCloudSyncLoop === 'function') startCloudSyncLoop();
+    if (typeof initRealtimeGpsTracker === 'function') initRealtimeGpsTracker();
 
     showModernToast('Modo Administrador Activo', `Sesión de administración concedida (${activeUser.name})`, 'success');
     notifyInPhone('🛡️ Administrador Autenticado', 'Acceso total concedido al círculo.');

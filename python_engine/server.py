@@ -197,18 +197,34 @@ def load_data_store() -> dict:
         try:
             with open(DATA_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                if "cameras" not in data:
+                if not isinstance(data, dict):
+                    data = {}
+                if "members" not in data or not data["members"]:
+                    data["members"] = DEFAULT_MEMBERS
+                if "cameras" not in data or not data["cameras"]:
                     data["cameras"] = DEFAULT_CAMERAS
+                if "check_ins" not in data:
+                    data["check_ins"] = []
+                if "alerts" not in data:
+                    data["alerts"] = []
+                if "audit_logs" not in data:
+                    data["audit_logs"] = []
                 return data
-        except Exception:
-            pass
-    return {
+        except Exception as e:
+            print(f"Error cargando data_store.json: {e}")
+    initial_store = {
         "members": DEFAULT_MEMBERS,
         "cameras": DEFAULT_CAMERAS,
         "check_ins": [],
         "alerts": [],
         "audit_logs": []
     }
+    try:
+        with open(DATA_FILE, "w", encoding="utf-8") as f:
+            json.dump(initial_store, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+    return initial_store
 
 def save_data_store(data: dict):
     try:
