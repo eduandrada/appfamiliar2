@@ -640,7 +640,7 @@ function initMap() {
     zoomControl: false
   });
 
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; CARTO',
     maxZoom: 19
   }).addTo(map);
@@ -1251,7 +1251,8 @@ function renderDirectoryList() {
 
     const distText = isMe ? (isGhostModeActive ? 'Tu dispositivo (👻 Modo Fantasma Activo)' : 'Tu dispositivo (Aquí)') : (isGhost ? '👻 Modo Fantasma (Invisible)' : formatDistance(current.lat, current.lng, m.lat, m.lng));
     const batteryText = isGhost ? '🔒 Protegida' : `${m.battery}%`;
-    const netLabel = isGhost ? '👻 Modo Fantasma' : (m.network_label || (m.zone.includes('Casa') ? '🟢 WiFi Casa' : (m.zone.includes('Ruta') ? '📶 4G/5G Datos' : 'ᛡ BLE Mesh')));
+    const zoneStr = m.zone || 'Catamarca';
+    const netLabel = isGhost ? '👻 Modo Fantasma' : (m.network_label || (zoneStr.includes('Casa') ? '🟢 WiFi Casa' : (zoneStr.includes('Ruta') ? '📶 4G/5G Datos' : 'ᛡ BLE Mesh')));
     const lastSeenFormatted = isGhost ? '👻 Modo Invisible' : formatLastSeen(m.last_seen || m.lastSeen);
     const trustedText = m.trusted_contact_name ? `⭐ ${m.trusted_contact_name}` : '⭐ Sin asignar';
 
@@ -2732,7 +2733,7 @@ function renderCamerasGrid() {
 
             <!-- Mini vista previa en Vivo -->
             <div style="position: relative; width: 100%; height: 145px; border-radius: 10px; overflow: hidden; background: #000; margin-bottom: 10px; cursor: pointer;" onclick="openLiveCameraModal('${cam.id}')">
-              <img src="${streamImg}" alt="${cam.name}" style="width: 100%; height: 100%; object-fit: cover; opacity: ${isOnline ? '0.9' : '0.4'};" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80';">
+              <img src="${streamImg}" alt="${cam.name}" style="width: 100%; height: 100%; object-fit: cover; opacity: ${isOnline ? '0.9' : '0.4'};" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'600\' height=\'340\' viewBox=\'0 0 600 340\'><rect width=\'600\' height=\'340\' fill=\'%230F172A\'/><path d=\'M0,0 L600,340 M600,0 L0,340\' stroke=\'%231E293B\' stroke-width=\'1\'/><circle cx=\'300\' cy=\'170\' r=\'70\' fill=\'none\' stroke=\'%2306B6D4\' stroke-width=\'2\' stroke-dasharray=\'8 4\'/><circle cx=\'300\' cy=\'170\' r=\'5\' fill=\'%23EF4444\'/><text x=\'20\' y=\'35\' fill=\'%23EF4444\' font-family=\'monospace\' font-size=\'15\' font-weight=\'bold\'>🔴 REC LIVE RTSP</text><text x=\'20\' y=\'315\' fill=\'%2338BDF8\' font-family=\'monospace\' font-size=\'14\'>${cam.name.replace(/'/g, "")} • IP: ${cam.ip_address || '192.168.1.100'}</text><text x=\'440\' y=\'35\' fill=\'%2310B981\' font-family=\'monospace\' font-size=\'14\'>30 FPS • 1080p</text></svg>';">
               
               <div style="position: absolute; top: 8px; left: 8px; display: flex; gap: 4px;">
                 ${hasAlarm ? '<span style="font-size: 9px; padding: 2px 6px; border-radius: 6px; background: rgba(239, 68, 68, 0.85); color: #fff; font-weight: 700;">🚨 Sirena</span>' : ''}
@@ -6141,3 +6142,110 @@ function closeChatFloatingBanner() {
 
 
 
+
+
+
+// ==================== REGISTRO DE MIEMBROS Y MENSAJE FORMAL WHATSAPP ====================
+function openRegisterModal() {
+  const modal = document.getElementById('registerModal');
+  if (modal) modal.classList.remove('hidden');
+}
+
+function closeRegisterModal() {
+  const modal = document.getElementById('registerModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+async function handleRegisterSubmit(event) {
+  if (event) event.preventDefault();
+
+  const nameInput = document.getElementById('regFullName');
+  const dniInput = document.getElementById('regDni');
+  const phoneInput = document.getElementById('regPhone');
+  const roleSelect = document.getElementById('regRole');
+  const pinInput = document.getElementById('regPin');
+
+  if (!nameInput || !phoneInput || !pinInput) return;
+
+  const fullName = nameInput.value.trim();
+  const dni = dniInput ? dniInput.value.trim() : 'Sin DNI';
+  const phone = phoneInput.value.trim();
+  const role = roleSelect ? roleSelect.value : 'Familiar de Confianza';
+  const pin = pinInput.value.trim();
+
+  if (!fullName || !phone || !pin) {
+    if (typeof showModernToast === 'function') {
+      showModernToast('Campos Incompletos', 'Por favor completa Nombre, Teléfono y PIN.', 'warning');
+    }
+    return;
+  }
+
+  const newId = 'm_' + fullName.toLowerCase().replace(/[^a-z0-9]/g, '_') + '_' + Date.now().toString().slice(-4);
+
+  const newMember = {
+    id: newId,
+    name: fullName,
+    role: role,
+    phone: phone,
+    dni: dni,
+    pin: pin,
+    lat: -28.46957,
+    lng: -65.78524,
+    battery: 100,
+    is_online: true,
+    last_seen: 'Recién registrado',
+    canViewCameras: true,
+    canTriggerCameraAlarm: true,
+    canSendCameraVoice: true
+  };
+
+  // Guardar localmente en el arreglo de miembros
+  familyMembers.push(newMember);
+  saveMembers();
+
+  // Enviar nuevo miembro al backend Python
+  try {
+    await fetch('/api/members', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ member: newMember })
+    });
+  } catch (e) {
+    console.warn('[Register] Error enviando al backend:', e);
+  }
+
+  // Refrescar UI
+  renderMemberChips();
+  renderDirectoryList();
+  closeRegisterModal();
+
+  // Reset del formulario
+  if (nameInput) nameInput.value = '';
+  if (dniInput) dniInput.value = '';
+  if (phoneInput) phoneInput.value = '';
+  if (pinInput) pinInput.value = '';
+
+  // Generar y Enviar Mensaje Formal y Serio por WhatsApp
+  sendWhatsAppFormalInvite(newMember);
+}
+
+function sendWhatsAppFormalInvite(member) {
+  const appUrl = window.location.origin + '/';
+  const cleanPhone = (member.phone || '').replace(/[^0-9]/g, '');
+
+  const formalMessage = `🛡️ *SISTEMA DE PROTECCIÓN FAMILIAR ANDRADA* 🛡️\n\nEstimado/a *${member.name}*,\nSe ha generado oficialmente tu cuenta de acceso seguro a la Red de Protección y Geolocalización Familiar Andrada 2026.\n\n📋 *DATOS DE TU CUENTA:*\n• *Titular:* ${member.name}\n• *Rol Asignado:* ${member.role}\n• *DNI Registrado:* ${member.dni || 'Registrado'}\n• *PIN de Acceso Inicial:* *${member.pin}*\n\n🌐 *ACCESO A LA APLICACIÓN WEB:*\n👉 ${appUrl}\n\n📲 *INSTRUCCIONES DE INGRESO:*\n1. Toca el enlace web arriba mencionado desde tu teléfono celular o computadora.\n2. Selecciona tu perfil de usuario (*${member.name}*).\n3. Ingresa tu PIN personal de 4 dígitos (*${member.pin}*).\n4. Mantén activa la geolocalización GPS para contar con cobertura de protección familiar en tiempo real 24/7.\n\n_Por seguridad, guarda este mensaje y no compartas tu PIN con terceros._`;
+
+  const waUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(formalMessage)}`;
+
+  // Abrir WhatsApp automáticamente
+  window.open(waUrl, '_blank');
+
+  if (typeof showModernToast === 'function') {
+    showModernToast('Familiar Registrado', `Se creó el usuario para ${member.name} y se abrió WhatsApp con la invitación formal.`, 'success');
+  }
+}
+
+window.openRegisterModal = openRegisterModal;
+window.closeRegisterModal = closeRegisterModal;
+window.handleRegisterSubmit = handleRegisterSubmit;
+window.sendWhatsAppFormalInvite = sendWhatsAppFormalInvite;
