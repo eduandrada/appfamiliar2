@@ -25,8 +25,19 @@ function openAiAssistantModal() {
   if (typeof switchTab === 'function') {
     switchTab('tab-pickup');
   }
-  const input = getChatInput();
-  if (input) input.focus();
+  setTimeout(() => {
+    const chatBox = document.querySelector('.chat-container');
+    if (chatBox) {
+      chatBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    const input = getChatInput();
+    if (input) {
+      input.focus();
+      if (!input.value) {
+        input.placeholder = '🤖 Pregunta al Asistente Búscame AI o escribe a la familia...';
+      }
+    }
+  }, 100);
 }
 
 function closeAiAssistantModal() {

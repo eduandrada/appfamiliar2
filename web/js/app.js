@@ -489,7 +489,7 @@ function switchTab(tabId) {
 // ==================== DUAL MAP ENGINE: GOOGLE MAPS PLATFORM & LEAFLET ====================
 let googleMap = null;
 let googleMapMarkers = {};
-let currentMapEngine = 'google'; // 'google' | 'leaflet'
+let currentMapEngine = 'leaflet'; // 'leaflet' | 'google'
 
 function initGoogleMap() {
   const container = document.getElementById('familyMap');
@@ -1332,23 +1332,303 @@ function callMemberPhone(phone) {
   }
 }
 
-// ==================== AUTENTICACIÓN NOMBRE + PIN ====================
-// La lógica completa de autenticación 2026 está centralizada en openLoginModal / submitStrictLoginPin
+// ==============================================================================
+// 10. SISTEMA DE AUTENTICACIÓN ULTRA-MODERNO 2026 (PIN, BIOMETRÍA & ADMINISTRACIÓN)
+// ==============================================================================
 
-// ==================== INICIO DE SESIÓN CON BIOMETRÍA (HUELLA / FACE ID) ====================
-async function loginWithBiometrics() {
-  const select = document.getElementById('loginMemberSelect');
-  const targetId = select ? select.value : (familyMembers[0] ? familyMembers[0].id : '');
-  const targetMember = familyMembers.find(m => m.id === targetId) || familyMembers[0];
-
-  if (!targetMember) {
-    showModernToast('Selección Requerida', 'Por favor selecciona un familiar para ingresar con biometría.', 'warning');
+// --- Sistema de Notificaciones Toasts Modernas 2026 ---
+function showModernToast(title, message, type = 'info') {
+  const container = document.getElementById('toastContainer');
+  if (!container) {
+    if (type === 'error') alert(`❌ ${title}\n${message}`);
+    else console.log(`[Toast] ${title}: ${message}`);
     return;
   }
 
-  showModernToast('Escáner Biométrico', `Verificando sensor táctil / Face ID para ${targetMember.name}...`, 'info');
-  if (navigator.vibrate) navigator.vibrate([40, 30, 40]);
+  const icons = {
+    success: 'fa-circle-check',
+    error: 'fa-circle-xmark',
+    info: 'fa-circle-info',
+    warning: 'fa-triangle-exclamation'
+  };
+  const iconClass = icons[type] || 'fa-bell';
 
+  const toast = document.createElement('div');
+  toast.className = `modern-toast toast-${type}`;
+  toast.innerHTML = `
+    <i class="fa-solid ${iconClass}" style="font-size: 20px; color: ${type === 'success' ? '#10B981' : type === 'error' ? '#EF4444' : type === 'warning' ? '#F59E0B' : '#38BDF8'}; flex-shrink: 0;"></i>
+    <div style="flex: 1; min-width: 0;">
+      <div style="font-weight: 800; font-size: 13px; color: #fff;">${title}</div>
+      <div style="font-size: 11px; color: #CBD5E1; margin-top: 2px;">${message}</div>
+    </div>
+  `;
+
+  container.appendChild(toast);
+
+  // Auto-remover en 4 segundos
+  setTimeout(() => {
+    toast.classList.add('toast-exit');
+    setTimeout(() => {
+      if (toast.parentNode) toast.parentNode.removeChild(toast);
+    }, 350);
+  }, 3800);
+}
+
+// --- Alternar Modos de Acceso: Familiar vs Administrador ---
+let currentLoginMode = 'member';
+
+function switchLoginMode(mode) {
+  currentLoginMode = mode;
+  const memberView = document.getElementById('loginMemberView');
+  const adminView = document.getElementById('loginAdminView');
+  const tabMemberBtn = document.getElementById('tabLoginMemberBtn');
+  const tabAdminBtn = document.getElementById('tabLoginAdminBtn');
+
+  if (mode === 'admin') {
+    if (memberView) memberView.classList.add('hidden');
+    if (adminView) adminView.classList.remove('hidden');
+    if (tabMemberBtn) tabMemberBtn.classList.remove('active');
+    if (tabAdminBtn) tabAdminBtn.classList.add('active');
+    const adminPinInput = document.getElementById('loginAdminPinInput');
+    if (adminPinInput) adminPinInput.focus();
+  } else {
+    if (memberView) memberView.classList.remove('hidden');
+    if (adminView) adminView.classList.add('hidden');
+    if (tabMemberBtn) tabMemberBtn.classList.add('active');
+    if (tabAdminBtn) tabAdminBtn.classList.remove('active');
+    clearLoginPin();
+  }
+}
+
+// --- Manejo de Modal de Inicio de Sesión con Telemetría Real (IP, GPS, Batería) ---
+let loginKeydownAttached = false;
+
+function openLoginModal() {
+  const modal = document.getElementById('loginModal');
+  const select = document.getElementById('loginMemberSelect');
+  const grid = document.getElementById('loginMemberGrid');
+  const recoverSelect = document.getElementById('recoverMemberSelect');
+  if (!modal) return;
+
+  // Llenar selectores con la lista de miembros
+  if (select) {
+    select.innerHTML = familyMembers.map(m => `
+      <option value="${m.id}" ${activeUser && activeUser.id === m.id ? 'selected' : ''}>
+        ${m.name} ${getViewerCustomNickname(m.id) ? '("' + getViewerCustomNickname(m.id) + '")' : ''} (${m.role})
+      </option>
+    `).join('');
+  }
+
+  if (recoverSelect) {
+    recoverSelect.innerHTML = familyMembers.map(m => `
+      <option value="${m.id}" ${activeUser && activeUser.id === m.id ? 'selected' : ''}>
+        ${m.name} (${m.role})
+      </option>
+    `).join('');
+  }
+
+  // Renderizar Grid visual táctil de tarjetas de miembros
+  if (grid) {
+    grid.innerHTML = familyMembers.map(m => {
+      const customNick = getViewerCustomNickname(m.id);
+      const isSelected = activeUser ? (activeUser.id === m.id) : (m.id === (select ? select.value : familyMembers[0].id));
+      return `
+        <div class="login-member-card ${isSelected ? 'selected' : ''}" id="lcard-${m.id}" onclick="selectMemberCardForLogin('${m.id}')">
+          <div style="flex-shrink: 0;">${getAvatarHtml(m, 36)}</div>
+          <div style="overflow: hidden; text-align: left; min-width: 0;">
+            <div style="font-weight: 800; font-size: 12px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              ${m.name.split(' ')[0]} ${customNick ? `("${customNick}")` : ''}
+            </div>
+            <div style="font-size: 10px; color: var(--accent-cyan); font-weight: 700;">${m.role.split(' ')[0]} • 🔋${m.battery || 90}%</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // Detectar y mostrar IP Real y Batería en el footer del modal
+  fetch('/api/my-ip')
+    .then(r => r.json())
+    .then(d => {
+      const ipEl = document.getElementById('loginDetectedIp');
+      if (ipEl && d && d.ip) ipEl.textContent = `IP: ${d.ip}`;
+    }).catch(() => {});
+
+  if ('getBattery' in navigator) {
+    navigator.getBattery().then(bat => {
+      const batEl = document.getElementById('loginDetectedBattery');
+      if (batEl) batEl.textContent = `Batería: ${Math.round(bat.level * 100)}%`;
+    }).catch(() => {});
+  }
+
+  // Reset de estado y vista inicial
+  switchLoginMode('member');
+  clearLoginPin();
+
+  // Ocultar o mostrar botón de cierre si el usuario ya inició sesión
+  const closeBtn = modal.querySelector('.btn-sheet-close');
+  if (closeBtn) {
+    closeBtn.style.display = activeUser ? 'flex' : 'none';
+  }
+
+  modal.classList.remove('hidden');
+
+  // Habilitar captura de teclado físico (números 0-9 y backspace)
+  if (!loginKeydownAttached) {
+    window.addEventListener('keydown', handleLoginGlobalKeydown);
+    loginKeydownAttached = true;
+  }
+}
+
+function handleLoginGlobalKeydown(e) {
+  const modal = document.getElementById('loginModal');
+  if (!modal || modal.classList.contains('hidden')) return;
+  if (currentLoginMode !== 'member') return;
+
+  if (e.key >= '0' && e.key <= '9') {
+    pressLoginPin(e.key);
+    e.preventDefault();
+  } else if (e.key === 'Backspace') {
+    clearLoginPin(true); // borrar último dígito
+    e.preventDefault();
+  } else if (e.key === 'Enter') {
+    submitStrictLoginPin();
+    e.preventDefault();
+  } else if (e.key === 'Escape') {
+    if (activeUser) {
+      closeLoginModal();
+    } else {
+      showModernToast('Acceso Requerido', 'Selecciona tu familiar e ingresa tu PIN para ingresar.', 'warning');
+    }
+    e.preventDefault();
+  }
+}
+
+function onLoginMemberSelectChange() {
+  const select = document.getElementById('loginMemberSelect');
+  if (select) {
+    selectMemberCardForLogin(select.value, false);
+  }
+}
+
+function selectMemberCardForLogin(memberId, updateSelect = true) {
+  const select = document.getElementById('loginMemberSelect');
+  if (updateSelect && select) {
+    select.value = memberId;
+  }
+
+  // Actualizar clases .selected en tarjetas del grid
+  document.querySelectorAll('.login-member-card').forEach(card => {
+    card.classList.remove('selected');
+  });
+  const targetCard = document.getElementById(`lcard-${memberId}`);
+  if (targetCard) targetCard.classList.add('selected');
+
+  clearLoginPin();
+  if (navigator.vibrate) navigator.vibrate(15);
+}
+
+function closeLoginModal() {
+  if (!activeUser) {
+    showModernToast('Acceso Requerido', 'Ingresa tu clave de acceso o PIN para ingresar a la aplicación.', 'warning');
+    return;
+  }
+  clearLoginPin();
+  const modal = document.getElementById('loginModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function pressLoginPin(digit) {
+  if (loginEnteredPin.length < 5) {
+    loginEnteredPin += digit;
+    const pinInput = document.getElementById('loginPinInput');
+    if (pinInput) pinInput.value = loginEnteredPin;
+    updateLoginPinDisplay();
+    if (navigator.vibrate) navigator.vibrate(20);
+    if (loginEnteredPin.length === 4) {
+      setTimeout(() => {
+        if (loginEnteredPin.length === 4) {
+          submitStrictLoginPin();
+        }
+      }, 250);
+    }
+  }
+}
+
+function clearLoginPin(singleDigit = false) {
+  if (singleDigit && loginEnteredPin.length > 0) {
+    loginEnteredPin = loginEnteredPin.slice(0, -1);
+  } else {
+    loginEnteredPin = '';
+  }
+  const pinInput = document.getElementById('loginPinInput');
+  if (pinInput) pinInput.value = loginEnteredPin;
+  updateLoginPinDisplay();
+}
+
+function updateLoginPinDisplay() {
+  // Sincronizar los 5 dots luminosos
+  for (let i = 0; i < 5; i++) {
+    const dot = document.getElementById(`pdot-${i}`);
+    if (dot) {
+      dot.classList.remove('error');
+      if (i < loginEnteredPin.length) {
+        dot.classList.add('filled');
+      } else {
+        dot.classList.remove('filled');
+      }
+    }
+  }
+
+  const display = document.getElementById('loginPinDisplay');
+  if (display) {
+    display.textContent = loginEnteredPin ? '•'.repeat(loginEnteredPin.length) : '';
+  }
+}
+
+function flashPinDotsError() {
+  for (let i = 0; i < 5; i++) {
+    const dot = document.getElementById(`pdot-${i}`);
+    if (dot) dot.classList.add('error');
+  }
+  if (navigator.vibrate) navigator.vibrate([60, 40, 60]);
+  setTimeout(() => {
+    clearLoginPin();
+  }, 400);
+}
+
+async function submitStrictLoginPin() {
+  const select = document.getElementById('loginMemberSelect');
+  const pinInput = document.getElementById('loginPinInput');
+  if (!select) return;
+
+  const targetId = select.value;
+  const targetMember = familyMembers.find(m => m.id === targetId) || familyMembers[0];
+
+  if (!targetMember) {
+    showModernToast('Perfil requerido', 'Por favor selecciona un familiar de la lista.', 'warning');
+    return;
+  }
+
+  const entered = (loginEnteredPin || (pinInput ? pinInput.value : '')).trim();
+
+  if (!entered) {
+    showModernToast('PIN Requerido', `Ingresa la clave personal de ${targetMember.name} para continuar.`, 'warning');
+    flashPinDotsError();
+    return;
+  }
+
+  // Si ingresa 9999 para un usuario familiar regular, guiar al modo administrador
+  if (entered === '9999') {
+    showModernToast('PIN Maestro 9999', 'El PIN 9999 es exclusivo de Administrador. Pasando a Modo Administrador...', 'info');
+    flashPinDotsError();
+    switchLoginMode('admin');
+    const adminPin = document.getElementById('loginAdminPinInput');
+    if (adminPin) adminPin.value = '9999';
+    return;
+  }
+
+  // Obtener telemetría en tiempo real
   let realIp = '190.18.24.112';
   try {
     const ipRes = await fetch('/api/my-ip');
@@ -1356,7 +1636,7 @@ async function loginWithBiometrics() {
     if (ipData && ipData.ip) realIp = ipData.ip;
   } catch (e) {}
 
-  let realBattery = 100;
+  let realBattery = targetMember.battery || 100;
   if ('getBattery' in navigator) {
     try {
       const bat = await navigator.getBattery();
@@ -1376,44 +1656,345 @@ async function loginWithBiometrics() {
     } catch (e) {}
   }
 
-  activeUser = targetMember;
-  activeMemberId = activeUser.id;
-  activeUser.lat = realLat;
-  activeUser.lng = realLng;
-  activeUser.battery = realBattery;
-  activeUser.last_ip = realIp;
+  // Llamada al backend
+  const submitBtn = document.getElementById('btnSubmitLoginAction');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Verificando Credenciales...';
+  }
 
-  localStorage.setItem('andrada_biometric_member', activeUser.id);
-  localStorage.setItem('app_familiar_auth', JSON.stringify({ memberId: activeUser.id }));
-  saveMembers();
+  try {
+    const response = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        member_id: targetMember.id,
+        pin: entered,
+        real_ip: realIp,
+        lat: realLat,
+        lng: realLng,
+        battery: realBattery,
+        user_agent: navigator.userAgent || 'Dispositivo Móvil'
+      })
+    });
 
-  closeLoginModal();
-  updateHeaderSessionUI();
-  renderDirectoryList();
-  renderMemberChips();
-  updateMapMarkers();
+    const data = await response.json();
 
-  showModernToast('¡Biometría Confirmada!', `Identidad validada: ${activeUser.name}`, 'success');
-  notifyInPhone('👆 Biometría Verificada Exitosamente', `Bienvenid@ ${activeUser.name}`);
-}
+    if (!response.ok || (data && data.status === 'ERROR')) {
+      showModernToast('Acceso Denegado', data.message || 'PIN o clave incorrecta.', 'error');
+      flashPinDotsError();
+      return;
+    }
 
-function pressLoginPin(digit) {
-  if (loginEnteredPin.length < 5) {
-    loginEnteredPin += digit;
-    updateLoginPinDisplay();
+    // Éxito de inicio de sesión
+    activeUser = (data && data.member) ? data.member : targetMember;
+    activeUser.pin = entered;
+    activeUser.lat = realLat;
+    activeUser.lng = realLng;
+    activeUser.battery = realBattery;
+    activeUser.last_ip = realIp;
+    saveMembers();
+
+    activeMemberId = activeUser.id;
+
+    if (data && data.session_token) {
+      localStorage.setItem('app_familiar_session_token', data.session_token);
+    }
+
+    const remember = document.getElementById('loginRememberMe');
+    if (remember && remember.checked) {
+      localStorage.setItem('app_familiar_auth', JSON.stringify({ memberId: activeUser.id }));
+      localStorage.setItem('andrada_active_session', JSON.stringify(activeUser));
+      sessionStorage.removeItem('app_familiar_session');
+    } else {
+      sessionStorage.setItem('app_familiar_session', JSON.stringify({ memberId: activeUser.id }));
+      sessionStorage.setItem('andrada_active_session', JSON.stringify(activeUser));
+      localStorage.removeItem('app_familiar_auth');
+      localStorage.removeItem('andrada_active_session');
+    }
+
+    closeLoginModal();
+    updateHeaderSessionUI();
+    renderDirectoryList();
+    renderMemberChips();
+    updateMapMarkers();
+
+    if (typeof startCloudSyncLoop === 'function') startCloudSyncLoop();
+    if (typeof initRealtimeGpsTracker === 'function') initRealtimeGpsTracker();
+
+    showModernToast('¡Acceso Autorizado!', `Bienvenid@ al círculo, ${activeUser.name}`, 'success');
+    notifyInPhone('🔑 Sesión Autorizada con PIN', `Bienvenid@ ${activeUser.name}`);
+  } catch (err) {
+    // Fallback offline seguro si no hay conectividad con el servidor
+    const expectedPin = targetMember.pin || '1234';
+    if (entered === expectedPin || entered === '1234') {
+      activeUser = targetMember;
+      activeUser.pin = entered;
+      saveMembers();
+      activeMemberId = activeUser.id;
+      const remember = document.getElementById('loginRememberMe');
+      if (remember && remember.checked) {
+        localStorage.setItem('app_familiar_auth', JSON.stringify({ memberId: activeUser.id }));
+        localStorage.setItem('andrada_active_session', JSON.stringify(activeUser));
+        sessionStorage.removeItem('app_familiar_session');
+      } else {
+        sessionStorage.setItem('app_familiar_session', JSON.stringify({ memberId: activeUser.id }));
+        sessionStorage.setItem('andrada_active_session', JSON.stringify(activeUser));
+        localStorage.removeItem('app_familiar_auth');
+        localStorage.removeItem('andrada_active_session');
+      }
+      closeLoginModal();
+      updateHeaderSessionUI();
+      renderDirectoryList();
+      renderMemberChips();
+      updateMapMarkers();
+      if (typeof startCloudSyncLoop === 'function') startCloudSyncLoop();
+      if (typeof initRealtimeGpsTracker === 'function') initRealtimeGpsTracker();
+      showModernToast('Acceso Offline Autorizado', `Bienvenid@ ${activeUser.name}`, 'success');
+    } else {
+      showModernToast('PIN Incorrecto', 'La clave ingresada no coincide con el PIN registrado.', 'error');
+      flashPinDotsError();
+    }
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Iniciar Sesión Protegida';
+    }
   }
 }
 
-function clearLoginPin() {
-  loginEnteredPin = '';
-  updateLoginPinDisplay();
+// --- Login Especial de Administrador Maestro ---
+async function submitAdminLogin() {
+  const userInput = document.getElementById('loginAdminUserInput');
+  const pinInput = document.getElementById('loginAdminPinInput');
+  if (!userInput || !pinInput) return;
+
+  const userVal = userInput.value.trim() || 'admin';
+  const pinVal = pinInput.value.trim();
+
+  if (!pinVal) {
+    showModernToast('PIN Requerido', 'Ingresa el PIN Maestro de Administrador (9999 o 1234).', 'warning');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        member_id: userVal,
+        pin: pinVal,
+        real_ip: '190.18.24.112'
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok || (data && data.status === 'ERROR')) {
+      showModernToast('Acceso Admin Denegado', data.message || 'Credenciales inválidas.', 'error');
+      return;
+    }
+
+    activeUser = (data && data.member) ? data.member : familyMembers[0];
+    saveMembers();
+    activeMemberId = activeUser.id;
+
+    if (data && data.session_token) {
+      localStorage.setItem('app_familiar_session_token', data.session_token);
+    }
+    localStorage.setItem('app_familiar_auth', JSON.stringify({ memberId: activeUser.id, isAdmin: true }));
+    localStorage.setItem('andrada_active_session', JSON.stringify(activeUser));
+
+    closeLoginModal();
+    updateHeaderSessionUI();
+    renderDirectoryList();
+    renderMemberChips();
+    updateMapMarkers();
+
+    if (typeof startCloudSyncLoop === 'function') startCloudSyncLoop();
+    if (typeof initRealtimeGpsTracker === 'function') initRealtimeGpsTracker();
+
+    showModernToast('Modo Administrador Activo', `Sesión de administración concedida (${activeUser.name})`, 'success');
+    notifyInPhone('🛡️ Administrador Autenticado', 'Acceso total concedido al círculo.');
+  } catch (e) {
+    showModernToast('Error de Conexión', 'No se pudo verificar con el servidor central.', 'error');
+  }
 }
 
-function updateLoginPinDisplay() {
-  const display = document.getElementById('loginPinDisplay');
-  if (display) {
-    display.textContent = loginEnteredPin.padEnd(4, '•');
+// --- Modal de Recuperación de PIN con DNI ---
+function openRecoverPinModal() {
+  const modal = document.getElementById('recoverPinModal');
+  const select = document.getElementById('recoverMemberSelect');
+  const loginSelect = document.getElementById('loginMemberSelect');
+  const resultBox = document.getElementById('recoverResultBox');
+
+  if (select && loginSelect) {
+    select.value = loginSelect.value;
   }
+  if (resultBox) {
+    resultBox.classList.add('hidden');
+    resultBox.innerHTML = '';
+  }
+  const dniInput = document.getElementById('recoverDniInput');
+  const newPinInput = document.getElementById('recoverNewPinInput');
+  if (dniInput) dniInput.value = '';
+  if (newPinInput) newPinInput.value = '';
+
+  if (modal) modal.classList.remove('hidden');
+}
+
+function closeRecoverPinModal() {
+  const modal = document.getElementById('recoverPinModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+async function submitRecoverPin() {
+  const select = document.getElementById('recoverMemberSelect');
+  const dniInput = document.getElementById('recoverDniInput');
+  const newPinInput = document.getElementById('recoverNewPinInput');
+  const resultBox = document.getElementById('recoverResultBox');
+  if (!select || !dniInput) return;
+
+  const memberId = select.value;
+  const dniVal = dniInput.value.trim();
+  const newPinVal = newPinInput ? newPinInput.value.trim() : '';
+
+  if (!dniVal) {
+    showModernToast('DNI requerido', 'Por favor ingresa tu número de DNI.', 'warning');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/pin/recover', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        member_id: memberId,
+        dni: dniVal,
+        new_pin: newPinVal || null
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || (data && data.status === 'ERROR')) {
+      if (resultBox) {
+        resultBox.className = 'error-box';
+        resultBox.style.background = 'rgba(239, 68, 68, 0.2)';
+        resultBox.style.color = '#EF4444';
+        resultBox.style.border = '1px solid rgba(239, 68, 68, 0.4)';
+        resultBox.textContent = `❌ ${data.message || 'DNI incorrecto o no coincide.'}`;
+        resultBox.classList.remove('hidden');
+      }
+      showModernToast('Error DNI', data.message || 'Verificación fallida.', 'error');
+      return;
+    }
+
+    // Éxito
+    const memberName = (data.member && data.member.name) ? data.member.name : 'Familiar';
+    if (resultBox) {
+      resultBox.className = 'success-box';
+      resultBox.style.background = 'rgba(16, 185, 129, 0.2)';
+      resultBox.style.color = '#10B981';
+      resultBox.style.border = '1px solid rgba(16, 185, 129, 0.4)';
+      resultBox.innerHTML = `<strong>✅ Identidad Confirmada:</strong><br>${data.message}<br><br><strong>Tu PIN de ingreso es:</strong> <span style="font-size: 18px; font-weight: 800; color: #38BDF8;">${data.pin}</span>`;
+      resultBox.classList.remove('hidden');
+    }
+
+    showModernToast('DNI Verificado', `Tu PIN es: ${data.pin}`, 'success');
+
+    // Si hubo cambio de PIN, sincronizarlo localmente
+    const foundMem = familyMembers.find(m => m.id === memberId);
+    if (foundMem && data.pin) {
+      foundMem.pin = data.pin;
+      saveMembers();
+    }
+
+    setTimeout(() => {
+      closeRecoverPinModal();
+      openLoginModal();
+      selectMemberCardForLogin(memberId);
+      // Auto-rellenar PIN recuperado
+      if (data.pin) {
+        loginEnteredPin = data.pin;
+        updateLoginPinDisplay();
+      }
+    }, 2200);
+
+  } catch (e) {
+    showModernToast('Error de conexión', 'No se pudo contactar al servidor para verificar tu DNI.', 'error');
+  }
+}
+
+// --- Perfil Completo del Miembro con Historial de Inicios de Sesión ---
+function showFullMemberDetails(memberId) {
+  const member = familyMembers.find(m => m.id === memberId) || activeUser || familyMembers[0];
+  const modal = document.getElementById('fullMemberDetailModal');
+  const content = document.getElementById('fullMemberDetailContent');
+  if (!modal || !content) return;
+
+  const isOnline = member.isOnline !== undefined ? member.isOnline : true;
+
+  // Cargar historial de logons del backend para este miembro
+  fetch(`/api/logs/login?member_id=${member.id}`)
+    .then(res => res.json())
+    .then(data => {
+      const logs = data.logs || [];
+      const logsHtml = logs.length > 0 ? logs.map(l => `
+        <div style="font-size: 10px; border-bottom: 1px solid rgba(255,255,255,0.06); padding: 4px 0; display: flex; justify-content: space-between;">
+          <span>🌐 ${l.ip} • 🔋${l.battery}%</span>
+          <span style="color: var(--text-muted);">${new Date(l.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+        </div>
+      `).join('') : '<div style="font-size: 10px; color: var(--text-muted);">Sin ingresos recientes grabados.</div>';
+
+      content.innerHTML = `
+        <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #0284C7, #06B6D4); color: #fff; font-size: 28px; font-weight: 800; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; border: 3px solid var(--accent-cyan); box-shadow: 0 0 20px rgba(6, 182, 212, 0.4);">
+          ${member.avatar || member.name.charAt(0)}
+        </div>
+
+        <h2 style="font-size: 18px; font-weight: 900; color: #fff; margin: 0 0 4px;">${member.name}</h2>
+        <span class="badge-role" style="font-size: 12px; display: inline-block; margin-bottom: 12px;">${member.role}</span>
+
+        <div style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 12px; border: 1px solid var(--border-glass); text-align: left; margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px; font-size: 12px;">
+          <div><strong>Estado de Red:</strong> ${isOnline ? '🟢 En Línea (Tiempo Real)' : '🔴 Offline'}</div>
+          <div><strong>DNI:</strong> ${member.dni || 'No especificado'}</div>
+          <div><strong>Teléfono WhatsApp:</strong> ${member.phone}</div>
+          <div><strong>🌐 IP Registrada:</strong> ${member.last_ip || '190.18.24.112'}</div>
+          <div><strong>Ubicación Actual:</strong> 📍 ${member.zone || 'Catamarca'}</div>
+          <div><strong>Batería Dispositivo:</strong> 🔋 ${member.battery}% ${member.isCharging ? '⚡ (Cargando)' : ''}</div>
+          <div><strong>Velocidad:</strong> ⚡ ${member.speed || 0} km/h</div>
+          <div><strong>Salud / Movimiento:</strong> ⌚ ${userHealthData.activityState} • ${userHealthData.heartRate} bpm</div>
+        </div>
+
+        <!-- Historial de Inicios de Sesión del Miembro -->
+        <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 10px; border: 1px solid var(--border-glass); text-align: left; margin-bottom: 14px;">
+          <div style="font-size: 11px; font-weight: 800; color: var(--accent-cyan); margin-bottom: 6px;">
+            <i class="fa-solid fa-list-check"></i> Historial de Inicios de Sesión de este Miembro:
+          </div>
+          <div style="max-height: 80px; overflow-y: auto;">
+            ${logsHtml}
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 8px;">
+          <a href="tel:${member.phone.replace(/\s+/g, '')}" class="btn-mobile-submit" style="flex: 1; background: linear-gradient(135deg, #0284C7, #06B6D4); padding: 10px; font-size: 12px; margin: 0; text-decoration: none; text-align: center; color: #fff; display: flex; align-items: center; justify-content: center; gap: 6px;">
+            <i class="fa-solid fa-phone"></i> Llamar
+          </a>
+          <button class="btn-mobile-submit" style="flex: 1; background: linear-gradient(135deg, #25D366, #128C7E); padding: 10px; font-size: 12px; margin: 0;" onclick="closeFullMemberDetailModal(); switchTab('tab-whatsapp'); loadWaTemplate('GPS');">
+            <i class="fa-brands fa-whatsapp"></i> Mensaje
+          </button>
+        </div>
+      `;
+
+      modal.classList.remove('hidden');
+    })
+    .catch(() => {
+      modal.classList.remove('hidden');
+    });
+}
+
+function closeFullMemberDetailModal() {
+  const modal = document.getElementById('fullMemberDetailModal');
+  if (modal) modal.classList.add('hidden');
 }
 
 // ==================== PANEL DE ADMINISTRADOR ====================
@@ -2765,46 +3346,7 @@ function sendTrustedContactAlert(memberId) {
   alert(`🚨 Alerta enviada a tu Persona de Confianza ⭐ ${trustedName} (${trustedPhone}).\n\n📱 Se abrió WhatsApp con tu posición GPS exacta en vivo.`);
 }
 
-function closeFullMemberDetailModal() {
-  const modal = document.getElementById('fullMemberDetailModal');
-  if (modal) modal.classList.add('hidden');
-}
 
-// ==================== TECLADO PIN DE COACCIÓN ====================
-function openDuressKeypad() {
-  duressEnteredPin = '';
-  updateDuressDisplay();
-  document.getElementById('duressModal').classList.remove('hidden');
-}
-
-function closeDuressModal() {
-  document.getElementById('duressModal').classList.add('hidden');
-  duressEnteredPin = '';
-}
-
-function pressDuressPin(d) {
-  if (duressEnteredPin.length < 5) {
-    duressEnteredPin += d;
-    updateDuressDisplay();
-  }
-}
-
-function clearDuressPin() {
-  duressEnteredPin = '';
-  updateDuressDisplay();
-}
-
-function updateDuressDisplay() {
-  const display = document.getElementById('duressPinDisplay');
-  if (display) display.textContent = duressEnteredPin.padEnd(4, '•');
-}
-
-function submitDuressPin() {
-  closeDuressModal();
-  notifyInPhone('🚨 ALERTA SILENCIOSA', `PIN de coacción ingresado por ${activeUser ? activeUser.name : 'Usuario'}.`);
-  alert('✅ Operación Autorizada.');
-  clearDuressPin();
-}
 
 // ==================== FALSO APAGADO (GHOST MODE) ====================
 function activateFakeShutdown() {
@@ -4125,41 +4667,6 @@ function generateSmsOfflineFallback() {
   window.open(smsUrl, '_blank');
 }
 
-// 7. Simulación de Eventos Rápidos (Velocidad, Impacto, Batería Baja)
-function triggerSimulationEvent(eventType) {
-  const user = activeUser || familyMembers[0];
-  const badge = document.getElementById('speedometerBadge');
-
-  if (eventType === 'SPEED_EXCESS') {
-    user.speed = 135.0;
-    if (badge) {
-      badge.textContent = '135 km/h !';
-      badge.style.background = 'rgba(239, 68, 68, 0.25)';
-      badge.style.color = '#EF4444';
-    }
-    const alertMsg = `⚠️ ALERTA DE SEGURIDAD VIAL: ${user.name} supera el umbral de velocidad máxima (135 km/h).`;
-    notifyInPhone('⚠️ Exceso de Velocidad', alertMsg);
-    showWhatsAppModal('⚠️ EXCESO DE VELOCIDAD (>110 km/h)', alertMsg, user.lat, user.lng);
-
-  } else if (eventType === 'CRITICAL_BATTERY') {
-    user.battery = 12;
-    const alertMsg = `🔋 ALERTA DE BATERÍA BAJA: El teléfono de ${user.name} está por apagarse (${user.battery}%).`;
-    notifyInPhone('🔋 Batería Baja (12%)', alertMsg);
-    showWhatsAppModal('🔋 BATERÍA CRÍTICA (<15%)', alertMsg, user.lat, user.lng);
-
-  } else if (eventType === 'IMPACT') {
-    user.speed = 0.0;
-    if (badge) {
-      badge.textContent = '0 km/h (Colisión)';
-      badge.style.background = 'rgba(239, 68, 68, 0.3)';
-      badge.style.color = '#EF4444';
-    }
-    const alertMsg = `💥 COLISIÓN / FRENADA BRUSCA DETECTADA: Sensor G registró desaceleración brusca en el móvil de ${user.name}.`;
-    notifyInPhone('💥 Alerta de Impacto', alertMsg);
-    showWhatsAppModal('💥 IMPACTO / COLISIÓN DE TRÁNSITO', alertMsg, user.lat, user.lng);
-  }
-}
-
 // 8. Registro Transparente de Consultas de Ubicación (Audit Trail)
 let locationViewAuditLogs = [];
 
@@ -5111,1217 +5618,6 @@ function resetAppDatabaseFromAdmin() {
 }
 
 // ==============================================================================
-// 10. MAPA DE LEAFLET (CATAMARCA), SEGUIMIENTO EN TIEMPO REAL Y CONTROL DE SESIÓN
-// ==============================================================================
-
-let aloneSafetyInterval = null;
-let aloneSecondsRemaining = 1800; // 30 minutos
-
-// --- A. Inicialización del Mapa en San Fernando del Valle de Catamarca ---
-function initMap() {
-  const mapContainer = document.getElementById('familyMap');
-  if (!mapContainer || typeof L === 'undefined') {
-    console.warn('[Mapa] Contenedor familyMap o librería Leaflet no disponible.');
-    return;
-  }
-
-  if (map) {
-    try { map.remove(); } catch (e) {}
-  }
-
-  // Coordenadas de San Fernando del Valle de Catamarca, Argentina
-  const catamarcaCenter = [-28.46957, -65.78524];
-
-  map = L.map('familyMap', {
-    zoomControl: false,
-    attributionControl: false
-  }).setView(catamarcaCenter, 14);
-
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-    maxZoom: 19,
-    subdomains: 'abcd'
-  }).addTo(map);
-
-  // Dibujar Zonas Seguras en Catamarca
-  if (typeof SAFE_ZONES !== 'undefined') {
-    SAFE_ZONES.forEach(zone => {
-      L.circle([zone.lat, zone.lng], {
-        radius: zone.radius,
-        color: zone.color || '#10B981',
-        fillColor: zone.color || '#10B981',
-        fillOpacity: 0.12,
-        weight: 1.5,
-        dashArray: '4, 4'
-      }).addTo(map).bindTooltip(`🛡️ ${zone.name}`, { permanent: false, direction: 'top' });
-    });
-  }
-
-  updateMapMarkers();
-}
-
-
-
-function centerMapOnFamily() {
-  if (!map) return;
-  const catamarcaCenter = [-28.46957, -65.78524];
-  if (activeUser && activeUser.lat && activeUser.lng) {
-    map.flyTo([activeUser.lat, activeUser.lng], 16, { duration: 1.2 });
-  } else {
-    map.flyTo(catamarcaCenter, 14, { duration: 1.2 });
-  }
-}
-
-// --- C. Manejo de Sesión de Usuario y Botón de Perfil en Cabecera ---
-function handleUserSessionPillClick() {
-  if (activeUser) {
-    openMemberProfileModal();
-  } else {
-    openLoginModal();
-  }
-}
-
-function updateHeaderSessionUI() {
-  const nameEl = document.getElementById('activeUserName');
-  const dotEl = document.getElementById('activeUserOnlineDot');
-  const btnLogoutHeader = document.getElementById('btnLogoutHeader');
-
-  if (activeUser) {
-    if (nameEl) nameEl.textContent = activeUser.name.split(' ')[0];
-    if (dotEl) dotEl.style.background = '#10B981';
-    if (btnLogoutHeader) btnLogoutHeader.classList.remove('hidden');
-  } else {
-    if (nameEl) nameEl.textContent = 'Ingresar';
-    if (dotEl) dotEl.style.background = '#EF4444';
-    if (btnLogoutHeader) btnLogoutHeader.classList.add('hidden');
-  }
-}
-
-function handlePinProtectedLogout() {
-  if (activeUser) {
-    const enteredPin = prompt(`🔐 Ingrese su PIN personal de ${activeUser.name} para cerrar sesión:`);
-    if (enteredPin === null) return;
-    if (enteredPin && activeUser) {
-      activeUser.pin = enteredPin.trim();
-    }
-    logoutActiveUser();
-  } else {
-    logoutActiveUser();
-  }
-}
-
-function logoutActiveUser() {
-  localStorage.removeItem('app_familiar_auth');
-  activeUser = null;
-  closeMemberProfileModal();
-  updateHeaderSessionUI();
-  notifyInPhone('🔒 Sesión Cerrada', 'Has cerrado la sesión en este dispositivo.');
-  openLoginModal();
-}
-
-// --- D. Modo Quedo Solo en Casa Completo ---
-function toggleAloneMode(enabled) {
-  const title = document.getElementById('aloneStatusTitle');
-  const sub = document.getElementById('aloneStatusSub');
-  const box = document.getElementById('aloneActiveAlert');
-
-  if (enabled) {
-    if (title) title.textContent = '🛡️ Vigilancia del Hogar Activa';
-    if (sub) sub.textContent = 'Familia notificada. Supervisión de ruidos y temporizador activo.';
-    if (box) box.classList.remove('hidden');
-    startAloneSafetyTimer();
-    notifyInPhone('🏠 Solo en Casa Activado', 'Toda la familia sabe que estás en casa a solas. Toca "¡Estoy Bien!" periódicamente.');
-  } else {
-    if (title) title.textContent = 'Modo Casa Desactivado';
-    if (sub) sub.textContent = 'Toca para avisar a toda la familia que estás en casa a solas.';
-    if (box) box.classList.add('hidden');
-    if (aloneSafetyInterval) clearInterval(aloneSafetyInterval);
-    notifyInPhone('🏠 Solo en Casa Desactivado', 'Modo de supervisión de hogar finalizado.');
-  }
-}
-
-function startAloneSafetyTimer() {
-  aloneSecondsRemaining = 1800; // 30 min
-  updateAloneTimerDisplay();
-
-  if (aloneSafetyInterval) clearInterval(aloneSafetyInterval);
-  aloneSafetyInterval = setInterval(() => {
-    aloneSecondsRemaining--;
-    updateAloneTimerDisplay();
-
-    if (aloneSecondsRemaining <= 0) {
-      clearInterval(aloneSafetyInterval);
-      triggerAloneTimerExpired();
-    }
-  }, 1000);
-}
-
-function updateAloneTimerDisplay() {
-  const display = document.getElementById('aloneTimerDisplay');
-  if (!display) return;
-  const mins = Math.floor(Math.max(0, aloneSecondsRemaining) / 60);
-  const secs = Math.max(0, aloneSecondsRemaining) % 60;
-  display.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-}
-
-function confirmAloneSafetyCheck() {
-  startAloneSafetyTimer();
-  notifyInPhone('✅ Comprobación Confirmada', 'Temporizador de seguridad de 30 minutos reiniciado.');
-  alert('✅ Comprobación de Seguridad Confirmada:\n\nTemporizador reiniciado en 30 minutos. Tu familia sabe que estás bien.');
-}
-
-function triggerAloneTimerExpired() {
-  const user = activeUser || familyMembers[0];
-  const alertMsg = `🚨 ALERTA SOLO EN CASA: ${user.name} no respondió a la comprobación de seguridad periódica en el hogar.`;
-  playAlarmSirenSound();
-  showWhatsAppModal('🚨 ALERTA SOLO EN CASA (SIN CONFIRMACIÓN)', alertMsg, user.lat, user.lng);
-}
-
-function triggerDomesticAlert(alertType) {
-  const user = activeUser || familyMembers[0];
-  let title = 'Emergencia Doméstica';
-  let detail = 'Solicitud de auxilio en el hogar';
-
-  if (alertType === 'SUSPICIOUS_NOISE') {
-    title = '👁️ Ruido Sospechoso en Puerta / Afuera';
-    detail = `${user.name} escuchó un ruido sospechoso en la entrada de la casa en Catamarca.`;
-  } else if (alertType === 'FIRE_ALERT') {
-    title = '🔥 Alerta Extrema: Incendio / Fuga de Gas';
-    detail = `🚨 Fuego o escape de gas reportado por ${user.name} en el domicilio.`;
-  } else if (alertType === 'MEDICAL_HELP') {
-    title = '🚑 Urgencia Médica / Caída Doméstica';
-    detail = `Urgencia médica o accidente doméstico reportado por ${user.name}.`;
-  }
-
-  notifyInPhone(title, detail);
-  triggerRealtimeAlertOnMap(user.id, title, detail);
-  playAlarmSirenSound();
-  showWhatsAppModal(title, detail, user.lat, user.lng);
-}
-
-// ==============================================================================
-// 11. GESTIÓN DE SESIÓN SIN AUTO-LOGIN A CARLOS, BATERÍA REAL Y DETALLES DE MIEMBROS
-// ==============================================================================
-
-function loadStoredMembers() {
-  const saved = localStorage.getItem('app_familiar_members');
-  if (saved) {
-    try {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        familyMembers = parsed;
-        return;
-      }
-    } catch (e) {
-      console.warn('[Storage] Error al parsear miembros guardados:', e);
-    }
-  }
-  familyMembers = [...DEFAULT_MEMBERS];
-}
-
-function saveMembers() {
-  try {
-    localStorage.setItem('app_familiar_members', JSON.stringify(familyMembers));
-  } catch (e) {}
-}
-
-function updateHeaderSessionUI() {
-  const activeNameEl = document.getElementById('activeUserName');
-  const logoutBtn = document.getElementById('btnLogoutHeader');
-  if (activeUser) {
-    if (activeNameEl) activeNameEl.textContent = activeUser.name.split(' ')[0];
-    if (logoutBtn) logoutBtn.classList.remove('hidden');
-  } else {
-    if (activeNameEl) activeNameEl.textContent = 'Ingresar';
-    if (logoutBtn) logoutBtn.classList.add('hidden');
-  }
-}
-
-function handleUserSessionPillClick() {
-  openLoginModal();
-}
-
-function handlePinProtectedLogout() {
-  activeUser = null;
-  activeMemberId = null;
-  localStorage.removeItem('app_familiar_auth');
-  localStorage.removeItem('app_familiar_session_token');
-  updateHeaderSessionUI();
-  if (typeof showModernToast === 'function') {
-    showModernToast('Sesión Cerrada', 'Has salido del círculo. Selecciona un familiar para ingresar.', 'info');
-  }
-  openLoginModal();
-}
-
-function loadStoredSession() {
-  const savedAuth = localStorage.getItem('app_familiar_auth');
-  if (savedAuth) {
-    try {
-      const parsed = JSON.parse(savedAuth);
-      if (parsed && parsed.memberId) {
-        const found = familyMembers.find(m => m.id === parsed.memberId);
-        if (found) {
-          activeUser = found;
-          activeMemberId = found.id;
-          updateHeaderSessionUI();
-          forceRealBatteryUpdate();
-          return;
-        }
-      }
-    } catch (e) {
-      console.warn('[Session] Error al parsear sesión guardada:', e);
-    }
-  }
-
-  // IMPORTANTE: NO auto-ingresar como Carlos. Requerir selección de usuario.
-  activeUser = null;
-  updateHeaderSessionUI();
-
-  setTimeout(() => {
-    openLoginModal();
-  }, 400);
-}
-
-function forceRealBatteryUpdate() {
-  if (!('getBattery' in navigator)) {
-    console.log('[Batería] API navigator.getBattery no disponible en este navegador.');
-    return;
-  }
-
-  navigator.getBattery().then(battery => {
-    const realPercent = Math.round(battery.level * 100);
-    const isCharging = battery.charging;
-
-    if (activeUser) {
-      activeUser.battery = realPercent;
-      activeUser.isCharging = isCharging;
-    }
-
-    familyMembers.forEach(m => {
-      if (activeUser && m.id === activeUser.id) {
-        m.battery = realPercent;
-        m.isCharging = isCharging;
-      }
-    });
-
-    saveMembers();
-
-    // Actualizar elementos DOM de batería
-    document.querySelectorAll('.battery-level-val').forEach(el => {
-      el.textContent = `${realPercent}%`;
-    });
-
-    renderDirectoryList();
-    renderMemberChips();
-    updateMapMarkers();
-  }).catch(err => {
-    console.warn('[Batería] Error al obtener batería real:', err);
-  });
-}
-
-// --- Restricción de Registro de Miembros: Solo Administrador ---
-function openRegisterModal() {
-  if (!isAdminLoggedIn) {
-    const entered = prompt('🔐 RESTRICCIÓN DE SEGURIDAD:\n\nSolo el Administrador puede registrar nuevos familiares. Ingrese la clave de Administrador:');
-    if (!entered || (entered !== '9999' && entered !== '1234')) {
-      alert('⛔ Acceso Denegado: Solo el Administrador puede registrar nuevos miembros en la Familia Andrada.');
-      return;
-    }
-  }
-
-  const modal = document.getElementById('registerModal');
-  if (modal) {
-    const form = document.getElementById('registerFamilyForm');
-    if (form) form.reset();
-    modal.classList.remove('hidden');
-  }
-}
-
-function closeRegisterModal() {
-  const modal = document.getElementById('registerModal');
-  if (modal) modal.classList.add('hidden');
-}
-
-function handleRegisterSubmit(e) {
-  e.preventDefault();
-  const name = document.getElementById('regFullName').value.trim();
-  const dni = document.getElementById('regDni').value.trim();
-  const phone = document.getElementById('regPhone').value.trim();
-  const role = document.getElementById('regRole').value;
-  const pin = document.getElementById('regPin').value.trim();
-
-  if (!name || !dni || !phone || !pin) {
-    alert('Por favor completa todos los campos requeridos.');
-    return;
-  }
-
-  fetch('/api/register', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      name: name,
-      dni: dni,
-      phone: phone,
-      pin: pin,
-      role: role,
-      admin_pin: '9999'
-    })
-  })
-  .then(res => res.json())
-  .then(data => {
-    if (data.status === 'SUCCESS') {
-      familyMembers = data.members || familyMembers;
-      saveMembers();
-      closeRegisterModal();
-      renderDirectoryList();
-      renderMemberChips();
-      updateMapMarkers();
-      if (typeof renderAdminTable === 'function') {
-        renderAdminTable();
-      }
-      notifyInPhone('👤 Nuevo Familiar Registrado', `${name} ha sido incorporado por el Administrador.`);
-
-      // GENERAR MENSAJE COMPLETO DE WHATSAPP CON TODOS LOS DATOS DEL MIEMBRO NUEVO Y CONTACTO DE CONFIANZA
-      const cleanPhone = phone.replace(/[^0-9]/g, '');
-      const appUrl = 'https://appfamiliar2.onrender.com/';
-      const currentSafeWord = localStorage.getItem('andrada_safe_word') || 'HALCÓN AZUL';
-
-      const waMessage = data.welcome_message || (
-        `🛡️ *SISTEMA DE PROTECCIÓN - FAMILIA ANDRADA* 🛡️\n\n` +
-        `¡Hola *${name}*! Has sido registrado/a en el círculo familiar por el Administrador.\n\n` +
-        `📋 *TUS DATOS COMPLETOS DE ACCESO:*\n` +
-        `👤 *Nombre:* ${name}\n` +
-        `🎖️ *Rol:* ${role}\n` +
-        `💳 *DNI:* ${dni}\n` +
-        `📱 *Teléfono:* ${phone}\n` +
-        (trustedName ? `🛡️ *Contacto de Confianza:* ${trustedName} (${trustedPhone})\n` : '') +
-        `🔐 *PIN de Acceso:* ${pin}\n` +
-        `🔑 *Palabra Clave Secreta:* ${currentSafeWord}\n\n` +
-        `🌐 *LINK DE INGRESO A LA APP:*\n${appUrl}\n\n` +
-        `📌 *Instrucciones de Ingreso:*\n` +
-        `1. Abre el enlace ${appUrl} desde tu celular.\n` +
-        `2. Selecciona tu nombre (*${name}*) e ingresa tu PIN (*${pin}*).\n` +
-        `3. Mantén activada tu ubicación GPS para estar conectado en tiempo real con la familia.`
-      );
-
-      const waUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(waMessage)}`;
-
-      // Abrir WhatsApp automáticamente con el mensaje pre-cargado
-      try {
-        window.open(waUrl, '_blank');
-      } catch (errWin) {
-        console.warn('No se pudo abrir ventana emergente de WhatsApp:', errWin);
-      }
-
-      alert(`✅ Registro Exitoso:\n\nEl familiar ${name} (${role}) fue registrado correctamente.\n\n📱 Se generó y abrió el mensaje de WhatsApp con todos los datos completos para enviarle a ${phone}.\n\nPIN asignado: ${pin}`);
-    } else {
-      alert(`❌ Error al registrar: ${data.detail || data.message || 'Verifica los datos'}`);
-    }
-  })
-  .catch(err => {
-    console.error('[Registro] Error al registrar miembro:', err);
-    alert('Error al conectar con el servidor.');
-  });
-}
-
-// --- Multi-User Cloud Synchronization con Bloqueo de Sesión Única (Single Device Lock) ---
-function startCloudSyncLoop() {
-  syncWithCloudBackend();
-  setInterval(syncWithCloudBackend, 4000);
-}
-
-function syncWithCloudBackend() {
-  const currentToken = localStorage.getItem('app_familiar_session_token') || '';
-  const memberId = activeUser ? activeUser.id : '';
-
-  let syncUrl = '/api/sync';
-  if (memberId && currentToken) {
-    syncUrl = `/api/sync?member_id=${encodeURIComponent(memberId)}&session_token=${encodeURIComponent(currentToken)}`;
-  }
-
-  fetch(syncUrl)
-    .then(res => res.json())
-    .then(data => {
-      if (data && data.session_expired === true && activeUser) {
-        // Bloqueo de Sesión Única: Otro dispositivo inició sesión con este usuario
-        localStorage.removeItem('app_familiar_session_token');
-        logoutActiveUser();
-        alert('⚠️ SESIÓN INTERRUMPIDA:\n\nTu cuenta ha sido abierta en otro dispositivo. Se cerró la sesión en este teléfono por razones de seguridad.');
-        return;
-      }
-
-      if (data && data.members && Array.isArray(data.members) && data.members.length > 0) {
-        familyMembers = data.members;
-        saveMembers();
-        renderMemberChips();
-        renderDirectoryList();
-        updateMapMarkers();
-      }
-    })
-    .catch(() => {});
-
-  if (activeUser) {
-    sendLocationUpdateToCloud(activeUser);
-  }
-}
-
-function sendLocationUpdateToCloud(user) {
-  if (!user) return;
-  fetch('/api/location', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      member_id: user.id,
-      lat: user.lat,
-      lng: user.lng,
-      battery: user.battery || 100,
-      speed: user.speed || 0.0,
-      zone: user.zone || 'En Vivo'
-    })
-  }).catch(() => {});
-}
-
-// ==============================================================================
-// 10. SISTEMA DE AUTENTICACIÓN ULTRA-MODERNO 2026 (PIN, BIOMETRÍA & ADMINISTRACIÓN)
-// ==============================================================================
-
-// --- Sistema de Notificaciones Toasts Modernas 2026 ---
-function showModernToast(title, message, type = 'info') {
-  const container = document.getElementById('toastContainer');
-  if (!container) {
-    if (type === 'error') alert(`❌ ${title}\n${message}`);
-    else console.log(`[Toast] ${title}: ${message}`);
-    return;
-  }
-
-  const icons = {
-    success: 'fa-circle-check',
-    error: 'fa-circle-xmark',
-    info: 'fa-circle-info',
-    warning: 'fa-triangle-exclamation'
-  };
-  const iconClass = icons[type] || 'fa-bell';
-
-  const toast = document.createElement('div');
-  toast.className = `modern-toast toast-${type}`;
-  toast.innerHTML = `
-    <i class="fa-solid ${iconClass}" style="font-size: 20px; color: ${type === 'success' ? '#10B981' : type === 'error' ? '#EF4444' : type === 'warning' ? '#F59E0B' : '#38BDF8'}; flex-shrink: 0;"></i>
-    <div style="flex: 1; min-width: 0;">
-      <div style="font-weight: 800; font-size: 13px; color: #fff;">${title}</div>
-      <div style="font-size: 11px; color: #CBD5E1; margin-top: 2px;">${message}</div>
-    </div>
-  `;
-
-  container.appendChild(toast);
-
-  // Auto-remover en 4 segundos
-  setTimeout(() => {
-    toast.classList.add('toast-exit');
-    setTimeout(() => {
-      if (toast.parentNode) toast.parentNode.removeChild(toast);
-    }, 350);
-  }, 3800);
-}
-
-// --- Alternar Modos de Acceso: Familiar vs Administrador ---
-let currentLoginMode = 'member';
-
-function switchLoginMode(mode) {
-  currentLoginMode = mode;
-  const memberView = document.getElementById('loginMemberView');
-  const adminView = document.getElementById('loginAdminView');
-  const tabMemberBtn = document.getElementById('tabLoginMemberBtn');
-  const tabAdminBtn = document.getElementById('tabLoginAdminBtn');
-
-  if (mode === 'admin') {
-    if (memberView) memberView.classList.add('hidden');
-    if (adminView) adminView.classList.remove('hidden');
-    if (tabMemberBtn) tabMemberBtn.classList.remove('active');
-    if (tabAdminBtn) tabAdminBtn.classList.add('active');
-    const adminPinInput = document.getElementById('loginAdminPinInput');
-    if (adminPinInput) adminPinInput.focus();
-  } else {
-    if (memberView) memberView.classList.remove('hidden');
-    if (adminView) adminView.classList.add('hidden');
-    if (tabMemberBtn) tabMemberBtn.classList.add('active');
-    if (tabAdminBtn) tabAdminBtn.classList.remove('active');
-    clearLoginPin();
-  }
-}
-
-// --- Manejo de Modal de Inicio de Sesión con Telemetría Real (IP, GPS, Batería) ---
-let loginKeydownAttached = false;
-
-function openLoginModal() {
-  const modal = document.getElementById('loginModal');
-  const select = document.getElementById('loginMemberSelect');
-  const grid = document.getElementById('loginMemberGrid');
-  const recoverSelect = document.getElementById('recoverMemberSelect');
-  if (!modal) return;
-
-  // Llenar selectores con la lista de miembros
-  if (select) {
-    select.innerHTML = familyMembers.map(m => `
-      <option value="${m.id}" ${activeUser && activeUser.id === m.id ? 'selected' : ''}>
-        ${m.name} ${getViewerCustomNickname(m.id) ? '("' + getViewerCustomNickname(m.id) + '")' : ''} (${m.role})
-      </option>
-    `).join('');
-  }
-
-  if (recoverSelect) {
-    recoverSelect.innerHTML = familyMembers.map(m => `
-      <option value="${m.id}" ${activeUser && activeUser.id === m.id ? 'selected' : ''}>
-        ${m.name} (${m.role})
-      </option>
-    `).join('');
-  }
-
-  // Renderizar Grid visual táctil de tarjetas de miembros
-  if (grid) {
-    grid.innerHTML = familyMembers.map(m => {
-      const customNick = getViewerCustomNickname(m.id);
-      const isSelected = activeUser ? (activeUser.id === m.id) : (m.id === (select ? select.value : familyMembers[0].id));
-      return `
-        <div class="login-member-card ${isSelected ? 'selected' : ''}" id="lcard-${m.id}" onclick="selectMemberCardForLogin('${m.id}')">
-          <div style="flex-shrink: 0;">${getAvatarHtml(m, 36)}</div>
-          <div style="overflow: hidden; text-align: left; min-width: 0;">
-            <div style="font-weight: 800; font-size: 12px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-              ${m.name.split(' ')[0]} ${customNick ? `("${customNick}")` : ''}
-            </div>
-            <div style="font-size: 10px; color: var(--accent-cyan); font-weight: 700;">${m.role.split(' ')[0]} • 🔋${m.battery || 90}%</div>
-          </div>
-        </div>
-      `;
-    }).join('');
-  }
-
-  // Detectar y mostrar IP Real y Batería en el footer del modal
-  fetch('/api/my-ip')
-    .then(r => r.json())
-    .then(d => {
-      const ipEl = document.getElementById('loginDetectedIp');
-      if (ipEl && d && d.ip) ipEl.textContent = `IP: ${d.ip}`;
-    }).catch(() => {});
-
-  if ('getBattery' in navigator) {
-    navigator.getBattery().then(bat => {
-      const batEl = document.getElementById('loginDetectedBattery');
-      if (batEl) batEl.textContent = `Batería: ${Math.round(bat.level * 100)}%`;
-    }).catch(() => {});
-  }
-
-  // Reset de estado y vista inicial
-  switchLoginMode('member');
-  clearLoginPin();
-
-  // Ocultar o mostrar botón de cierre si el usuario ya inició sesión
-  const closeBtn = modal.querySelector('.btn-sheet-close');
-  if (closeBtn) {
-    closeBtn.style.display = activeUser ? 'flex' : 'none';
-  }
-
-  modal.classList.remove('hidden');
-
-  // Habilitar captura de teclado físico (números 0-9 y backspace)
-  if (!loginKeydownAttached) {
-    window.addEventListener('keydown', handleLoginGlobalKeydown);
-    loginKeydownAttached = true;
-  }
-}
-
-function handleLoginGlobalKeydown(e) {
-  const modal = document.getElementById('loginModal');
-  if (!modal || modal.classList.contains('hidden')) return;
-  if (currentLoginMode !== 'member') return;
-
-  if (e.key >= '0' && e.key <= '9') {
-    pressLoginPin(e.key);
-    e.preventDefault();
-  } else if (e.key === 'Backspace') {
-    clearLoginPin(true); // borrar último dígito
-    e.preventDefault();
-  } else if (e.key === 'Enter') {
-    submitStrictLoginPin();
-    e.preventDefault();
-  } else if (e.key === 'Escape') {
-    if (activeUser) {
-      closeLoginModal();
-    } else {
-      showModernToast('Acceso Requerido', 'Selecciona tu familiar e ingresa tu PIN para ingresar.', 'warning');
-    }
-    e.preventDefault();
-  }
-}
-
-function onLoginMemberSelectChange() {
-  const select = document.getElementById('loginMemberSelect');
-  if (select) {
-    selectMemberCardForLogin(select.value, false);
-  }
-}
-
-function selectMemberCardForLogin(memberId, updateSelect = true) {
-  const select = document.getElementById('loginMemberSelect');
-  if (updateSelect && select) {
-    select.value = memberId;
-  }
-
-  // Actualizar clases .selected en tarjetas del grid
-  document.querySelectorAll('.login-member-card').forEach(card => {
-    card.classList.remove('selected');
-  });
-  const targetCard = document.getElementById(`lcard-${memberId}`);
-  if (targetCard) targetCard.classList.add('selected');
-
-  clearLoginPin();
-  if (navigator.vibrate) navigator.vibrate(15);
-}
-
-function closeLoginModal() {
-  if (!activeUser) {
-    showModernToast('Acceso Requerido', 'Ingresa tu clave de acceso o PIN para ingresar a la aplicación.', 'warning');
-    return;
-  }
-  clearLoginPin();
-  const modal = document.getElementById('loginModal');
-  if (modal) modal.classList.add('hidden');
-}
-
-function pressLoginPin(digit) {
-  if (loginEnteredPin.length < 5) {
-    loginEnteredPin += digit;
-    const pinInput = document.getElementById('loginPinInput');
-    if (pinInput) pinInput.value = loginEnteredPin;
-    updateLoginPinDisplay();
-    if (navigator.vibrate) navigator.vibrate(20);
-    if (loginEnteredPin.length === 4) {
-      setTimeout(() => {
-        if (loginEnteredPin.length === 4) {
-          submitStrictLoginPin();
-        }
-      }, 250);
-    }
-  }
-}
-
-function clearLoginPin(singleDigit = false) {
-  if (singleDigit && loginEnteredPin.length > 0) {
-    loginEnteredPin = loginEnteredPin.slice(0, -1);
-  } else {
-    loginEnteredPin = '';
-  }
-  const pinInput = document.getElementById('loginPinInput');
-  if (pinInput) pinInput.value = loginEnteredPin;
-  updateLoginPinDisplay();
-}
-
-function updateLoginPinDisplay() {
-  // Sincronizar los 5 dots luminosos
-  for (let i = 0; i < 5; i++) {
-    const dot = document.getElementById(`pdot-${i}`);
-    if (dot) {
-      dot.classList.remove('error');
-      if (i < loginEnteredPin.length) {
-        dot.classList.add('filled');
-      } else {
-        dot.classList.remove('filled');
-      }
-    }
-  }
-
-  const display = document.getElementById('loginPinDisplay');
-  if (display) {
-    display.textContent = loginEnteredPin ? '•'.repeat(loginEnteredPin.length) : '';
-  }
-}
-
-function flashPinDotsError() {
-  for (let i = 0; i < 5; i++) {
-    const dot = document.getElementById(`pdot-${i}`);
-    if (dot) dot.classList.add('error');
-  }
-  if (navigator.vibrate) navigator.vibrate([60, 40, 60]);
-  setTimeout(() => {
-    clearLoginPin();
-  }, 400);
-}
-
-async function submitStrictLoginPin() {
-  const select = document.getElementById('loginMemberSelect');
-  const pinInput = document.getElementById('loginPinInput');
-  if (!select) return;
-
-  const targetId = select.value;
-  const targetMember = familyMembers.find(m => m.id === targetId) || familyMembers[0];
-
-  if (!targetMember) {
-    showModernToast('Perfil requerido', 'Por favor selecciona un familiar de la lista.', 'warning');
-    return;
-  }
-
-  const entered = (loginEnteredPin || (pinInput ? pinInput.value : '')).trim();
-
-  if (!entered) {
-    showModernToast('PIN Requerido', `Ingresa la clave personal de ${targetMember.name} para continuar.`, 'warning');
-    flashPinDotsError();
-    return;
-  }
-
-  // Si ingresa 9999 para un usuario familiar regular, guiar al modo administrador
-  if (entered === '9999') {
-    showModernToast('PIN Maestro 9999', 'El PIN 9999 es exclusivo de Administrador. Pasando a Modo Administrador...', 'info');
-    flashPinDotsError();
-    switchLoginMode('admin');
-    const adminPin = document.getElementById('loginAdminPinInput');
-    if (adminPin) adminPin.value = '9999';
-    return;
-  }
-
-  // Obtener telemetría en tiempo real
-  let realIp = '190.18.24.112';
-  try {
-    const ipRes = await fetch('/api/my-ip');
-    const ipData = await ipRes.json();
-    if (ipData && ipData.ip) realIp = ipData.ip;
-  } catch (e) {}
-
-  let realBattery = targetMember.battery || 100;
-  if ('getBattery' in navigator) {
-    try {
-      const bat = await navigator.getBattery();
-      realBattery = Math.round(bat.level * 100);
-    } catch (e) {}
-  }
-
-  let realLat = targetMember.lat || -28.46957;
-  let realLng = targetMember.lng || -65.78524;
-  if ('geolocation' in navigator) {
-    try {
-      const pos = await new Promise((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 3000 });
-      });
-      realLat = pos.coords.latitude;
-      realLng = pos.coords.longitude;
-    } catch (e) {}
-  }
-
-  // Llamada al backend
-  const submitBtn = document.getElementById('btnSubmitLoginAction');
-  if (submitBtn) {
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Verificando Credenciales...';
-  }
-
-  try {
-    const response = await fetch('/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        member_id: targetMember.id,
-        pin: entered,
-        real_ip: realIp,
-        lat: realLat,
-        lng: realLng,
-        battery: realBattery,
-        user_agent: navigator.userAgent || 'Dispositivo Móvil'
-      })
-    });
-
-    const data = await response.json();
-
-    if (!response.ok || (data && data.status === 'ERROR')) {
-      showModernToast('Acceso Denegado', data.message || 'PIN o clave incorrecta.', 'error');
-      flashPinDotsError();
-      return;
-    }
-
-    // Éxito de inicio de sesión
-    activeUser = (data && data.member) ? data.member : targetMember;
-    activeUser.pin = entered;
-    activeUser.lat = realLat;
-    activeUser.lng = realLng;
-    activeUser.battery = realBattery;
-    activeUser.last_ip = realIp;
-    saveMembers();
-
-    activeMemberId = activeUser.id;
-
-    if (data && data.session_token) {
-      localStorage.setItem('app_familiar_session_token', data.session_token);
-    }
-
-    const remember = document.getElementById('loginRememberMe');
-    if (remember && remember.checked) {
-      localStorage.setItem('app_familiar_auth', JSON.stringify({ memberId: activeUser.id }));
-      localStorage.setItem('andrada_active_session', JSON.stringify(activeUser));
-      sessionStorage.removeItem('app_familiar_session');
-    } else {
-      sessionStorage.setItem('app_familiar_session', JSON.stringify({ memberId: activeUser.id }));
-      sessionStorage.setItem('andrada_active_session', JSON.stringify(activeUser));
-      localStorage.removeItem('app_familiar_auth');
-      localStorage.removeItem('andrada_active_session');
-    }
-
-    closeLoginModal();
-    updateHeaderSessionUI();
-    renderDirectoryList();
-    renderMemberChips();
-    updateMapMarkers();
-
-    if (typeof startCloudSyncLoop === 'function') startCloudSyncLoop();
-    if (typeof initRealtimeGpsTracker === 'function') initRealtimeGpsTracker();
-
-    showModernToast('¡Acceso Autorizado!', `Bienvenid@ al círculo, ${activeUser.name}`, 'success');
-    notifyInPhone('🔑 Sesión Autorizada con PIN', `Bienvenid@ ${activeUser.name}`);
-  } catch (err) {
-    // Fallback offline seguro si no hay conectividad con el servidor
-    const expectedPin = targetMember.pin || '1234';
-    if (entered === expectedPin || entered === '1234') {
-      activeUser = targetMember;
-      activeUser.pin = entered;
-      saveMembers();
-      activeMemberId = activeUser.id;
-      const remember = document.getElementById('loginRememberMe');
-      if (remember && remember.checked) {
-        localStorage.setItem('app_familiar_auth', JSON.stringify({ memberId: activeUser.id }));
-        localStorage.setItem('andrada_active_session', JSON.stringify(activeUser));
-        sessionStorage.removeItem('app_familiar_session');
-      } else {
-        sessionStorage.setItem('app_familiar_session', JSON.stringify({ memberId: activeUser.id }));
-        sessionStorage.setItem('andrada_active_session', JSON.stringify(activeUser));
-        localStorage.removeItem('app_familiar_auth');
-        localStorage.removeItem('andrada_active_session');
-      }
-      closeLoginModal();
-      updateHeaderSessionUI();
-      renderDirectoryList();
-      renderMemberChips();
-      updateMapMarkers();
-      if (typeof startCloudSyncLoop === 'function') startCloudSyncLoop();
-      if (typeof initRealtimeGpsTracker === 'function') initRealtimeGpsTracker();
-      showModernToast('Acceso Offline Autorizado', `Bienvenid@ ${activeUser.name}`, 'success');
-    } else {
-      showModernToast('PIN Incorrecto', 'La clave ingresada no coincide con el PIN registrado.', 'error');
-      flashPinDotsError();
-    }
-  } finally {
-    if (submitBtn) {
-      submitBtn.disabled = false;
-      submitBtn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Iniciar Sesión Protegida';
-    }
-  }
-}
-
-// --- Login Especial de Administrador Maestro ---
-async function submitAdminLogin() {
-  const userInput = document.getElementById('loginAdminUserInput');
-  const pinInput = document.getElementById('loginAdminPinInput');
-  if (!userInput || !pinInput) return;
-
-  const userVal = userInput.value.trim() || 'admin';
-  const pinVal = pinInput.value.trim();
-
-  if (!pinVal) {
-    showModernToast('PIN Requerido', 'Ingresa el PIN Maestro de Administrador (9999 o 1234).', 'warning');
-    return;
-  }
-
-  try {
-    const res = await fetch('/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        member_id: userVal,
-        pin: pinVal,
-        real_ip: '190.18.24.112'
-      })
-    });
-
-    const data = await res.json();
-    if (!res.ok || (data && data.status === 'ERROR')) {
-      showModernToast('Acceso Admin Denegado', data.message || 'Credenciales inválidas.', 'error');
-      return;
-    }
-
-    activeUser = (data && data.member) ? data.member : familyMembers[0];
-    saveMembers();
-    activeMemberId = activeUser.id;
-
-    if (data && data.session_token) {
-      localStorage.setItem('app_familiar_session_token', data.session_token);
-    }
-    localStorage.setItem('app_familiar_auth', JSON.stringify({ memberId: activeUser.id, isAdmin: true }));
-    localStorage.setItem('andrada_active_session', JSON.stringify(activeUser));
-
-    closeLoginModal();
-    updateHeaderSessionUI();
-    renderDirectoryList();
-    renderMemberChips();
-    updateMapMarkers();
-
-    if (typeof startCloudSyncLoop === 'function') startCloudSyncLoop();
-    if (typeof initRealtimeGpsTracker === 'function') initRealtimeGpsTracker();
-
-    showModernToast('Modo Administrador Activo', `Sesión de administración concedida (${activeUser.name})`, 'success');
-    notifyInPhone('🛡️ Administrador Autenticado', 'Acceso total concedido al círculo.');
-  } catch (e) {
-    showModernToast('Error de Conexión', 'No se pudo verificar con el servidor central.', 'error');
-  }
-}
-
-// --- Modal de Recuperación de PIN con DNI ---
-function openRecoverPinModal() {
-  const modal = document.getElementById('recoverPinModal');
-  const select = document.getElementById('recoverMemberSelect');
-  const loginSelect = document.getElementById('loginMemberSelect');
-  const resultBox = document.getElementById('recoverResultBox');
-
-  if (select && loginSelect) {
-    select.value = loginSelect.value;
-  }
-  if (resultBox) {
-    resultBox.classList.add('hidden');
-    resultBox.innerHTML = '';
-  }
-  const dniInput = document.getElementById('recoverDniInput');
-  const newPinInput = document.getElementById('recoverNewPinInput');
-  if (dniInput) dniInput.value = '';
-  if (newPinInput) newPinInput.value = '';
-
-  if (modal) modal.classList.remove('hidden');
-}
-
-function closeRecoverPinModal() {
-  const modal = document.getElementById('recoverPinModal');
-  if (modal) modal.classList.add('hidden');
-}
-
-async function submitRecoverPin() {
-  const select = document.getElementById('recoverMemberSelect');
-  const dniInput = document.getElementById('recoverDniInput');
-  const newPinInput = document.getElementById('recoverNewPinInput');
-  const resultBox = document.getElementById('recoverResultBox');
-  if (!select || !dniInput) return;
-
-  const memberId = select.value;
-  const dniVal = dniInput.value.trim();
-  const newPinVal = newPinInput ? newPinInput.value.trim() : '';
-
-  if (!dniVal) {
-    showModernToast('DNI requerido', 'Por favor ingresa tu número de DNI.', 'warning');
-    return;
-  }
-
-  try {
-    const res = await fetch('/api/pin/recover', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        member_id: memberId,
-        dni: dniVal,
-        new_pin: newPinVal || null
-      })
-    });
-
-    const data = await res.json();
-
-    if (!res.ok || (data && data.status === 'ERROR')) {
-      if (resultBox) {
-        resultBox.className = 'error-box';
-        resultBox.style.background = 'rgba(239, 68, 68, 0.2)';
-        resultBox.style.color = '#EF4444';
-        resultBox.style.border = '1px solid rgba(239, 68, 68, 0.4)';
-        resultBox.textContent = `❌ ${data.message || 'DNI incorrecto o no coincide.'}`;
-        resultBox.classList.remove('hidden');
-      }
-      showModernToast('Error DNI', data.message || 'Verificación fallida.', 'error');
-      return;
-    }
-
-    // Éxito
-    const memberName = (data.member && data.member.name) ? data.member.name : 'Familiar';
-    if (resultBox) {
-      resultBox.className = 'success-box';
-      resultBox.style.background = 'rgba(16, 185, 129, 0.2)';
-      resultBox.style.color = '#10B981';
-      resultBox.style.border = '1px solid rgba(16, 185, 129, 0.4)';
-      resultBox.innerHTML = `<strong>✅ Identidad Confirmada:</strong><br>${data.message}<br><br><strong>Tu PIN de ingreso es:</strong> <span style="font-size: 18px; font-weight: 800; color: #38BDF8;">${data.pin}</span>`;
-      resultBox.classList.remove('hidden');
-    }
-
-    showModernToast('DNI Verificado', `Tu PIN es: ${data.pin}`, 'success');
-
-    // Si hubo cambio de PIN, sincronizarlo localmente
-    const foundMem = familyMembers.find(m => m.id === memberId);
-    if (foundMem && data.pin) {
-      foundMem.pin = data.pin;
-      saveMembers();
-    }
-
-    setTimeout(() => {
-      closeRecoverPinModal();
-      openLoginModal();
-      selectMemberCardForLogin(memberId);
-      // Auto-rellenar PIN recuperado
-      if (data.pin) {
-        loginEnteredPin = data.pin;
-        updateLoginPinDisplay();
-      }
-    }, 2200);
-
-  } catch (e) {
-    showModernToast('Error de conexión', 'No se pudo contactar al servidor para verificar tu DNI.', 'error');
-  }
-}
-
-// --- Perfil Completo del Miembro con Historial de Inicios de Sesión ---
-function showFullMemberDetails(memberId) {
-  const member = familyMembers.find(m => m.id === memberId) || activeUser || familyMembers[0];
-  const modal = document.getElementById('fullMemberDetailModal');
-  const content = document.getElementById('fullMemberDetailContent');
-  if (!modal || !content) return;
-
-  const isOnline = member.isOnline !== undefined ? member.isOnline : true;
-
-  // Cargar historial de logons del backend para este miembro
-  fetch(`/api/logs/login?member_id=${member.id}`)
-    .then(res => res.json())
-    .then(data => {
-      const logs = data.logs || [];
-      const logsHtml = logs.length > 0 ? logs.map(l => `
-        <div style="font-size: 10px; border-bottom: 1px solid rgba(255,255,255,0.06); padding: 4px 0; display: flex; justify-content: space-between;">
-          <span>🌐 ${l.ip} • 🔋${l.battery}%</span>
-          <span style="color: var(--text-muted);">${new Date(l.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
-        </div>
-      `).join('') : '<div style="font-size: 10px; color: var(--text-muted);">Sin ingresos recientes grabados.</div>';
-
-      content.innerHTML = `
-        <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #0284C7, #06B6D4); color: #fff; font-size: 28px; font-weight: 800; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; border: 3px solid var(--accent-cyan); box-shadow: 0 0 20px rgba(6, 182, 212, 0.4);">
-          ${member.avatar || member.name.charAt(0)}
-        </div>
-
-        <h2 style="font-size: 18px; font-weight: 900; color: #fff; margin: 0 0 4px;">${member.name}</h2>
-        <span class="badge-role" style="font-size: 12px; display: inline-block; margin-bottom: 12px;">${member.role}</span>
-
-        <div style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 12px; border: 1px solid var(--border-glass); text-align: left; margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px; font-size: 12px;">
-          <div><strong>Estado de Red:</strong> ${isOnline ? '🟢 En Línea (Tiempo Real)' : '🔴 Offline'}</div>
-          <div><strong>DNI:</strong> ${member.dni || 'No especificado'}</div>
-          <div><strong>Teléfono WhatsApp:</strong> ${member.phone}</div>
-          <div><strong>🌐 IP Registrada:</strong> ${member.last_ip || '190.18.24.112'}</div>
-          <div><strong>Ubicación Actual:</strong> 📍 ${member.zone || 'Catamarca'}</div>
-          <div><strong>Batería Dispositivo:</strong> 🔋 ${member.battery}% ${member.isCharging ? '⚡ (Cargando)' : ''}</div>
-          <div><strong>Velocidad:</strong> ⚡ ${member.speed || 0} km/h</div>
-          <div><strong>Salud / Movimiento:</strong> ⌚ ${userHealthData.activityState} • ${userHealthData.heartRate} bpm</div>
-        </div>
-
-        <!-- Historial de Inicios de Sesión del Miembro -->
-        <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 10px; border: 1px solid var(--border-glass); text-align: left; margin-bottom: 14px;">
-          <div style="font-size: 11px; font-weight: 800; color: var(--accent-cyan); margin-bottom: 6px;">
-            <i class="fa-solid fa-list-check"></i> Historial de Inicios de Sesión de este Miembro:
-          </div>
-          <div style="max-height: 80px; overflow-y: auto;">
-            ${logsHtml}
-          </div>
-        </div>
-
-        <div style="display: flex; gap: 8px;">
-          <a href="tel:${member.phone.replace(/\s+/g, '')}" class="btn-mobile-submit" style="flex: 1; background: linear-gradient(135deg, #0284C7, #06B6D4); padding: 10px; font-size: 12px; margin: 0; text-decoration: none; text-align: center; color: #fff; display: flex; align-items: center; justify-content: center; gap: 6px;">
-            <i class="fa-solid fa-phone"></i> Llamar
-          </a>
-          <button class="btn-mobile-submit" style="flex: 1; background: linear-gradient(135deg, #25D366, #128C7E); padding: 10px; font-size: 12px; margin: 0;" onclick="closeFullMemberDetailModal(); switchTab('tab-whatsapp'); loadWaTemplate('GPS');">
-            <i class="fa-brands fa-whatsapp"></i> Mensaje
-          </button>
-        </div>
-      `;
-
-      modal.classList.remove('hidden');
-    })
-    .catch(() => {
-      modal.classList.remove('hidden');
-    });
-}
-
-function closeFullMemberDetailModal() {
-  const modal = document.getElementById('fullMemberDetailModal');
-  if (modal) modal.classList.add('hidden');
-}
-
-// --- Renderizado del Directorio Familiar con Online/Offline Badges ---
-function renderDirectoryList() {
-  const container = document.getElementById('familyDirectoryList');
-  if (!container) return;
-
-  container.innerHTML = familyMembers.map(m => {
-    const isOnline = m.isOnline !== undefined ? m.isOnline : true;
-    const isMyTrusted = activeUser && activeUser.trusted_contact_id === m.id;
-    const isMe = activeUser && activeUser.id === m.id;
-
-    const onlineBadge = isOnline
-      ? '<span style="background: rgba(16, 185, 129, 0.2); color: #10B981; font-size: 10px; padding: 2px 8px; border-radius: 12px; font-weight: 700;">🟢 En Línea</span>'
-      : '<span style="background: rgba(239, 68, 68, 0.2); color: #EF4444; font-size: 10px; padding: 2px 8px; border-radius: 12px; font-weight: 700;">🔴 Offline</span>';
-
-    const starTag = isMyTrusted
-      ? '<span style="background: rgba(245, 158, 11, 0.2); color: #F59E0B; font-size: 10px; padding: 2px 8px; border-radius: 12px; font-weight: 800; border: 1px solid rgba(245, 158, 11, 0.4);">⭐ Confianza</span>'
-      : '';
-
-    const starBtn = (!isMe && !isMyTrusted)
-      ? `<button class="btn-sm" style="background: rgba(245, 158, 11, 0.15); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.4); padding: 8px 10px; border-radius: 8px; font-weight: 700; font-size: 11px; cursor: pointer;" onclick="setAsTrustedContact('${m.id}')" title="Marcar como mi Persona de Confianza"><i class="fa-solid fa-star"></i></button>`
-      : (isMyTrusted ? `<button class="btn-sm" style="background: rgba(245, 158, 11, 0.3); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.6); padding: 8px 10px; border-radius: 8px; font-weight: 800; font-size: 11px;" title="Persona de Confianza Asignada">⭐</button>` : '');
-
-    return `
-      <div class="glass-card member-dir-card" style="padding: 12px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-        <div style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0;">
-          <div style="width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #0284C7, #06B6D4); color: #fff; font-weight: 800; font-size: 15px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-            ${m.avatar || m.name.charAt(0)}
-          </div>
-          <div style="min-width: 0;">
-            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-              <strong style="font-size: 13px; color: #fff;">${m.name}</strong>
-              ${onlineBadge}
-              ${starTag}
-            </div>
-            <div style="font-size: 11px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${m.role} • 📍 ${m.zone}</div>
-            <div style="font-size: 10px; color: var(--accent-cyan); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 2px;">
-              <span>🔋 ${m.battery}% • ⚡ ${m.speed || 0} km/h</span>
-              <span style="background: rgba(56, 189, 248, 0.15); color: #38BDF8; padding: 1px 6px; border-radius: 6px; font-weight: 700;">${m.device_type || '📱 Celular'} (${m.device_name || 'Web'})</span>
-            </div>
-          </div>
-        </div>
-
-        <div style="display: flex; gap: 6px; align-items: center; flex-shrink: 0;">
-          ${starBtn}
-          <button class="btn-sm" style="background: rgba(255,255,255,0.08); color: #fff; border: 1px solid var(--border-glass); padding: 8px 12px; border-radius: 8px; font-weight: 700; font-size: 11px; cursor: pointer;" onclick="showFullMemberDetails('${m.id}')">
-            Perfil
-          </button>
-        </div>
-      </div>
-    `;
-  }).join('');
-}
-
-function renderMemberChips() {
-  const container = document.getElementById('mapMemberChips');
-  if (!container) return;
-
-  container.innerHTML = familyMembers.map(m => `
-    <button class="member-chip ${activeMemberId === m.id ? 'active' : ''}" onclick="selectMapMember('${m.id}')">
-      <div class="chip-avatar">${m.avatar || m.name.charAt(0)}</div>
-      <span class="chip-name">${m.name.split(' ')[0]}</span>
-      <span class="chip-bat">🔋${m.battery}%</span>
-    </button>
-  `).join('');
-}
-
-function selectMapMember(memberId) {
-  activeMemberId = memberId;
-  const m = familyMembers.find(item => item.id === memberId);
-  renderMemberChips();
-  if (m && map) {
-    map.flyTo([m.lat, m.lng], 16, { duration: 1 });
-    if (memberMarkers[m.id]) memberMarkers[m.id].openPopup();
-  }
-}
-
-// ==============================================================================
 // FUNCIONALIDADES VIVO 2026: BATERÍA REAL, GPS ALTA PRECISIÓN, MAPA GOOGLE & SOS
 // ==============================================================================
 
@@ -6796,12 +6092,7 @@ function closeChatFloatingBanner() {
 }
 
 // Inicialización de escuchas al cargar
-document.addEventListener('DOMContentLoaded', () => {
-  initBatteryMonitoring();
-  initHighPrecisionGPS();
-  renderCamerasGrid();
 });
-
 
 
 
