@@ -993,38 +993,40 @@ input:checked + .slider:before { transform: translateX(24px); }
 .pickup-action-card {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 6px;
+  padding: 8px 12px;
 }
 
 .btn-big-pickup {
-  padding: 18px;
-  border-radius: var(--radius-md);
+  padding: 8px 14px;
+  border-radius: 10px;
   border: 1px solid rgba(56, 189, 248, 0.5);
-  background: linear-gradient(135deg, rgba(2, 132, 199, 0.3), rgba(56, 189, 248, 0.2));
+  background: linear-gradient(135deg, rgba(2, 132, 199, 0.35), rgba(56, 189, 248, 0.25));
   color: #fff;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 10px;
   cursor: pointer;
-  box-shadow: 0 0 20px rgba(56, 189, 248, 0.3);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
   transition: 0.2s;
 }
 
-.btn-big-pickup i { font-size: 26px; color: var(--accent-blue); margin-bottom: 2px; }
-.btn-big-pickup span { font-family: var(--font-heading); font-size: 17px; font-weight: 800; letter-spacing: 0.5px; }
-.btn-big-pickup small { font-size: 11px; color: var(--text-secondary); }
+.btn-big-pickup i { font-size: 18px; color: #38BDF8; margin-bottom: 0; }
+.btn-big-pickup span { font-family: var(--font-heading); font-size: 13.5px; font-weight: 800; letter-spacing: 0.3px; }
+.btn-big-pickup small { font-size: 10px; color: #E2E8F0; }
 
 .nearest-family-box {
   background: rgba(255, 255, 255, 0.04);
-  padding: 10px 14px;
-  border-radius: var(--radius-sm);
-  font-size: 12px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 11px;
   color: var(--text-secondary);
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  gap: 6px;
 }
 
 .nearest-family-box strong { color: var(--accent-emerald); }
@@ -1033,7 +1035,7 @@ input:checked + .slider:before { transform: translateX(24px); }
 .chat-container {
   display: flex;
   flex-direction: column;
-  height: clamp(420px, 52vh, 580px);
+  height: clamp(520px, 65vh, 720px);
   padding: 0;
   overflow: hidden;
   border-radius: var(--radius-lg);

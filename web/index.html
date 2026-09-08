@@ -536,16 +536,18 @@
             </div>
           </div>
 
-          <!-- TARJETA DE SOLICITUD DE RESCATE (UBICADA ARRIBA DEL CHAT) -->
-          <div class="glass-card pickup-action-card" style="margin-bottom: 10px;">
+          <!-- TARJETA COMPACTA DE RESCATE (UBICADA ARRIBA DEL CHAT) -->
+          <div class="glass-card pickup-action-card" style="padding: 8px 12px; margin-bottom: 8px;">
             <button class="btn-big-pickup" onclick="triggerPickupRequest()">
               <i class="fa-solid fa-location-arrow"></i>
-              <span>¡VENÍ A BUSCARME AQUÍ!</span>
-              <small>Envía coordenadas GPS + Batería actual</small>
+              <div style="display: flex; flex-direction: row; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center;">
+                <span style="font-size: 13.5px; font-weight: 800; color: #fff;">¡VENÍ A BUSCARME AQUÍ!</span>
+                <small style="font-size: 10px; color: #94A3B8;">(GPS + Batería)</small>
+              </div>
             </button>
 
-            <div id="nearestFamilyBanner" class="nearest-family-box">
-              <i class="fa-solid fa-person-walking-dashed-line-arrow-right"></i>
+            <div id="nearestFamilyBanner" class="nearest-family-box" style="padding: 4px 8px; font-size: 10.5px;">
+              <i class="fa-solid fa-person-walking-dashed-line-arrow-right" style="color: #38BDF8;"></i>
               <span>Familiar más cercano: <strong id="nearestMemberName">Lucía Andrada (a 850m)</strong></span>
             </div>
           </div>
