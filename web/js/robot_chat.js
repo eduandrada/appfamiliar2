@@ -113,6 +113,11 @@ appendChatMessage = function(type, text, senderName = '', timestamp = '') {
   }
 
   const isOutgoing = (type === 'outgoing' || type === 'user');
+  if (!senderName && isOutgoing) {
+    const u = (typeof activeUser !== 'undefined' && activeUser) ? activeUser : null;
+    senderName = u ? u.name : 'Tú';
+  }
+
   const isBot = (senderName.includes('Bot') || senderName.includes('Asistente') || senderName.includes('AI') || type === 'bot');
 
   const rowDiv = document.createElement('div');
@@ -131,7 +136,7 @@ appendChatMessage = function(type, text, senderName = '', timestamp = '') {
   else if (isBot) bubbleClass = 'msg-bot';
 
   // Formatear enlaces de Google Maps y Uber en botones táctiles elegantes
-  let formattedText = text.replace(/(https:\/\/www\.google\.com\/maps\?q=[^\s<]+)/g, '<br><a href="$1" target="_blank" class="chat-action-card-link" style="color: #34D399;"><i class="fa-solid fa-map-location-dot"></i> Ver Posición GPS en Mapa</a>');
+  let formattedText = (text || '').replace(/(https:\/\/www\.google\.com\/maps\?q=[^\s<]+)/g, '<br><a href="$1" target="_blank" class="chat-action-card-link" style="color: #34D399;"><i class="fa-solid fa-map-location-dot"></i> Ver Posición GPS en Mapa</a>');
   formattedText = formattedText.replace(/(https:\/\/m\.uber\.com\/ul[^\s<]+)/g, '<br><a href="$1" target="_blank" class="chat-action-card-link" style="color: #F59E0B;"><i class="fa-solid fa-taxi"></i> Abrir Solicitud Uber App</a>');
 
   let senderHeader = '';
