@@ -1506,45 +1506,46 @@ def get_bot_reply(data: BotReplyInput):
 
     if "donde" in query or "dónde" in query or "ubicacion" in query or "ubicación" in query:
         if found_member:
-            reply_text = f"📍 {found_member['name']} ({found_member.get('role','Familia')}) está en: {found_member.get('zone','Ubicación activa')}. Batería: {found_member.get('battery',100)}% 🔋. Velocidad: {found_member.get('speed',0)} km/h."
+            maps_url = f"https://www.google.com/maps?q={found_member.get('lat',-28.46957):.6f},{found_member.get('lng',-65.78524):.6f}"
+            reply_text = f"📍 {found_member['name']} ({found_member.get('role','Familia')})\n• Zona: {found_member.get('zone','Catamarca')}\n• Batería: {found_member.get('battery',100)}% 🔋\n• Velocidad: {found_member.get('speed',0)} km/h\n{maps_url}"
         else:
-            locations = [f"{m['name']}: {m.get('zone','En línea')}" for m in members]
-            reply_text = "📍 Ubicación actual del grupo familiar:\n• " + "\n• ".join(locations)
+            locations = [f"• {m['name']} ({m.get('role','Familia')}): {m.get('zone','Catamarca')} (🔋{m.get('battery',100)}%)" for m in members]
+            reply_text = "📍 Ubicaciones actuales del grupo familiar:\n" + "\n".join(locations)
             
     # 2. Consulta sobre Batería
     elif "bateria" in query or "batería" in query or "carga" in query:
         if found_member:
-            reply_text = f"🔋 La batería de {found_member['name']} es del {found_member.get('battery',100)}%."
+            reply_text = f"🔋 Nivel de batería de {found_member['name']}: {found_member.get('battery',100)}%."
         else:
-            bat_status = [f"{m['name']}: {m.get('battery',100)}% 🔋" for m in members]
-            reply_text = "🔋 Estado de Baterías de la Familia:\n• " + "\n• ".join(bat_status)
+            bat_status = [f"• {m['name']}: {m.get('battery',100)}% 🔋 ({m.get('network_label','En línea')})" for m in members]
+            reply_text = "🔋 Estado de Baterías de la Familia:\n" + "\n".join(bat_status)
 
     # 3. Ayuda de Emergencia / SOS
     elif "sos" in query or "emergencia" in query or "ayuda" in query or "panico" in query or "pánico" in query:
-        reply_text = f"🚨 Modo Alerta Activado para {data.user_name}. Presiona el Botón SOS gigante o usa las opciones de envío directo a WhatsApp para notificar a tus contactos de confianza de inmediato."
+        reply_text = f"🚨 MODO ALERTA ACTIVADO para {data.user_name}.\n\nSe ha emitido señal de prioridad. Puedes presionar el Botón SOS o las opciones de envío directo a WhatsApp para notificar a la red familiar."
 
     # 4. Tráfico / Operativos / Accidentes
     elif "trafico" in query or "tráfico" in query or "policia" in query or "policía" in query or "accidente" in query or "control" in query:
         reports = DATA_STORE.get("traffic_reports", [])
         if reports:
             latest = reports[-3:]
-            rep_str = [f"• [{r.get('type','ALERTA')}] {r.get('description','Incidente')} en ({r.get('lat')}, {r.get('lng')})" for r in latest]
+            rep_str = [f"• [{r.get('type','ALERTA')}] {r.get('description','Incidente')}" for r in latest]
             reply_text = "🚦 Novedades de Tráfico / Operativos Policiales recientes:\n" + "\n".join(rep_str)
         else:
-            reply_text = "🟢 No hay reportes de operativos policiales ni accidentes registrados en este momento. Las calles están despejadas."
+            reply_text = "🟢 Sin novedades críticas: No hay reportes de operativos ni accidentes en Catamarca en este momento. Calles despejadas."
 
     # 5. Saludo y Respuesta General
     elif "hola" in query or "buenas" in query or "como estas" in query or "cómo estás" in query:
-        reply_text = f"¡Hola {data.user_name}! 👋 Soy el Asistente Python de Protección de la Familia Andrada. Estoy monitoreando la seguridad, baterías y ubicaciones en tiempo real. ¿En qué puedo ayudarte?"
+        reply_text = f"¡Hola {data.user_name}! 👋 Soy el Asistente Python de Protección Familiar. Monitoreo ubicaciones, baterías, cámaras y alertas 24/7. ¿En qué te puedo ayudar?"
 
     # 6. Cámaras de Seguridad
     elif "camara" in query or "cámara" in query or "camaras" in query or "cámaras" in query:
         cams = DATA_STORE.get("cameras", DEFAULT_CAMERAS)
         cam_lines = [f"• {c.get('name')}: {c.get('location')} ({'🟢 ONLINE' if c.get('is_online', True) else '🔴 OFFLINE'})" for c in cams]
-        reply_text = "📹 Estado de Cámaras de Seguridad en Vivo:\n" + "\n".join(cam_lines) + "\n\n💡 Puedes ver la transmisión directamente haciendo clic en el icono de la cámara en el mapa."
+        reply_text = "📹 Estado de Cámaras de Seguridad en Vivo:\n" + "\n".join(cam_lines) + "\n\n💡 Toca una cámara en el mapa para ver la transmisión en vivo."
 
     else:
-        reply_text = f"Entendido, {data.user_name}. He registrado tu mensaje en la red familiar Andrada. Si necesitas saber dónde está alguien, su batería, cámaras o enviar un auxilio, dime."
+        reply_text = f"Entendido, {data.user_name}. Tu mensaje se registró en la red familiar. Puedes consultar sobre ubicación, baterías, pedir un Uber o cámaras."
 
     bot_msg = {
         "id": f"msg_bot_{int(datetime.now().timestamp() * 1000)}",

@@ -103,32 +103,56 @@ appendChatMessage = function(type, text, senderName = '', timestamp = '') {
   const now = new Date();
   const timeStr = timestamp || `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
 
-  let typeClass = 'msg-incoming';
-  let bubbleClass = 'assistant';
-  if (type === 'outgoing' || type === 'user') {
-    typeClass = 'msg-outgoing';
-    bubbleClass = 'user';
-  } else if (type === 'system') {
-    typeClass = 'msg-system';
-    bubbleClass = 'system';
+  if (type === 'system') {
+    const sysDiv = document.createElement('div');
+    sysDiv.className = 'msg-system';
+    sysDiv.innerHTML = `<span>${text}</span>`;
+    container.appendChild(sysDiv);
+    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+    return;
+  }
+
+  const isOutgoing = (type === 'outgoing' || type === 'user');
+  const isBot = (senderName.includes('Bot') || senderName.includes('Asistente') || senderName.includes('AI') || type === 'bot');
+
+  const rowDiv = document.createElement('div');
+  rowDiv.className = `chat-msg-row ${isOutgoing ? 'outgoing' : 'incoming'}`;
+
+  // Avatar Icon
+  let avatarHtml = '';
+  if (!isOutgoing) {
+    const avatarChar = isBot ? '🤖' : (senderName ? senderName.charAt(0).toUpperCase() : '👤');
+    avatarHtml = `<div class="chat-avatar-bubble" style="${isBot ? 'background: rgba(168, 85, 247, 0.2); border-color: rgba(168, 85, 247, 0.5);' : ''}">${avatarChar}</div>`;
+  }
+
+  // Clases de burbuja
+  let bubbleClass = 'msg-incoming';
+  if (isOutgoing) bubbleClass = 'msg-outgoing';
+  else if (isBot) bubbleClass = 'msg-bot';
+
+  // Formatear enlaces de Google Maps y Uber en botones táctiles elegantes
+  let formattedText = text.replace(/(https:\/\/www\.google\.com\/maps\?q=[^\s<]+)/g, '<br><a href="$1" target="_blank" class="chat-action-card-link" style="color: #34D399;"><i class="fa-solid fa-map-location-dot"></i> Ver Posición GPS en Mapa</a>');
+  formattedText = formattedText.replace(/(https:\/\/m\.uber\.com\/ul[^\s<]+)/g, '<br><a href="$1" target="_blank" class="chat-action-card-link" style="color: #F59E0B;"><i class="fa-solid fa-taxi"></i> Abrir Solicitud Uber App</a>');
+
+  let senderHeader = '';
+  if (!isOutgoing && senderName) {
+    const color = isBot ? '#C084FC' : '#38BDF8';
+    senderHeader = `<span class="msg-sender-tag" style="color: ${color};">${senderName}</span>`;
   }
 
   const msgDiv = document.createElement('div');
-  msgDiv.className = `chat-msg ${typeClass} chat-bubble ${bubbleClass}`;
-  
-  let senderHeader = '';
-  if (senderName && typeClass === 'msg-incoming') {
-    senderHeader = `<small style="font-size:10px; font-weight:800; color:#38BDF8; display:block; margin-bottom:2px;">${senderName}</small>`;
+  msgDiv.className = `chat-msg ${bubbleClass}`;
+  msgDiv.innerHTML = `${senderHeader}<div>${formattedText.replace(/\n/g, '<br>')}</div><span class="msg-time">${timeStr}</span>`;
+
+  if (isOutgoing) {
+    rowDiv.appendChild(msgDiv);
+  } else {
+    rowDiv.appendChild(document.createRange().createContextualFragment(avatarHtml));
+    rowDiv.appendChild(msgDiv);
   }
 
-  // Formatear enlaces de Google Maps y alertas si existen en el texto
-  let formattedText = text.replace(/(https:\/\/www\.google\.com\/maps\?q=[^\s<]+)/g, '<a href="$1" target="_blank" style="color:#34D399; font-weight:800; text-decoration:underline;">🗺️ Ver en Mapa</a>');
-  formattedText = formattedText.replace(/(https:\/\/m\.uber\.com\/ul\?=[^\s<]+)/g, '<a href="$1" target="_blank" style="color:#F59E0B; font-weight:800; text-decoration:underline;">🚖 Abrir Uber App</a>');
-
-  msgDiv.innerHTML = `${senderHeader}<div>${formattedText.replace(/\n/g, '<br>')}</div><span class="msg-time">${timeStr}</span>`;
-  
-  container.appendChild(msgDiv);
-  container.scrollTop = container.scrollHeight;
+  container.appendChild(rowDiv);
+  container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
 };
 
 async function sendMessageToPythonBot(messageText) {
