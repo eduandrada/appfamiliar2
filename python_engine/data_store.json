@@ -406,6 +406,46 @@
       "msg_type": "BOT",
       "timestamp": "07:56",
       "created_at": "2026-09-08T07:56:15.395222"
+    },
+    {
+      "id": "msg_1788885777432",
+      "sender_id": "carlos_andrada",
+      "sender_name": "Eduardo Andrada",
+      "text": "Hola prueba en vivo",
+      "msg_type": "TEXT",
+      "lat": null,
+      "lng": null,
+      "timestamp": "13:42",
+      "created_at": "2026-09-08T13:42:57.433010"
+    },
+    {
+      "id": "msg_bot_1788885777443",
+      "sender_id": "python_bot",
+      "sender_name": "🤖 Asistente Búscame AI",
+      "text": "¡Hola Eduardo Andrada! 👋 Soy el Asistente Python de Protección Familiar. Monitoreo ubicaciones, baterías, cámaras y alertas 24/7. ¿En qué te puedo ayudar?",
+      "msg_type": "BOT",
+      "timestamp": "13:42",
+      "created_at": "2026-09-08T13:42:57.443615"
+    },
+    {
+      "id": "msg_1788885803888",
+      "sender_id": "carlos_andrada",
+      "sender_name": "Eduardo Andrada",
+      "text": "Hola prueba en vivo",
+      "msg_type": "TEXT",
+      "lat": null,
+      "lng": null,
+      "timestamp": "13:43",
+      "created_at": "2026-09-08T13:43:23.888402"
+    },
+    {
+      "id": "msg_bot_1788885803898",
+      "sender_id": "python_bot",
+      "sender_name": "🤖 Asistente Búscame AI",
+      "text": "¡Hola Eduardo Andrada! 👋 Soy el Asistente Python de Protección Familiar. Monitoreo ubicaciones, baterías, cámaras y alertas 24/7. ¿En qué te puedo ayudar?",
+      "msg_type": "BOT",
+      "timestamp": "13:43",
+      "created_at": "2026-09-08T13:43:23.898391"
     }
   ],
   "traffic_reports": []

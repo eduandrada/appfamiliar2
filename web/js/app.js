@@ -6091,8 +6091,7 @@ function closeChatFloatingBanner() {
   if (banner) banner.classList.add('hidden');
 }
 
-// Inicialización de escuchas al cargar
-});
+
 
 
 
