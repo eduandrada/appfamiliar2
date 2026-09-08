@@ -6230,7 +6230,7 @@ async function handleRegisterSubmit(event) {
 }
 
 function sendWhatsAppFormalInvite(member) {
-  const appUrl = window.location.origin + '/';
+  const appUrl = 'https://appfamiliar2.onrender.com/';
   const cleanPhone = (member.phone || '').replace(/[^0-9]/g, '');
 
   const formalMessage = `🛡️ *SISTEMA DE PROTECCIÓN FAMILIAR ANDRADA* 🛡️\n\nEstimado/a *${member.name}*,\nSe ha generado oficialmente tu cuenta de acceso seguro a la Red de Protección y Geolocalización Familiar Andrada 2026.\n\n📋 *DATOS DE TU CUENTA:*\n• *Titular:* ${member.name}\n• *Rol Asignado:* ${member.role}\n• *DNI Registrado:* ${member.dni || 'Registrado'}\n• *PIN de Acceso Inicial:* *${member.pin}*\n\n🌐 *ACCESO A LA APLICACIÓN WEB:*\n👉 ${appUrl}\n\n📲 *INSTRUCCIONES DE INGRESO:*\n1. Toca el enlace web arriba mencionado desde tu teléfono celular o computadora.\n2. Selecciona tu perfil de usuario (*${member.name}*).\n3. Ingresa tu PIN personal de 4 dígitos (*${member.pin}*).\n4. Mantén activa la geolocalización GPS para contar con cobertura de protección familiar en tiempo real 24/7.\n\n_Por seguridad, guarda este mensaje y no compartas tu PIN con terceros._`;

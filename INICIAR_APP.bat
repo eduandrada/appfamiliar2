@@ -38,7 +38,8 @@ echo.
 echo [3/3] Iniciando Servidor Web y Abriendo Aplicacion...
 echo.
 echo ---------------------------------------------------------------------
-echo  URL Local:          http://localhost:8000/
+echo  URL Local PC:       http://localhost:8000/
+echo  URL Web Celulares:  https://appfamiliar2.onrender.com/
 echo  PIN por Defecto:    1234
 echo  PIN Admin Maestro:  9999
 echo ---------------------------------------------------------------------
