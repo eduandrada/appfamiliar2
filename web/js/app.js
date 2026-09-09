@@ -84,6 +84,9 @@ document.addEventListener('DOMContentLoaded', () => {
   updateSafeWordUI();
   initServiceWorker();
   initMap();
+  setTimeout(() => {
+    if (map) map.invalidateSize();
+  }, 300);
   renderMemberChips();
   renderDirectoryList();
   renderCamerasGrid();
