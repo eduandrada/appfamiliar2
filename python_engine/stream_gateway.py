@@ -26,7 +26,7 @@ def sanitize_camera_dict(camera: Dict[str, Any], is_admin: bool = False) -> Dict
     sanitized = dict(camera)
     
     orig_stream = camera.get("raw_stream_url") or camera.get("stream_url") or ""
-    if str(orig_stream).startswith("/api/cameras") or str(orig_stream) in ["undefined", "null", "none", "", "None"]:
+    if str(orig_stream).startswith("/api/cameras") or "unsplash" in str(orig_stream) or str(orig_stream) in ["undefined", "null", "none", "", "None"]:
         orig_stream = f"/api/cameras/{sanitized.get('id', 'unknown')}/feed"
     sanitized["raw_stream_url"] = orig_stream
 

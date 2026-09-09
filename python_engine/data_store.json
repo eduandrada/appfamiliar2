@@ -21,7 +21,7 @@
       "can_view_cameras": true,
       "can_trigger_camera_alarm": true,
       "can_send_camera_voice": true,
-      "last_seen": "2026-09-08T20:32:56.767289",
+      "last_seen": "2026-09-08T20:40:06.048447",
       "device_type": "📱 Celular",
       "device_name": "Navegador Web",
       "wifi_ssid": "WiFi Casa Andrada",
@@ -29,12 +29,12 @@
       "active_session_token": "token_carlos_andrada_1788909034314",
       "last_ip": "127.0.0.1",
       "is_charging": true,
-      "is_background": true,
+      "is_background": false,
       "is_ghost_mode": false,
       "last_login_at": "2026-09-07T19:47:12.793Z",
-      "last_active_at": "2026-09-08T20:32:56.767289",
+      "last_active_at": "2026-09-08T20:40:06.048447",
       "isOnline": true,
-      "last_seen_iso": "2026-09-08T20:30:36.264751"
+      "last_seen_iso": "2026-09-08T20:36:00.820191"
     }
   ],
   "cameras": [
@@ -63,6 +63,32 @@
       "status": "ONLINE",
       "created_at": "2026-09-08T14:55:41.066030",
       "updated_at": "2026-09-08T14:55:41.066039"
+    },
+    {
+      "id": "cam_1788910759577",
+      "name": "Cámara IP Cocina / Comedor",
+      "description": "Cámara de Seguridad IP",
+      "location": "Interior Planta Baja",
+      "latitude": -28.46937,
+      "longitude": -65.78544000000001,
+      "lat": -28.46937,
+      "lng": -65.78544000000001,
+      "protocol": "rtsp",
+      "ip_address": "192.168.1.112",
+      "port": 554,
+      "rtsp_url": "rtsp://admin:******@192.168.1.112:554/h264",
+      "username": "admin",
+      "password": "",
+      "stream_url": "undefined",
+      "qr_code": "CAM_QR_1788910759",
+      "is_active": true,
+      "is_online": true,
+      "is_hidden": false,
+      "has_alarm": true,
+      "has_sound": true,
+      "status": "ONLINE",
+      "created_at": "2026-09-08T20:39:19.577794",
+      "updated_at": "2026-09-08T20:39:19.577803"
     }
   ],
   "check_ins": [],
@@ -553,6 +579,26 @@
       "msg_type": "BOT",
       "timestamp": "19:43",
       "created_at": "2026-09-08T19:43:25.092614"
+    },
+    {
+      "id": "msg_1788910629656",
+      "sender_id": "carlos_andrada",
+      "sender_name": "Eduardo Andrada",
+      "text": "🚖 Solicitando Uber/Taxi hacia \"Casa Andrada\" desde posición GPS (-28.46957, -65.78524). Ver posición: https://www.google.com/maps?q=-28.469570,-65.785240",
+      "msg_type": "TEXT",
+      "lat": null,
+      "lng": null,
+      "timestamp": "20:37",
+      "created_at": "2026-09-08T20:37:09.656369"
+    },
+    {
+      "id": "msg_bot_1788910629703",
+      "sender_id": "python_bot",
+      "sender_name": "🤖 Asistente Búscame AI",
+      "text": "Entendido, Eduardo Andrada. Tu mensaje se registró en la red familiar. Puedes consultar sobre ubicación, baterías, pedir un Uber o cámaras.",
+      "msg_type": "BOT",
+      "timestamp": "20:37",
+      "created_at": "2026-09-08T20:37:09.703437"
     }
   ],
   "traffic_reports": [],

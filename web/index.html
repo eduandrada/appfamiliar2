@@ -707,6 +707,27 @@
           <div id="camerasGrid" class="cameras-grid">
             <!-- Renderizado dinámico por app.js -->
           </div>
+
+          <!-- APARTADO ESPECIAL: WEBCAM DE FAMILIAR EN TIEMPO REAL / ASISTENCIA -->
+          <div class="glass-card" style="padding: 16px; margin-top: 20px; border: 1px solid rgba(16, 185, 129, 0.4); background: linear-gradient(135deg, rgba(6, 78, 59, 0.35), rgba(15, 23, 42, 0.9)); border-radius: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px;">
+              <div>
+                <h3 style="font-size: 15px; font-weight: 800; color: #10B981; margin: 0; display: flex; align-items: center; gap: 8px;">
+                  <i class="fa-solid fa-video"></i> 📹 Webcam de Familiar en Tiempo Real (Asistencia & Seguimiento)
+                </h3>
+                <p style="font-size: 11px; color: #CBD5E1; margin: 4px 0 0;">
+                  Elige a cualquier miembro registrado de la familia y solicítale permiso en tiempo real para encender su webcam/cámara móvil y asistirlo en directo.
+                </p>
+              </div>
+              <button class="btn-sm" style="background: rgba(16, 185, 129, 0.25); color: #6EE7B7; border: 1px solid rgba(16, 185, 129, 0.5); border-radius: 10px; padding: 6px 14px; font-weight: 800; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 6px;" onclick="renderFamilyWebcamCards()">
+                <i class="fa-solid fa-rotate"></i> Actualizar Integrantes
+              </button>
+            </div>
+
+            <div id="familyWebcamListGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px;">
+              <!-- Se renderiza dinámicamente con app.js -->
+            </div>
+          </div>
         </div>
       </section>
 
@@ -2399,6 +2420,76 @@
       if (modal) modal.classList.add('hidden');
     }
   </script>
+
+  <!-- MODAL DE SOLICITUD DE PERMISO DE WEBCAM EN VIVO -->
+  <div id="webcamPermissionModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" style="z-index: 10050; background: rgba(2, 6, 23, 0.85); backdrop-filter: blur(12px); display: flex; align-items: center; justify-content: center;">
+    <div class="glass-card" style="max-width: 440px; width: 92%; padding: 24px; border: 1px solid rgba(16, 185, 129, 0.5); background: linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(6, 78, 59, 0.95)); border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); text-align: center;">
+      <div style="width: 60px; height: 60px; border-radius: 50%; background: rgba(16, 185, 129, 0.2); border: 2px solid #10B981; color: #10B981; font-size: 28px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);">
+        <i class="fa-solid fa-video"></i>
+      </div>
+      <h3 style="font-size: 18px; font-weight: 800; color: #6EE7B7; margin: 0 0 8px;">📷 Solicitud de Webcam en Vivo</h3>
+      <p id="webcamRequestText" style="font-size: 13px; color: #E2E8F0; line-height: 1.5; margin-bottom: 20px;">
+        Un familiar te solicita transmitir tu cámara en vivo para verificar tu estado de seguridad.
+      </p>
+      <div style="display: flex; gap: 12px;">
+        <button class="btn-sm" style="flex: 1; background: rgba(239, 68, 68, 0.2); color: #FCA5A5; border: 1px solid rgba(239, 68, 68, 0.5); padding: 12px; border-radius: 12px; font-size: 13px; font-weight: 800; cursor: pointer;" onclick="respondWebcamRequest(false)">
+          ❌ Rechazar
+        </button>
+        <button class="btn-sm" style="flex: 1; background: linear-gradient(135deg, #10B981, #059669); color: #fff; border: none; padding: 12px; border-radius: 12px; font-size: 13px; font-weight: 800; cursor: pointer; box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);" onclick="respondWebcamRequest(true)">
+          ✅ Transmitir Cámara
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL VISOR DE WEBCAM EN VIVO ENTRE FAMILIARES -->
+  <div id="webcamLiveViewerModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" style="z-index: 10040; background: rgba(2, 6, 23, 0.92); backdrop-filter: blur(14px); display: flex; align-items: center; justify-content: center;">
+    <div class="glass-card" style="max-width: 760px; width: 94%; padding: 16px; border: 1px solid rgba(56, 189, 248, 0.5); background: linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.95)); border-radius: 20px; box-shadow: 0 12px 50px rgba(0,0,0,0.9);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="width: 12px; height: 12px; border-radius: 50%; background: #EF4444; box-shadow: 0 0 10px #EF4444; animation: pulse 1.5s infinite;"></span>
+          <h3 id="webcamViewerTitle" style="font-size: 16px; font-weight: 800; color: #38BDF8; margin: 0;">
+            📹 Transmisión en Vivo: Familiar
+          </h3>
+        </div>
+        <button class="btn-sheet-close" onclick="stopWebcamStreamSession()" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.5); color: #FCA5A5; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; cursor: pointer;">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- PANTALLA / PLAYER DE VIDEO EN VIVO -->
+      <div style="position: relative; width: 100%; height: 380px; background: #020617; border-radius: 14px; overflow: hidden; border: 1px solid rgba(56, 189, 248, 0.3); display: flex; align-items: center; justify-content: center;">
+        <video id="webcamRemoteVideo" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;" class="hidden"></video>
+        <img id="webcamRemoteImgFrame" style="width: 100%; height: 100%; object-fit: cover;" class="hidden" alt="Transmisión en vivo" />
+        
+        <!-- ESTADO ESPERA / PROCESANDO -->
+        <div id="webcamViewerPlaceholder" style="text-align: center; color: #94A3B8; padding: 20px;">
+          <i class="fa-solid fa-circle-notch fa-spin" style="font-size: 36px; color: #38BDF8; margin-bottom: 12px;"></i>
+          <p id="webcamViewerStatusText" style="font-size: 14px; font-weight: 700; color: #E2E8F0; margin: 0;">Conectando transmisión en vivo...</p>
+        </div>
+
+        <div style="position: absolute; top: 12px; left: 12px; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); padding: 4px 10px; border-radius: 8px; border: 1px solid rgba(239,68,68,0.5); color: #EF4444; font-size: 11px; font-weight: 800; display: flex; align-items: center; gap: 6px;">
+          <i class="fa-solid fa-record-vinyl"></i> TRANSMISIÓN EN VIVO
+        </div>
+      </div>
+
+      <!-- BOTONES DE CONTROL DE VIDEO -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px; flex-wrap: wrap; gap: 10px;">
+        <div style="display: flex; gap: 8px;">
+          <button class="btn-sm" style="background: rgba(255,255,255,0.08); color: #E2E8F0; border: 1px solid var(--border-glass); padding: 8px 14px; border-radius: 10px; font-size: 12px; font-weight: 700; cursor: pointer;" onclick="toggleWebcamAudio()">
+            <i class="fa-solid fa-volume-high" id="iconWebcamAudio"></i> Audio
+          </button>
+          <button class="btn-sm" style="background: rgba(56, 189, 248, 0.2); color: #38BDF8; border: 1px solid rgba(56, 189, 248, 0.4); padding: 8px 14px; border-radius: 10px; font-size: 12px; font-weight: 700; cursor: pointer;" onclick="toggleWebcamFullscreen()">
+            <i class="fa-solid fa-expand"></i> Pantalla Completa
+          </button>
+        </div>
+        <button class="btn-sm" style="background: linear-gradient(135deg, #EF4444, #DC2626); color: #fff; border: none; padding: 8px 16px; border-radius: 10px; font-size: 12px; font-weight: 800; cursor: pointer;" onclick="stopWebcamStreamSession()">
+          <i class="fa-solid fa-stop"></i> Finalizar Transmisión
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script src="js/robot_chat.js"></script>
   <script src="https://maps.googleapis.com/maps/api/js?libraries=places,marker&v=beta&loading=async" async defer></script>
   <script src="js/app.js?v=2026.3.18"></script>
