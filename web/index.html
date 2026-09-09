@@ -714,15 +714,15 @@
           </div>
 
           <!-- SECTOR UNIFICADO: BARRAS Y SUB-PESTAÑAS DE NAVEGACIÓN RÁPIDA -->
-          <div class="glass-card" style="padding: 8px; margin-bottom: 14px; display: flex; gap: 6px; overflow-x: auto; background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 14px;">
-            <button class="btn-subtab-pill active" id="btnSubtabAntifraud" onclick="switchProtectionSubTab('antifraud')" style="flex: 1; min-width: 105px; padding: 8px 10px; border-radius: 10px; font-size: 11px; font-weight: 800; border: none; cursor: pointer; background: linear-gradient(135deg, #0284C7, #06B6D4); color: #fff; display: flex; align-items: center; justify-content: center; gap: 6px;">
-              <i class="fa-solid fa-shield-virus"></i> 1. Antifraude
+          <div class="protection-subtabs-nav">
+            <button class="btn-subtab-pill active" id="btnSubtabAntifraud" onclick="switchProtectionSubTab('antifraud')">
+              <i class="fa-solid fa-shield-virus"></i> <span>1. Antifraude</span>
             </button>
-            <button class="btn-subtab-pill" id="btnSubtabAlone" onclick="switchProtectionSubTab('alone')" style="flex: 1; min-width: 105px; padding: 8px 10px; border-radius: 10px; font-size: 11px; font-weight: 800; border: 1px solid var(--border-glass); cursor: pointer; background: rgba(255,255,255,0.08); color: #94A3B8; display: flex; align-items: center; justify-content: center; gap: 6px;">
-              <i class="fa-solid fa-house-user"></i> 2. En Casa
+            <button class="btn-subtab-pill" id="btnSubtabAlone" onclick="switchProtectionSubTab('alone')">
+              <i class="fa-solid fa-house-user"></i> <span>2. En Casa</span>
             </button>
-            <button class="btn-subtab-pill" id="btnSubtabEdgeAi" onclick="switchProtectionSubTab('edgeai')" style="flex: 1; min-width: 105px; padding: 8px 10px; border-radius: 10px; font-size: 11px; font-weight: 800; border: 1px solid var(--border-glass); cursor: pointer; background: rgba(255,255,255,0.08); color: #94A3B8; display: flex; align-items: center; justify-content: center; gap: 6px;">
-              <i class="fa-solid fa-brain"></i> 3. Edge AI & Biometría
+            <button class="btn-subtab-pill" id="btnSubtabEdgeAi" onclick="switchProtectionSubTab('edgeai')">
+              <i class="fa-solid fa-brain"></i> <span>3. Edge AI</span>
             </button>
           </div>
 

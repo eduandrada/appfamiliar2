@@ -429,16 +429,8 @@ function switchProtectionSubTab(subTabId) {
     if (btn) {
       if (id === subTabId) {
         btn.classList.add('active');
-        btn.style.background = 'linear-gradient(135deg, #0284C7, #0369A1)';
-        btn.style.color = '#ffffff';
-        btn.style.borderColor = '#38BDF8';
-        btn.style.boxShadow = '0 0 12px rgba(56, 189, 248, 0.4)';
       } else {
         btn.classList.remove('active');
-        btn.style.background = 'rgba(255,255,255,0.06)';
-        btn.style.color = 'var(--text-secondary)';
-        btn.style.borderColor = 'var(--border-glass)';
-        btn.style.boxShadow = 'none';
       }
     }
   });

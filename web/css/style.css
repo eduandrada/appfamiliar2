@@ -3687,3 +3687,64 @@ select option, optgroup {
     font-size: 10px;
   }
 }
+
+/* ==================== SUB-PESTAÑAS RESPONSIVAS (PC Y MÓVIL) ==================== */
+.protection-subtabs-nav {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+  width: 100%;
+  padding: 6px;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 14px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.btn-subtab-pill {
+  width: 100%;
+  padding: 10px 8px;
+  border-radius: 10px;
+  font-family: var(--font-heading);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  transition: all 0.2s ease-in-out;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.06);
+  color: #94A3B8;
+  touch-action: manipulation;
+}
+
+.btn-subtab-pill:hover {
+  background: rgba(56, 189, 248, 0.15);
+  color: #F8FAFC;
+  border-color: rgba(56, 189, 248, 0.4);
+}
+
+.btn-subtab-pill.active {
+  background: linear-gradient(135deg, #0284C7, #0369A1) !important;
+  color: #FFFFFF !important;
+  border: 1.5px solid #38BDF8 !important;
+  box-shadow: 0 4px 15px rgba(2, 132, 199, 0.4) !important;
+}
+
+@media (max-width: 480px) {
+  .protection-subtabs-nav {
+    gap: 4px;
+    padding: 4px;
+  }
+  .btn-subtab-pill {
+    padding: 8px 4px;
+    font-size: 10.5px;
+    gap: 4px;
+  }
+}
