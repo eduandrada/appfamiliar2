@@ -3691,8 +3691,8 @@ select option, optgroup {
 /* ==================== SUB-PESTAÑAS RESPONSIVAS (PC Y MÓVIL) ==================== */
 .protection-subtabs-nav {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
   margin-bottom: 16px;
   width: 100%;
   padding: 6px;
@@ -3704,16 +3704,16 @@ select option, optgroup {
 
 .btn-subtab-pill {
   width: 100%;
-  padding: 10px 8px;
+  padding: 10px 4px;
   border-radius: 10px;
   font-family: var(--font-heading);
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 800;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 5px;
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
@@ -3737,14 +3737,14 @@ select option, optgroup {
   box-shadow: 0 4px 15px rgba(2, 132, 199, 0.4) !important;
 }
 
-@media (max-width: 480px) {
+@media (max-width: 520px) {
   .protection-subtabs-nav {
-    gap: 4px;
+    gap: 3px;
     padding: 4px;
   }
   .btn-subtab-pill {
-    padding: 8px 4px;
-    font-size: 10.5px;
-    gap: 4px;
+    padding: 8px 2px;
+    font-size: 10px;
+    gap: 3px;
   }
 }

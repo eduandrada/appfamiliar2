@@ -415,7 +415,7 @@ function notifyInPhone(title, body) {
 
 // ==================== NAVEGACIÓN ENTRE PESTAÑAS ====================
 function switchProtectionSubTab(subTabId) {
-  const subPanes = ['antifraud', 'alone', 'edgeai'];
+  const subPanes = ['antifraud', 'alone', 'edgeai', 'cameras'];
   subPanes.forEach(id => {
     const pane = document.getElementById(`subpane-${id}`);
     const btn = document.getElementById(`btnSubtab${id.charAt(0).toUpperCase() + id.slice(1)}`);
@@ -441,6 +441,13 @@ function switchProtectionSubTab(subTabId) {
   } else if (subTabId === 'edgeai') {
     if (typeof scanBleMeshDevices === 'function') scanBleMeshDevices();
     if (typeof drawVoiceSpectrumSample === 'function') drawVoiceSpectrumSample();
+  } else if (subTabId === 'cameras') {
+    if (typeof renderFamilyWebcamCards === 'function') {
+      setTimeout(() => renderFamilyWebcamCards(), 100);
+    }
+    if (typeof renderCamerasGrid === 'function') {
+      renderCamerasGrid();
+    }
   }
 }
 window.switchProtectionSubTab = switchProtectionSubTab;
@@ -455,6 +462,9 @@ function switchTab(tabId) {
   } else if (tabId === 'tab-alone') {
     actualTabId = 'tab-edgeai';
     targetSubTab = 'alone';
+  } else if (tabId === 'tab-cameras') {
+    actualTabId = 'tab-edgeai';
+    targetSubTab = 'cameras';
   } else if (tabId === 'tab-edgeai') {
     actualTabId = 'tab-edgeai';
   }
@@ -476,19 +486,22 @@ function switchTab(tabId) {
       const antifraudPane = document.getElementById('subpane-antifraud');
       const alonePane = document.getElementById('subpane-alone');
       const edgeaiPane = document.getElementById('subpane-edgeai');
+      const camerasPane = document.getElementById('subpane-cameras');
       if (antifraudPane && !antifraudPane.classList.contains('hidden')) {
         switchProtectionSubTab('antifraud');
       } else if (alonePane && !alonePane.classList.contains('hidden')) {
         switchProtectionSubTab('alone');
       } else if (edgeaiPane && !edgeaiPane.classList.contains('hidden')) {
         switchProtectionSubTab('edgeai');
+      } else if (camerasPane && !camerasPane.classList.contains('hidden')) {
+        switchProtectionSubTab('cameras');
       } else {
         switchProtectionSubTab('antifraud');
       }
     }
   }
 
-  // Marcar botón activo en barra inferior (6 items: tab-map:0, tab-edgeai:1, tab-pickup:2, tab-sos:3, tab-cameras:4, tab-family:5)
+  // Marcar botón activo en barra inferior
   const navButtons = document.querySelectorAll('.bottom-nav-bar .nav-item');
   const indexMap = {
     'tab-map': 0,
@@ -510,15 +523,6 @@ function switchTab(tabId) {
     setTimeout(() => {
       map.invalidateSize();
     }, 200);
-  }
-
-  if (actualTabId === 'tab-cameras') {
-    if (typeof renderFamilyWebcamCards === 'function') {
-      setTimeout(() => renderFamilyWebcamCards(), 100);
-    }
-    if (typeof renderCamerasGrid === 'function') {
-      renderCamerasGrid();
-    }
   }
 }
 window.switchTab = switchTab;
@@ -7543,4 +7547,98 @@ window.respondWebcamRequest = respondWebcamRequest;
 window.stopWebcamStreamSession = stopWebcamStreamSession;
 window.toggleWebcamAudio = toggleWebcamAudio;
 window.toggleWebcamFullscreen = toggleWebcamFullscreen;
+
+// ==================== PACTO DE PRIVACIDAD Y REGISTRO TRANSPARENTE ====================
+let locationAuditLogs = [];
+
+function loadStoredAuditLogs() {
+  const saved = localStorage.getItem('andrada_location_audit_logs');
+  if (saved) {
+    try {
+      locationAuditLogs = JSON.parse(saved);
+    } catch (e) {
+      locationAuditLogs = [];
+    }
+  }
+  
+  if (!locationAuditLogs || !Array.isArray(locationAuditLogs) || locationAuditLogs.length === 0) {
+    locationAuditLogs = [
+      {
+        id: 'log_1',
+        viewer_name: 'Eduardo',
+        target_name: 'Familia Andrada',
+        action: 'Consulta de Ubicación GPS',
+        timestamp: 'Hoy ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }
+    ];
+    saveAuditLogs();
+  }
+  renderAuditLogs();
+}
+
+function saveAuditLogs() {
+  localStorage.setItem('andrada_location_audit_logs', JSON.stringify(locationAuditLogs));
+}
+
+function logLocationQuery(viewerName, targetName) {
+  if (!viewerName) viewerName = activeUser ? activeUser.name.split(' ')[0] : 'Familiar';
+  if (!targetName) targetName = 'Familia';
+
+  const timeStr = 'Hoy ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const newLog = {
+    id: 'log_' + Date.now(),
+    viewer_name: viewerName,
+    target_name: targetName,
+    action: 'Visualizó ubicación GPS',
+    timestamp: timeStr
+  };
+
+  if (!Array.isArray(locationAuditLogs)) locationAuditLogs = [];
+  locationAuditLogs.unshift(newLog);
+  if (locationAuditLogs.length > 20) locationAuditLogs.pop();
+  saveAuditLogs();
+  renderAuditLogs();
+}
+
+function logLocationView(viewer, target) {
+  const viewerName = viewer ? viewer.name.split(' ')[0] : (activeUser ? activeUser.name.split(' ')[0] : 'Familiar');
+  const targetName = target ? target.name.split(' ')[0] : 'Familiar';
+  logLocationQuery(viewerName, targetName);
+}
+
+function renderAuditLogs() {
+  const container = document.getElementById('locationAuditLogList');
+  if (!container) return;
+
+  if (!locationAuditLogs || locationAuditLogs.length === 0) {
+    container.innerHTML = `<div style="font-size: 10px; color: var(--text-muted); text-align: center; padding: 6px;">Sin consultas recientes.</div>`;
+    return;
+  }
+
+  container.innerHTML = locationAuditLogs.map(log => `
+    <div style="font-size: 10.5px; color: #E2E8F0; padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: space-between;">
+      <span style="font-weight: 600;"><i class="fa-solid fa-eye" style="color: #38BDF8; font-size: 9.5px; margin-right: 4px;"></i> <strong>${log.viewer_name}</strong> consultó a <em>${log.target_name}</em></span>
+      <span style="font-size: 9.5px; color: var(--text-muted); font-family: monospace;">${log.timestamp}</span>
+    </div>
+  `).join('');
+}
+
+function updatePrivacySchedule(scheduleMode) {
+  localStorage.setItem('andrada_privacy_schedule', scheduleMode);
+  
+  const labelMap = {
+    'ALWAYS': 'Siempre Activo (24/7 Transparente)',
+    'WEEKEND_NIGHTS': 'Solo Noches de Fin de Semana (Vie-Dom 21:00 a 06:00)',
+    'OUT_OF_CITY': 'Solo Trayectos Fuera de la Ciudad'
+  };
+
+  const text = labelMap[scheduleMode] || 'Siempre Activo';
+  showModernToast('Pacto de Privacidad', `Configuración actualizada: ${text}`, 'success');
+}
+
+window.updatePrivacySchedule = updatePrivacySchedule;
+window.loadStoredAuditLogs = loadStoredAuditLogs;
+window.logLocationQuery = logLocationQuery;
+window.logLocationView = logLocationView;
+window.renderAuditLogs = renderAuditLogs;
 

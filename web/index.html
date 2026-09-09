@@ -447,98 +447,7 @@
         </div>
       </section>
 
-      <!-- TAB 4: CÁMARAS DE SEGURIDAD (HASTA 6 CÁMARAS IP/QR MULTI-RED) -->
-      <section id="tab-cameras" class="tab-pane">
-        <div class="pane-scrollable">
-          <div class="section-banner cams-banner">
-            <div class="banner-icon"><i class="fa-solid fa-video"></i></div>
-            <div>
-              <h2>Cámaras de Seguridad</h2>
-              <p>Monitoreo en vivo dentro y fuera de casa (4G/5G). Máximo 6 cámaras.</p>
-            </div>
-          </div>
 
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
-            <span id="cameraCountLabel" style="font-size: 12px; font-weight: 700; color: var(--accent-cyan); background: rgba(6, 182, 212, 0.12); padding: 6px 14px; border-radius: 12px; border: 1px solid rgba(6, 182, 212, 0.3); display: flex; align-items: center; gap: 6px;">
-              <i class="fa-solid fa-video"></i> <span id="camCountText">0 / 6 Cámaras Conectadas</span>
-            </span>
-
-            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-              <button id="btnDetectCamIpBtn" class="btn-sm" style="background: rgba(168, 85, 247, 0.25); color: #E9D5FF; border: 1px solid rgba(168, 85, 247, 0.5); padding: 8px 12px; border-radius: 10px; font-weight: 700; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 6px;" onclick="openDetectCameraModal()">
-                <i class="fa-solid fa-network-wired"></i> <span>Detectar Cámara por IP</span>
-              </button>
-
-              <button id="btnAddCamBtn" class="btn-sm" style="background: linear-gradient(135deg, #0284C7, #06B6D4); color: #fff; padding: 8px 14px; border-radius: 10px; font-weight: 700; font-size: 12px; border: none; cursor: pointer; display: flex; align-items: center; gap: 6px;" onclick="openAddCameraModal()">
-                <i class="fa-solid fa-plus"></i> Vincular Cámara (QR/IP)
-              </button>
-            </div>
-          </div>
-
-          <!-- BANNER OFICIAL ESTILO YOOSEE APP & CREDITOS -->
-          <div class="glass-card" style="padding: 12px 16px; margin-bottom: 12px; border: 1px solid rgba(56, 189, 248, 0.4); background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95)); border-radius: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 8px;">
-              <div style="display: flex; align-items: center; gap: 10px;">
-                <div style="width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(135deg, #0284C7, #06B6D4); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 20px; box-shadow: 0 0 14px rgba(6, 182, 212, 0.4);">
-                  <i class="fa-solid fa-camera-rotate"></i>
-                </div>
-                <div>
-                  <h3 style="font-size: 14px; font-weight: 800; color: #38BDF8; margin: 0; display: flex; align-items: center; gap: 6px;">
-                    📱 Interfaz & Monitoreo Estilo Yoosee App
-                  </h3>
-                  <p style="font-size: 11px; color: #CBD5E1; margin: 2px 0 0;">
-                    Escanea el código QR original brindado por <strong>Yoosee App</strong> o tus cámaras IP P2P / RTSP.
-                  </p>
-                </div>
-              </div>
-              <div style="display: flex; gap: 6px; align-items: center;">
-                <span style="font-size: 10px; background: rgba(56, 189, 248, 0.15); color: #38BDF8; border: 1px solid rgba(56, 189, 248, 0.35); padding: 4px 10px; border-radius: 8px; font-weight: 700;">
-                  © Compatible con Yoosee App
-                </span>
-              </div>
-            </div>
-
-            <div style="display: flex; gap: 8px; margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
-              <div style="display: flex; gap: 6px;">
-                <button class="btn-sm active" id="btnGridQuadView" onclick="setCameraLayoutMode('quad')" style="background: rgba(56, 189, 248, 0.2); color: #38BDF8; border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 8px; padding: 4px 10px; font-size: 11px; font-weight: 700; cursor: pointer;">
-                  <i class="fa-solid fa-table-cells-large"></i> Vista Yoosee (2x2)
-                </button>
-                <button class="btn-sm" id="btnGridSingleView" onclick="setCameraLayoutMode('single')" style="background: rgba(255,255,255,0.08); color: #94A3B8; border: 1px solid var(--border-glass); border-radius: 8px; padding: 4px 10px; font-size: 11px; font-weight: 700; cursor: pointer;">
-                  <i class="fa-solid fa-square"></i> 1x1 Gran Angular
-                </button>
-              </div>
-
-              <button class="btn-sm" onclick="openYooseeQrScannerModal()" style="background: linear-gradient(135deg, #10B981, #059669); color: #fff; border: none; padding: 6px 14px; border-radius: 8px; font-size: 11px; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 6px;">
-                <i class="fa-solid fa-qrcode"></i> Escanear QR Yoosee
-              </button>
-            </div>
-          </div>
-
-          <div id="camerasGrid" class="cameras-grid">
-            <!-- Renderizado dinámico por app.js -->
-          </div>
-
-          <!-- APARTADO ESPECIAL: WEBCAM DE FAMILIAR EN TIEMPO REAL / ASISTENCIA -->
-          <div class="glass-card" style="padding: 16px; margin-top: 20px; border: 1px solid rgba(16, 185, 129, 0.4); background: linear-gradient(135deg, rgba(6, 78, 59, 0.35), rgba(15, 23, 42, 0.9)); border-radius: 16px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px;">
-              <div>
-                <h3 style="font-size: 15px; font-weight: 800; color: #10B981; margin: 0; display: flex; align-items: center; gap: 8px;">
-                  <i class="fa-solid fa-video"></i> 📹 Webcam de Familiar en Tiempo Real (Asistencia & Seguimiento)
-                </h3>
-                <p style="font-size: 11px; color: #CBD5E1; margin: 4px 0 0;">
-                  Elige a cualquier miembro registrado de la familia y solicítale permiso en tiempo real para encender su webcam/cámara móvil y asistirlo en directo.
-                </p>
-              </div>
-              <button class="btn-sm" style="background: rgba(16, 185, 129, 0.25); color: #6EE7B7; border: 1px solid rgba(16, 185, 129, 0.5); border-radius: 10px; padding: 6px 14px; font-weight: 800; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 6px;" onclick="renderFamilyWebcamCards()">
-                <i class="fa-solid fa-rotate"></i> Actualizar Integrantes
-              </button>
-            </div>
-
-            <div id="familyWebcamListGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px;">
-              <!-- Se renderiza dinámicamente con app.js -->
-            </div>
-          </div>
-        </div>
-      </section>
 
       <!-- TAB 5: BOTÓN SOS / PÁNICO -->
       <section id="tab-sos" class="tab-pane">
@@ -723,6 +632,9 @@
             </button>
             <button class="btn-subtab-pill" id="btnSubtabEdgeAi" onclick="switchProtectionSubTab('edgeai')">
               <i class="fa-solid fa-brain"></i> <span>3. Edge AI</span>
+            </button>
+            <button class="btn-subtab-pill" id="btnSubtabCameras" onclick="switchProtectionSubTab('cameras')">
+              <i class="fa-solid fa-video"></i> <span>4. Cámaras</span>
             </button>
           </div>
 
@@ -1017,12 +929,80 @@
             </div>
           </div>
 
+          <!-- SUB-PANEL 4: CÁMARAS DE SEGURIDAD (YOOSEE APP / IP / QR & WEBCAMS EN TIEMPO REAL) -->
+          <div id="subpane-cameras" class="protection-subpane hidden">
+            <!-- APARTADO 1: WEBCAM DE FAMILIAR EN TIEMPO REAL / ASISTENCIA -->
+            <div class="glass-card" style="padding: 16px; margin-bottom: 16px; border: 1px solid rgba(16, 185, 129, 0.4); background: linear-gradient(135deg, rgba(6, 78, 59, 0.35), rgba(15, 23, 42, 0.9)); border-radius: 16px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px;">
+                <div>
+                  <h3 style="font-size: 15px; font-weight: 800; color: #10B981; margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-video"></i> 📹 Webcam de Familiar en Tiempo Real (Asistencia & Seguimiento)
+                  </h3>
+                  <p style="font-size: 11px; color: #CBD5E1; margin: 4px 0 0;">
+                    Elige a cualquier miembro registrado de la familia y solicítale permiso en tiempo real para encender su webcam/cámara móvil y asistirlo en directo.
+                  </p>
+                </div>
+                <button class="btn-sm" style="background: rgba(16, 185, 129, 0.25); color: #6EE7B7; border: 1px solid rgba(16, 185, 129, 0.5); border-radius: 10px; padding: 6px 14px; font-weight: 800; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 6px;" onclick="renderFamilyWebcamCards()">
+                  <i class="fa-solid fa-rotate"></i> Actualizar Integrantes
+                </button>
+              </div>
+
+              <div id="familyWebcamListGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px;">
+                <!-- Se renderiza dinámicamente con app.js -->
+              </div>
+            </div>
+
+            <!-- APARTADO 2: CÁMARAS DE SEGURIDAD DE LA CASA (YOOSEE APP / IP / QR) -->
+            <div class="glass-card" style="padding: 16px; border: 1px solid rgba(56, 189, 248, 0.4); background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95)); border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
+                <div>
+                  <h3 style="font-size: 15px; font-weight: 800; color: #38BDF8; margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-camera-rotate"></i> Monitoreo de Cámaras IP & QR (Estilo Yoosee App)
+                  </h3>
+                  <p style="font-size: 11px; color: #CBD5E1; margin: 2px 0 0;">
+                    Vincular cámaras Yoosee App, RTSP o IP local/4G. Monitoreo en directo dentro y fuera de casa.
+                  </p>
+                </div>
+
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                  <button id="btnDetectCamIpBtn" class="btn-sm" style="background: rgba(168, 85, 247, 0.25); color: #E9D5FF; border: 1px solid rgba(168, 85, 247, 0.5); padding: 8px 12px; border-radius: 10px; font-weight: 700; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 6px;" onclick="openDetectCameraModal()">
+                    <i class="fa-solid fa-network-wired"></i> Detectar por IP
+                  </button>
+                  <button id="btnAddCamBtn" class="btn-sm" style="background: linear-gradient(135deg, #0284C7, #06B6D4); color: #fff; padding: 8px 14px; border-radius: 10px; font-weight: 700; font-size: 12px; border: none; cursor: pointer; display: flex; align-items: center; gap: 6px;" onclick="openAddCameraModal()">
+                    <i class="fa-solid fa-plus"></i> Vincular (QR/IP)
+                  </button>
+                </div>
+              </div>
+
+              <!-- BARRA DE CONTROLES DE GRILLA CÁMARAS Y QR YOOSEE -->
+              <div style="display: flex; gap: 8px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.08); align-items: center; justify-content: space-between; flex-wrap: wrap;">
+                <div style="display: flex; gap: 6px;">
+                  <button class="btn-sm active" id="btnGridQuadView" onclick="setCameraLayoutMode('quad')" style="background: rgba(56, 189, 248, 0.2); color: #38BDF8; border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 8px; padding: 6px 12px; font-size: 11px; font-weight: 700; cursor: pointer;">
+                    <i class="fa-solid fa-table-cells-large"></i> Vista Yoosee (2x2)
+                  </button>
+                  <button class="btn-sm" id="btnGridSingleView" onclick="setCameraLayoutMode('single')" style="background: rgba(255,255,255,0.08); color: #94A3B8; border: 1px solid var(--border-glass); border-radius: 8px; padding: 6px 12px; font-size: 11px; font-weight: 700; cursor: pointer;">
+                    <i class="fa-solid fa-square"></i> 1x1 Gran Angular
+                  </button>
+                </div>
+
+                <button class="btn-sm" onclick="openYooseeQrScannerModal()" style="background: linear-gradient(135deg, #10B981, #059669); color: #fff; border: none; padding: 6px 14px; border-radius: 8px; font-size: 11px; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                  <i class="fa-solid fa-qrcode"></i> Escanear QR Yoosee
+                </button>
+              </div>
+
+              <div id="camerasGrid" class="cameras-grid">
+                <!-- Renderizado dinámico por app.js -->
+              </div>
+            </div>
+          </div>
+
         </div>
       </section>
 
       <!-- STUBS LEGACY DE COMPATIBILIDAD -->
       <section id="tab-antifraud" class="tab-pane hidden"></section>
       <section id="tab-alone" class="tab-pane hidden"></section>
+      <section id="tab-cameras" class="tab-pane hidden"></section>
 
     </main>
 
