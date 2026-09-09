@@ -508,10 +508,10 @@ function switchTab(tabId) {
     'tab-edgeai': 1,
     'tab-antifraud': 1,
     'tab-alone': 1,
+    'tab-cameras': 1,
     'tab-sos': 2,
     'tab-pickup': 3,
-    'tab-cameras': 4,
-    'tab-family': 5
+    'tab-family': 4
   };
   const btnIndex = indexMap[tabId] !== undefined ? indexMap[tabId] : indexMap[actualTabId];
   if (btnIndex !== undefined && navButtons[btnIndex]) {

@@ -514,6 +514,40 @@
             </button>
           </div>
 
+          <!-- CENTRO DE OPERACIONES DE WHATSAPP Y ACCESOS RÁPIDOS -->
+          <div class="glass-card" style="padding: 14px; margin-bottom: 12px; border: 1.5px solid rgba(37, 211, 102, 0.4); background: linear-gradient(135deg, rgba(6, 78, 59, 0.4), rgba(15, 23, 42, 0.95)); border-radius: 16px; box-shadow: 0 4px 25px rgba(37, 211, 102, 0.15);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="width: 40px; height: 40px; border-radius: 12px; background: #25D366; color: #000; display: flex; align-items: center; justify-content: center; font-size: 22px; box-shadow: 0 0 16px rgba(37, 211, 102, 0.5);">
+                  <i class="fa-brands fa-whatsapp"></i>
+                </div>
+                <div>
+                  <h3 style="font-size: 14px; font-weight: 800; color: #fff; margin: 0;">Funciones & Accesos Rápidos de WhatsApp</h3>
+                  <p style="font-size: 11px; color: #A7F3D0; margin: 2px 0 0;">Envío de posición GPS, alertas SOS por WhatsApp y chat grupal.</p>
+                </div>
+              </div>
+              <span class="badge-tag" style="background: rgba(37, 211, 102, 0.25); color: #25D366; font-size: 10.5px; border: 1px solid rgba(37, 211, 102, 0.4);">Oficial</span>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-top: 10px;">
+              <button class="btn-sm" style="background: linear-gradient(135deg, #25D366, #16A34A); color: #fff; border: none; padding: 10px 8px; border-radius: 10px; font-weight: 800; font-size: 11.5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);" onclick="openWhatsAppShare()">
+                <i class="fa-brands fa-whatsapp"></i> Compartir Mi GPS
+              </button>
+
+              <button class="btn-sm" style="background: rgba(37, 211, 102, 0.2); color: #25D366; border: 1px solid rgba(37, 211, 102, 0.4); padding: 10px 8px; border-radius: 10px; font-weight: 800; font-size: 11.5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="sendGroupWhatsApp()">
+                <i class="fa-solid fa-users"></i> Mensaje al Grupo
+              </button>
+
+              <button class="btn-sm" style="background: rgba(239, 68, 68, 0.2); color: #FCA5A5; border: 1px solid rgba(239, 68, 68, 0.4); padding: 10px 8px; border-radius: 10px; font-weight: 800; font-size: 11.5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="broadcastFraudAlert()">
+                <i class="fa-solid fa-bell"></i> Alerta SOS WhatsApp
+              </button>
+
+              <button class="btn-sm" style="background: rgba(56, 189, 248, 0.18); color: #38BDF8; border: 1px solid rgba(56, 189, 248, 0.4); padding: 10px 8px; border-radius: 10px; font-weight: 800; font-size: 11.5px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="sendDrillCaseToWhatsApp()">
+                <i class="fa-solid fa-graduation-cap"></i> Prueba WhatsApp
+              </button>
+            </div>
+          </div>
+
 
 
           <!-- Tarjeta de Perfil del Usuario Activo -->
@@ -1026,10 +1060,6 @@
       <button class="nav-item" onclick="switchTab('tab-pickup')">
         <i class="fa-solid fa-comments"></i>
         <span>Chat / AI</span>
-      </button>
-      <button class="nav-item" onclick="switchTab('tab-cameras')">
-        <i class="fa-solid fa-video"></i>
-        <span>Cámaras</span>
       </button>
       <button class="nav-item" onclick="switchTab('tab-family')">
         <i class="fa-solid fa-users-gear"></i>
