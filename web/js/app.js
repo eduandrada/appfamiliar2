@@ -508,8 +508,8 @@ function switchTab(tabId) {
     'tab-edgeai': 1,
     'tab-antifraud': 1,
     'tab-alone': 1,
-    'tab-pickup': 2,
-    'tab-sos': 3,
+    'tab-sos': 2,
+    'tab-pickup': 3,
     'tab-cameras': 4,
     'tab-family': 5
   };
