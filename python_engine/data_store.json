@@ -21,7 +21,7 @@
       "can_view_cameras": true,
       "can_trigger_camera_alarm": true,
       "can_send_camera_voice": true,
-      "last_seen": "2026-09-08T20:40:06.048447",
+      "last_seen": "2026-09-09T14:32:19.676656",
       "device_type": "📱 Celular",
       "device_name": "Navegador Web",
       "wifi_ssid": "WiFi Casa Andrada",
@@ -29,10 +29,10 @@
       "active_session_token": "token_carlos_andrada_1788909034314",
       "last_ip": "127.0.0.1",
       "is_charging": true,
-      "is_background": false,
+      "is_background": true,
       "is_ghost_mode": false,
       "last_login_at": "2026-09-07T19:47:12.793Z",
-      "last_active_at": "2026-09-08T20:40:06.048447",
+      "last_active_at": "2026-09-09T14:32:17.440580",
       "isOnline": true,
       "last_seen_iso": "2026-09-08T20:36:00.820191"
     }

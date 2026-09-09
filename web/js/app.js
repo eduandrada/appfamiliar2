@@ -411,61 +411,122 @@ function notifyInPhone(title, body) {
 }
 
 // ==================== NAVEGACIÓN ENTRE PESTAÑAS ====================
+function switchProtectionSubTab(subTabId) {
+  const subPanes = ['antifraud', 'alone', 'edgeai'];
+  subPanes.forEach(id => {
+    const pane = document.getElementById(`subpane-${id}`);
+    const btn = document.getElementById(`btnSubtab${id.charAt(0).toUpperCase() + id.slice(1)}`);
+    if (pane) {
+      if (id === subTabId) {
+        pane.classList.remove('hidden');
+      } else {
+        pane.classList.add('hidden');
+      }
+    }
+    if (btn) {
+      if (id === subTabId) {
+        btn.classList.add('active');
+        btn.style.background = 'linear-gradient(135deg, #0284C7, #0369A1)';
+        btn.style.color = '#ffffff';
+        btn.style.borderColor = '#38BDF8';
+        btn.style.boxShadow = '0 0 12px rgba(56, 189, 248, 0.4)';
+      } else {
+        btn.classList.remove('active');
+        btn.style.background = 'rgba(255,255,255,0.06)';
+        btn.style.color = 'var(--text-secondary)';
+        btn.style.borderColor = 'var(--border-glass)';
+        btn.style.boxShadow = 'none';
+      }
+    }
+  });
+
+  if (subTabId === 'antifraud') {
+    if (typeof populateFraudDropdown === 'function') populateFraudDropdown();
+    if (typeof updateFraudCheckDisplay === 'function') updateFraudCheckDisplay();
+  } else if (subTabId === 'edgeai') {
+    if (typeof scanBleMeshDevices === 'function') scanBleMeshDevices();
+    if (typeof drawVoiceSpectrumSample === 'function') drawVoiceSpectrumSample();
+  }
+}
+window.switchProtectionSubTab = switchProtectionSubTab;
+
 function switchTab(tabId) {
+  let actualTabId = tabId;
+  let targetSubTab = null;
+
+  if (tabId === 'tab-antifraud') {
+    actualTabId = 'tab-edgeai';
+    targetSubTab = 'antifraud';
+  } else if (tabId === 'tab-alone') {
+    actualTabId = 'tab-edgeai';
+    targetSubTab = 'alone';
+  } else if (tabId === 'tab-edgeai') {
+    actualTabId = 'tab-edgeai';
+  }
+
   // Desactivar todas las pestañas
   document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.bottom-nav-bar .nav-item').forEach(el => el.classList.remove('active'));
 
   // Activar la seleccionada
-  const targetPane = document.getElementById(tabId);
+  const targetPane = document.getElementById(actualTabId);
   if (targetPane) {
     targetPane.classList.add('active');
   }
 
-  // Marcar botón activo en barra inferior
+  if (actualTabId === 'tab-edgeai') {
+    if (targetSubTab) {
+      switchProtectionSubTab(targetSubTab);
+    } else {
+      const antifraudPane = document.getElementById('subpane-antifraud');
+      const alonePane = document.getElementById('subpane-alone');
+      const edgeaiPane = document.getElementById('subpane-edgeai');
+      if (antifraudPane && !antifraudPane.classList.contains('hidden')) {
+        switchProtectionSubTab('antifraud');
+      } else if (alonePane && !alonePane.classList.contains('hidden')) {
+        switchProtectionSubTab('alone');
+      } else if (edgeaiPane && !edgeaiPane.classList.contains('hidden')) {
+        switchProtectionSubTab('edgeai');
+      } else {
+        switchProtectionSubTab('antifraud');
+      }
+    }
+  }
+
+  // Marcar botón activo en barra inferior (6 items: tab-map:0, tab-edgeai:1, tab-pickup:2, tab-sos:3, tab-cameras:4, tab-family:5)
   const navButtons = document.querySelectorAll('.bottom-nav-bar .nav-item');
   const indexMap = {
     'tab-map': 0,
+    'tab-edgeai': 1,
     'tab-antifraud': 1,
-    'tab-alone': 2,
-    'tab-pickup': 3,
-    'tab-sos': 4,
-    'tab-cameras': 5,
-    'tab-edgeai': 6,
-    'tab-family': 8
+    'tab-alone': 1,
+    'tab-pickup': 2,
+    'tab-sos': 3,
+    'tab-cameras': 4,
+    'tab-family': 5
   };
-  const btnIndex = indexMap[tabId];
+  const btnIndex = indexMap[tabId] !== undefined ? indexMap[tabId] : indexMap[actualTabId];
   if (btnIndex !== undefined && navButtons[btnIndex]) {
     navButtons[btnIndex].classList.add('active');
   }
 
   // Si entra al mapa, reajustar tamaño de Leaflet
-  if (tabId === 'tab-map' && map) {
+  if (actualTabId === 'tab-map' && map) {
     setTimeout(() => {
       map.invalidateSize();
     }, 200);
   }
 
-  if (tabId === 'tab-cameras') {
+  if (actualTabId === 'tab-cameras') {
     if (typeof renderFamilyWebcamCards === 'function') {
       setTimeout(() => renderFamilyWebcamCards(), 100);
     }
-  }
-
-  if (tabId === 'tab-antifraud') {
-    populateFraudDropdown();
-    updateFraudCheckDisplay();
-  }
-
-  if (tabId === 'tab-edgeai') {
-    scanBleMeshDevices();
-    drawVoiceSpectrumSample();
-  }
-
-  if (tabId === 'tab-cameras') {
-    renderCamerasGrid();
+    if (typeof renderCamerasGrid === 'function') {
+      renderCamerasGrid();
+    }
   }
 }
+window.switchTab = switchTab;
 
 // ==================== UNIFIED HIGH-PRECISION MAP ENGINE (LEAFLET + FOLIUM) ====================
 let currentMapEngine = 'unified';
@@ -4734,12 +4795,25 @@ function startSafeWalkTimer() {
   
   safeWalkSecondsRemaining = selectedSafeWalkMinutes * 60;
   
-  document.getElementById('safeWalkSetupForm').classList.add('hidden');
-  document.getElementById('safeWalkActivePanel').classList.remove('hidden');
-  document.getElementById('safeWalkStatusBadge').textContent = 'Supervisando';
-  document.getElementById('safeWalkStatusBadge').style.background = 'rgba(16, 185, 129, 0.2)';
-  document.getElementById('safeWalkStatusBadge').style.color = '#10B981';
-  document.getElementById('safeWalkDestinationLabel').textContent = `Destino: ${destination}`;
+  const setupForm = document.getElementById('safeWalkSetupForm');
+  const activePanel = document.getElementById('safeWalkActivePanel');
+  const statusBadge = document.getElementById('safeWalkStatusBadge');
+  const destLabel = document.getElementById('safeWalkDestinationLabel');
+
+  if (setupForm) setupForm.classList.add('hidden');
+  if (activePanel) activePanel.classList.remove('hidden');
+  if (statusBadge) {
+    statusBadge.textContent = 'Supervisando';
+    statusBadge.style.background = 'rgba(16, 185, 129, 0.2)';
+    statusBadge.style.color = '#10B981';
+  }
+  if (destLabel) destLabel.textContent = `Destino: ${destination}`;
+
+  // Mostrar el banner desplegable sobre el mapa en vivo
+  const mapOverlay = document.getElementById('mapSafeWalkOverlay');
+  const mapDestText = document.getElementById('mapSafeWalkDestText');
+  if (mapOverlay) mapOverlay.classList.remove('hidden');
+  if (mapDestText) mapDestText.textContent = `Destino: ${destination}`;
   
   updateSafeWalkDisplay();
   
@@ -4776,14 +4850,12 @@ function startSafeWalkTimer() {
   }
 
   if (map) {
-    map.flyTo([lat, lng], 17, { animate: true, duration: 1 });
-
     if (window.safeWalkPolyline) map.removeLayer(window.safeWalkPolyline);
     if (window.safeWalkDestCircle) map.removeLayer(window.safeWalkDestCircle);
 
     window.safeWalkPolyline = L.polyline([[lat, lng], [destLat, destLng]], {
       color: '#38BDF8',
-      weight: 4,
+      weight: 5,
       dashArray: '8, 12',
       opacity: 0.9
     }).addTo(map);
@@ -4791,10 +4863,14 @@ function startSafeWalkTimer() {
     window.safeWalkDestCircle = L.circle([destLat, destLng], {
       color: '#10B981',
       fillColor: '#10B981',
-      fillOpacity: 0.3,
-      radius: 40,
-      weight: 2
+      fillOpacity: 0.35,
+      radius: 45,
+      weight: 3
     }).addTo(map).bindPopup(`<strong>🏁 Destino Acompáñame:</strong> ${destination}`);
+
+    // Centrar mapa abarcando origen y destino
+    const bounds = L.latLngBounds([[lat, lng], [destLat, destLng]]);
+    map.fitBounds(bounds, { padding: [50, 50], maxZoom: 17 });
   }
 
   const mapStatusText = document.getElementById('mapStatusText');
@@ -4802,16 +4878,24 @@ function startSafeWalkTimer() {
     mapStatusText.innerHTML = `<strong style="color: #38BDF8;"><i class="fa-solid fa-person-walking"></i> Siguiendo Acompáñame: ${user.name.split(' ')[0]} (${selectedSafeWalkMinutes}m)</strong>`;
   }
 
+  // 3. Cambiar automáticamente a la pantalla del Mapa en tiempo real
+  if (typeof switchTab === 'function') {
+    switchTab('tab-map');
+  }
+
   notifyInPhone('🛡️ Acompáñame Iniciado', `Supervisando trayecto a: ${destination} (${selectedSafeWalkMinutes} min)`);
 }
 
 function updateSafeWalkDisplay() {
   const display = document.getElementById('safeWalkTimerDisplay');
-  if (!display) return;
+  const mapTimerDisplay = document.getElementById('mapSafeWalkTimer');
   
   const mins = Math.floor(Math.max(0, safeWalkSecondsRemaining) / 60);
   const secs = Math.max(0, safeWalkSecondsRemaining) % 60;
-  display.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  const timeStr = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+
+  if (display) display.textContent = timeStr;
+  if (mapTimerDisplay) mapTimerDisplay.textContent = timeStr;
 }
 
 function cancelSafeWalk() {
@@ -4821,11 +4905,19 @@ function cancelSafeWalk() {
 }
 
 function resetSafeWalkUI() {
-  document.getElementById('safeWalkSetupForm').classList.remove('hidden');
-  document.getElementById('safeWalkActivePanel').classList.add('hidden');
-  document.getElementById('safeWalkStatusBadge').textContent = 'Inactivo';
-  document.getElementById('safeWalkStatusBadge').style.background = 'rgba(56, 189, 248, 0.15)';
-  document.getElementById('safeWalkStatusBadge').style.color = 'var(--accent-cyan)';
+  const setupForm = document.getElementById('safeWalkSetupForm');
+  const activePanel = document.getElementById('safeWalkActivePanel');
+  const statusBadge = document.getElementById('safeWalkStatusBadge');
+  const mapOverlay = document.getElementById('mapSafeWalkOverlay');
+
+  if (setupForm) setupForm.classList.remove('hidden');
+  if (activePanel) activePanel.classList.add('hidden');
+  if (statusBadge) {
+    statusBadge.textContent = 'Inactivo';
+    statusBadge.style.background = 'rgba(56, 189, 248, 0.15)';
+    statusBadge.style.color = 'var(--accent-cyan)';
+  }
+  if (mapOverlay) mapOverlay.classList.add('hidden');
   
   window.activeSafeWalkTrackingMemberId = null;
   if (map) {
