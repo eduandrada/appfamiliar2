@@ -389,23 +389,25 @@ async def websocket_location_endpoint(websocket: WebSocket, member_id: str):
                 continue
 
             elif msg_type in ["ALERT_BROADCAST", "SEGUIMIENTO_UPDATE"]:
-                has_alert = data.get("has_alert", False)
-                needs_tracking = data.get("needs_tracking", False)
-                alert_msg = data.get("alert_msg") or data.get("msg") or "Alerta de Seguimiento Activa"
+                target_id = data.get("target_member_id") or data.get("member_id") or member_id
+                has_alert = data.get("has_alert", True)
+                needs_tracking = data.get("needs_tracking", True)
+                alert_msg = data.get("alert_msg") or data.get("msg") or "Alerta de Seguimiento Activa en Tiempo Real"
                 members = DATA_STORE.get("members", [])
                 for m in members:
-                    if m["id"] == member_id:
+                    if m["id"] == target_id:
                         m["has_alert"] = has_alert
                         m["needs_tracking"] = needs_tracking
                         m["alert_msg"] = alert_msg
-                        if "lat" in data and "lng" in data:
+                        if "lat" in data and data["lat"] is not None and "lng" in data and data["lng"] is not None:
                             m["lat"] = data["lat"]
                             m["lng"] = data["lng"]
                         break
                 save_data_store(DATA_STORE)
                 await location_manager.broadcast_location(member_id, {
                     "type": msg_type,
-                    "member_id": member_id,
+                    "member_id": target_id,
+                    "target_member_id": target_id,
                     "has_alert": has_alert,
                     "needs_tracking": needs_tracking,
                     "alert_msg": alert_msg,

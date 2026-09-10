@@ -38,6 +38,15 @@ import UIKit
         isTrackingActive = false
     }
 
+    private func obtenerPorcentajeBateria() -> Int {
+        UIDevice.current.isBatteryMonitoringEnabled = true
+        let nivel = UIDevice.current.batteryLevel
+        if nivel >= 0.0 {
+            return Int(nivel * 100.0)
+        }
+        return 100 // Default 100% si no está disponible o en simulador
+    }
+
     private func configurarMonitoreoBateria() {
         UIDevice.current.isBatteryMonitoringEnabled = true
         NotificationCenter.default.addObserver(
@@ -49,13 +58,11 @@ import UIKit
     }
 
     @objc private func bateriaNivelCambio() {
-        let nivel = UIDevice.current.batteryLevel // -1.0 si no disponible, 0.0 a 1.0
-        let porcentaje = Int(nivel * 100)
+        let porcentaje = obtenerPorcentajeBateria()
+        print("[iOS BatteryMonitor] Nivel de batería real: \(porcentaje)%")
 
-        print("[iOS BatteryMonitor] Nivel de batería: \(porcentaje)%")
-
-        if porcentaje <= 3 && porcentaje > 0 {
-            print("🚨 [iOS BatteryMonitor] Batería crítica detectada (<= 3%). Despachando paquete de supervivencia.")
+        if porcentaje <= 5 && porcentaje > 0 {
+            print("🚨 [iOS BatteryMonitor] Batería crítica detectada (<= 5%). Despachando paquete de supervivencia.")
             despacharUltimaUbicacion(esApagado: false, bateria: porcentaje)
         }
     }
@@ -66,7 +73,7 @@ import UIKit
         let lat = location.coordinate.latitude
         let lng = location.coordinate.longitude
         let speedKmh = max(0, location.speed * 3.6)
-        let batteryPct = Int(UIDevice.current.batteryLevel * 100)
+        let batteryPct = obtenerPorcentajeBateria()
 
         enviarPingHttp(lat: lat, lng: lng, speedKmh: speedKmh, batteryPct: batteryPct, esCritico: false)
     }
@@ -96,20 +103,24 @@ import UIKit
     }
 
     private func enviarPingHttp(lat: Double, lng: Double, speedKmh: Double, batteryPct: Int, esCritico: Bool) {
-        guard let url = URL(string: telemetryEndpoint) else { return }
+        let endpoint = UserDefaults.standard.string(forKey: "telemetry_endpoint") ?? telemetryEndpoint
+        guard let url = URL(string: endpoint) else { return }
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
+        let finalBattery = max(1, min(100, batteryPct))
+
         let payload: [String: Any] = [
-            "userId": UserDefaults.standard.string(forKey: "user_id") ?? "00000000-0000-0000-0000-000000000001",
+            "userId": UserDefaults.standard.string(forKey: "user_id") ?? "carlos_andrada",
             "latitude": lat,
             "longitude": lng,
             "speedKmh": speedKmh,
-            "batteryLevel": batteryPct > 0 ? batteryPct : 3,
+            "batteryLevel": finalBattery,
+            "battery": finalBattery,
             "isShutdownEvent": esCritico,
-            "networkType": "4G",
+            "networkType": "4G/WiFi",
             "timestamp": Int(Date().timeIntervalSince1970 * 1000)
         ]
 

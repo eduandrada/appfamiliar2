@@ -25,6 +25,15 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 
+	<!-- Configuración de Red para Servidor Local y Cámaras en iPhone -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+		<key>NSAllowsArbitraryLoadsInWebContent</key>
+		<true/>
+	</dict>
+
 	<!-- Permisos de Ubicación Continua -->
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>La aplicación requiere acceso permanente a la ubicación en segundo plano para proteger a tu familia y despachar auxilio en caso de caídas, batería crítica o botón de pánico.</string>

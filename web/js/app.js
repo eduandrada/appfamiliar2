@@ -630,6 +630,15 @@ function formatDistance(lat1, lon1, lat2, lon2) {
   return `a ${km.toFixed(1)} km`;
 }
 
+function getBatteryHealthInfo(batteryVal) {
+  let num = Math.max(0, Math.min(100, Math.round(Number(batteryVal) || 100)));
+  if (num >= 80) return { text: `${num}% (Óptima ⚡)`, color: '#10B981', bg: 'rgba(16, 185, 129, 0.15)', icon: 'fa-battery-full', isLow: false };
+  if (num >= 50) return { text: `${num}% (Buena 👍)`, color: '#06B6D4', bg: 'rgba(6, 182, 212, 0.15)', icon: 'fa-battery-three-quarters', isLow: false };
+  if (num >= 20) return { text: `${num}% (Moderada ⚠️)`, color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.15)', icon: 'fa-battery-half', isLow: false };
+  return { text: `${num}% (CRÍTICA 🚨)`, color: '#EF4444', bg: 'rgba(239, 68, 68, 0.2)', icon: 'fa-battery-quarter', isLow: true };
+}
+window.getBatteryHealthInfo = getBatteryHealthInfo;
+
 // ==================== IA DE MOVIMIENTO Y GESTIÓN DE ALERTAS EN TIEMPO REAL EN MAPA ====================
 window.activeMapAlerts = window.activeMapAlerts || {};
 
@@ -686,6 +695,21 @@ function triggerRealtimeAlertOnMap(memberId, alertType, alertMessage) {
   };
 
   member.hasActiveAlert = true;
+  member.has_alert = true;
+
+  if (typeof locationWebSocket !== 'undefined' && locationWebSocket && locationWebSocket.readyState === WebSocket.OPEN) {
+    locationWebSocket.send(JSON.stringify({
+      type: 'ALERT_BROADCAST',
+      target_member_id: member.id,
+      member_id: member.id,
+      has_alert: true,
+      needs_tracking: true,
+      alert_msg: `${alertType}: ${alertMessage || 'Alerta activada'}`,
+      lat: member.lat,
+      lng: member.lng
+    }));
+  }
+
   updateMapMarkers();
 
   if (map) {
@@ -721,6 +745,8 @@ function updateMapMarkers() {
     const activeAlertData = (window.activeMapAlerts && window.activeMapAlerts[m.id]);
     const hasAlert = aiMotion.isAlert || m.has_alert || m.needs_tracking || Boolean(activeAlertData);
     const alertMsg = (activeAlertData && activeAlertData.msg) || m.alert_msg || (m.needs_tracking ? '⚠️ Necesita Seguimiento Especial' : '🚨 Alerta Activa');
+
+    const batInfo = getBatteryHealthInfo(m.battery);
 
     const iconHtml = m.photo ? `
       <img src="${m.photo}" alt="${m.name}" style="width:38px; height:38px; border-radius:50%; object-fit:cover; border:2px solid ${hasAlert ? '#EF4444' : isSelected ? '#38BDF8' : '#fff'}; box-shadow:0 0 16px ${hasAlert ? 'rgba(239, 68, 68, 1)' : isSelected ? 'rgba(56, 189, 248, 0.9)' : 'rgba(0,0,0,0.6)'};">
@@ -758,7 +784,10 @@ function updateMapMarkers() {
       <div style="min-width: 210px; font-family: sans-serif; color: #000; padding: 4px;">
         <div style="font-weight: 800; font-size: 14px; color: #0F172A; margin-bottom: 2px;">${m.name}</div>
         <div style="font-size: 11px; color: #475569; font-weight: 600;">${m.role} • ${distText}</div>
-        <div style="font-size: 11px; color: #0284C7; font-weight: 700; margin-top: 4px;">🔋 Batería Real: ${m.battery}% • ${m.zone || 'En vivo'}</div>
+        <div style="font-size: 11px; color: ${batInfo.color}; font-weight: 700; margin-top: 4px; background: ${batInfo.bg}; padding: 3px 6px; border-radius: 6px; display: inline-block;">
+          <i class="fa-solid ${batInfo.icon}"></i> Salud Batería: <strong>${batInfo.text}</strong>
+        </div>
+        <div style="font-size: 11px; color: #64748B; margin-top: 3px;">📍 Zona: ${m.zone || 'Catamarca (En vivo)'}</div>
         <div class="ai-motion-badge" style="${aiMotion.badgeStyle}">
           <i class="fa-solid ${aiMotion.icon}"></i> ${aiMotion.label}
         </div>
@@ -787,12 +816,66 @@ function updateMapMarkers() {
     }
   });
 
-  // --- Limpiar marcadores de cámaras del mapa (las cámaras se gestionan exclusivamente en la pestaña Cámaras) ---
-  if (window.cameraMarkers) {
-    Object.keys(window.cameraMarkers).forEach(id => {
-      if (window.cameraMarkers[id] && map) map.removeLayer(window.cameraMarkers[id]);
-    });
-    window.cameraMarkers = {};
+  // --- Renderizar Marcadores de Cámaras IP / Yoosee en Tiempo Real en el Mapa ---
+  window.cameraMarkers = window.cameraMarkers || {};
+  if (window.showCamerasOnMap !== false) {
+    const renderCamsOnMap = (cameras) => {
+      cameras.forEach(cam => {
+        const cLat = cam.lat || cam.latitude || -28.4696;
+        const cLng = cam.lng || cam.longitude || -65.7852;
+        const camIconHtml = `
+          <div class="custom-cam-pin" style="background: linear-gradient(135deg, #0284C7, #06B6D4); border: 2px solid #fff; border-radius: 50%; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 14px; box-shadow: 0 0 12px rgba(6, 182, 212, 0.9); cursor: pointer;" title="📹 ${cam.name}">
+            <i class="fa-solid fa-video"></i>
+          </div>
+        `;
+        const camIcon = L.divIcon({
+          html: camIconHtml,
+          className: 'custom-cam-marker-pin',
+          iconSize: [34, 34],
+          iconAnchor: [17, 17]
+        });
+
+        const camPopupHtml = `
+          <div style="min-width: 220px; font-family: sans-serif; padding: 4px; color: #0F172A;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+              <h4 style="margin: 0; font-size: 13px; font-weight: 800; color: #0284C7;">📹 ${cam.name}</h4>
+              <span style="font-size: 9px; font-weight: 800; background: rgba(16, 185, 129, 0.15); color: #10B981; padding: 2px 6px; border-radius: 4px;">● EN VIVO</span>
+            </div>
+            <div style="font-size: 10px; color: #475569; margin-bottom: 6px;">📍 ${cam.location || 'Propiedad Familiar'} • IP: ${cam.ip_address || '192.168.1.100'}</div>
+            <div style="width: 100%; height: 110px; border-radius: 8px; overflow: hidden; background: #000; margin-bottom: 8px; position: relative; cursor: pointer;" onclick="openLiveCameraModal('${cam.id}')">
+              <img src="/api/cameras/${cam.id}/feed" style="width:100%; height:100%; object-fit:cover;" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'300\' height=\'150\' viewBox=\'0 0 300 150\'><rect width=\'300\' height=\'150\' fill=\'%230F172A\'/><text x=\'150\' y=\'80\' fill=\'%2338BDF8\' font-size=\'14\' font-family=\'monospace\' text-anchor=\'middle\'>📹 ${cam.name.replace(/'/g, "")}</text></svg>';">
+              <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.25);">
+                <i class="fa-solid fa-play" style="color: #fff; font-size: 24px;"></i>
+              </div>
+            </div>
+            <div style="display: flex; gap: 4px;">
+              <button style="flex:1; background: #0284C7; color:#fff; border:none; padding:6px; border-radius:6px; font-size:10px; font-weight:800; cursor:pointer;" onclick="openLiveCameraModal('${cam.id}')">▶ Ver en Vivo</button>
+              <button style="flex:1; background: #EF4444; color:#fff; border:none; padding:6px; border-radius:6px; font-size:10px; font-weight:800; cursor:pointer;" onclick="triggerCameraAlarm('${cam.id}')">🚨 Sirena</button>
+            </div>
+          </div>
+        `;
+
+        if (window.cameraMarkers[cam.id]) {
+          window.cameraMarkers[cam.id].setLatLng([cLat, cLng]);
+          window.cameraMarkers[cam.id].setPopupContent(camPopupHtml);
+        } else {
+          const marker = L.marker([cLat, cLng], { icon: camIcon }).addTo(map);
+          marker.bindPopup(camPopupHtml);
+          window.cameraMarkers[cam.id] = marker;
+        }
+      });
+    };
+
+    if (window.systemCamerasCache && window.systemCamerasCache.length > 0) {
+      renderCamsOnMap(window.systemCamerasCache);
+    } else {
+      fetch('/api/cameras').then(r => r.json()).then(data => {
+        if (data && data.cameras) {
+          window.systemCamerasCache = data.cameras;
+          renderCamsOnMap(data.cameras);
+        }
+      }).catch(() => {});
+    }
   }
 
   // Dibujar red inteligente de conexión (Mesh Links) entre familiares en el mapa
@@ -7279,10 +7362,29 @@ let currentIncomingWebcamReq = null;
 function enableDirectMemberTracking(memberId) {
   window.activeSafeWalkTrackingMemberId = memberId;
   const m = familyMembers.find(item => item.id === memberId);
-  if (m && map) {
-    map.flyTo([m.lat, m.lng], 16, { animate: true, duration: 1.5 });
+  if (m) {
+    m.needs_tracking = true;
+    m.has_alert = true;
+    if (map && m.lat && m.lng) {
+      map.flyTo([m.lat, m.lng], 16, { animate: true, duration: 1.5 });
+    }
   }
-  notifyInPhone('🎯 Seguimiento Activado', `Siguiendo la posición de ${m ? m.name : 'familiar'} en el mapa.`);
+  
+  if (typeof locationWebSocket !== 'undefined' && locationWebSocket && locationWebSocket.readyState === WebSocket.OPEN) {
+    locationWebSocket.send(JSON.stringify({
+      type: 'SEGUIMIENTO_UPDATE',
+      target_member_id: memberId,
+      member_id: memberId,
+      needs_tracking: true,
+      has_alert: true,
+      alert_msg: '🎯 Seguimiento en Tiempo Real Activo',
+      lat: m ? m.lat : null,
+      lng: m ? m.lng : null
+    }));
+  }
+  
+  if (typeof updateMapMarkers === 'function') updateMapMarkers();
+  notifyInPhone('🎯 Seguimiento Activado', `Siguiendo la posición de ${m ? m.name : 'familiar'} en el mapa en tiempo real.`);
 }
 
 function renderFamilyWebcamCards() {
