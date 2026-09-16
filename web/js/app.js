@@ -5636,7 +5636,7 @@ function initLocationWebSocket() {
       if (wsReconnectTimer) clearTimeout(wsReconnectTimer);
       const statusEl = document.getElementById('mapStatusText');
       if (statusEl) {
-        statusEl.innerHTML = `🟢 WebSocket Activo • Transmisión Directa`;
+        statusEl.textContent = 'WebSocket Activo • Transmisión Directa';
       }
     };
 
