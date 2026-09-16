@@ -53,11 +53,15 @@ const DEFAULT_MEMBERS = [
 ];
 
 // Zonas Seguras en San Fernando del Valle de Catamarca
-const SAFE_ZONES = [
-  { name: 'Casa Andrada (Centro Catamarca)', lat: -28.469570, lng: -65.785240, radius: 250, color: '#10B981' },
-  { name: 'Colegio Quintana (Catamarca)', lat: -28.463200, lng: -65.781100, radius: 200, color: '#38BDF8' },
-  { name: 'UNCA Universidad (Catamarca)', lat: -28.459400, lng: -65.789100, radius: 300, color: '#8B5CF6' }
+const DEFAULT_SAFE_ZONES = [
+  { id: 'sz_casa_andrada', name: 'Casa Andrada (Hogar Central)', type: 'casa', member_id: 'all', member_name: 'Familia Andrada (Todos)', lat: -28.469570, lng: -65.785240, radius: 250, color: '#10B981', icon: 'fa-house-user', address: 'Valle Chico Av 27, Catamarca' },
+  { id: 'sz_colegio_quintana', name: 'Colegio Quintana (Escuela)', type: 'escuela', member_id: 'lucia_andrada', member_name: 'Lucía Andrada', lat: -28.463200, lng: -65.781100, radius: 200, color: '#38BDF8', icon: 'fa-graduation-cap', address: 'San Martín 650, Catamarca' },
+  { id: 'sz_unca_univ', name: 'UNCA Universidad (Estudios)', type: 'escuela', member_id: 'carlos_andrada', member_name: 'Carlos Andrada', lat: -28.459400, lng: -65.789100, radius: 300, color: '#8B5CF6', icon: 'fa-school', address: 'Av. Belgrano 300, Catamarca' },
+  { id: 'sz_trabajo_eduardo', name: 'Oficina / Trabajo', type: 'trabajo', member_id: 'eduardo_andrada', member_name: 'Eduardo Andrada', lat: -28.466800, lng: -65.779000, radius: 250, color: '#F59E0B', icon: 'fa-briefcase', address: 'Chacabuco 400, Catamarca' }
 ];
+
+let familySafeZones = [];
+const SAFE_ZONES = DEFAULT_SAFE_ZONES;
 
 // Estado de la Aplicación
 let familyMembers = [];
@@ -79,6 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initCustomBg();
   initGhostModeState();
   loadStoredMembers();
+  loadStoredSafeZones();
   loadStoredSession();
   syncMembersFromBackend();
   updateSafeWordUI();
@@ -96,6 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initDrillMode();
   initGaitMotionSensor();
   loadStoredAuditLogs();
+  syncRealBatteryAndDeviceStatus();
 });
 
 async function syncMembersFromBackend() {
@@ -524,6 +530,13 @@ function switchTab(tabId) {
       map.invalidateSize();
     }, 200);
   }
+
+  // Si entra al chat, desplazar automáticamente al último mensaje
+  if (actualTabId === 'tab-pickup' && typeof scrollChatToBottom === 'function') {
+    setTimeout(() => {
+      scrollChatToBottom(false);
+    }, 100);
+  }
 }
 window.switchTab = switchTab;
 
@@ -597,17 +610,7 @@ function initMap() {
     maxZoom: 19
   }).addTo(map);
 
-  SAFE_ZONES.forEach(zone => {
-    L.circle([zone.lat, zone.lng], {
-      color: zone.color,
-      fillColor: zone.color,
-      fillOpacity: 0.15,
-      radius: zone.radius,
-      weight: 2,
-      dashArray: '4, 8'
-    }).addTo(map).bindPopup(`<strong>Zona Segura:</strong> ${zone.name}`);
-  });
-
+  updateMapSafeZonesLayer();
   updateMapMarkers();
 }
 
@@ -780,14 +783,29 @@ function updateMapMarkers() {
       </div>
     ` : '';
 
+    const devName = m.device_model || (m.device_brand ? `${m.device_brand} (${m.device_type || 'Móvil'})` : 'Teléfono Móvil');
+    const chargingIcon = m.is_charging ? '⚡ (Cargando)' : '';
+
+    const memberZone = (typeof getMemberCurrentSafeZone === 'function') ? getMemberCurrentSafeZone(m) : null;
+    const zoneBadgeHtml = memberZone ? `
+      <div style="font-size: 11px; color: ${memberZone.color || '#10B981'}; font-weight: 800; margin-top: 4px; background: ${memberZone.color || '#10B981'}18; padding: 4px 6px; border-radius: 6px; border: 1px solid ${memberZone.color || '#10B981'}55; display: block;">
+        <i class="fa-solid ${memberZone.icon || 'fa-shield-cat'}"></i> En Zona Segura: <strong>${memberZone.name}</strong>
+      </div>
+    ` : `
+      <div style="font-size: 10.5px; color: #64748B; margin-top: 3px;">📍 Ubicación: ${m.zone || 'Fuera de Zona Segura (En vivo)'}</div>
+    `;
+
     const popupHtml = `
-      <div style="min-width: 210px; font-family: sans-serif; color: #000; padding: 4px;">
+      <div style="min-width: 220px; font-family: sans-serif; color: #000; padding: 4px;">
         <div style="font-weight: 800; font-size: 14px; color: #0F172A; margin-bottom: 2px;">${m.name}</div>
         <div style="font-size: 11px; color: #475569; font-weight: 600;">${m.role} • ${distText}</div>
-        <div style="font-size: 11px; color: ${batInfo.color}; font-weight: 700; margin-top: 4px; background: ${batInfo.bg}; padding: 3px 6px; border-radius: 6px; display: inline-block;">
-          <i class="fa-solid ${batInfo.icon}"></i> Salud Batería: <strong>${batInfo.text}</strong>
+        <div style="font-size: 10.5px; color: #0284C7; font-weight: 800; margin-top: 3px; background: rgba(56, 189, 248, 0.12); padding: 3px 6px; border-radius: 6px; display: inline-block;">
+          <i class="fa-solid fa-mobile-screen"></i> Dispositivo: <strong>${devName}</strong>
         </div>
-        <div style="font-size: 11px; color: #64748B; margin-top: 3px;">📍 Zona: ${m.zone || 'Catamarca (En vivo)'}</div>
+        <div style="font-size: 11px; color: ${batInfo.color}; font-weight: 700; margin-top: 4px; background: ${batInfo.bg}; padding: 3px 6px; border-radius: 6px; display: block;">
+          <i class="fa-solid ${batInfo.icon}"></i> Batería Real: <strong>${m.battery}% ${chargingIcon}</strong>
+        </div>
+        ${zoneBadgeHtml}
         <div class="ai-motion-badge" style="${aiMotion.badgeStyle}">
           <i class="fa-solid ${aiMotion.icon}"></i> ${aiMotion.label}
         </div>
@@ -816,66 +834,15 @@ function updateMapMarkers() {
     }
   });
 
-  // --- Renderizar Marcadores de Cámaras IP / Yoosee en Tiempo Real en el Mapa ---
-  window.cameraMarkers = window.cameraMarkers || {};
-  if (window.showCamerasOnMap !== false) {
-    const renderCamsOnMap = (cameras) => {
-      cameras.forEach(cam => {
-        const cLat = cam.lat || cam.latitude || -28.4696;
-        const cLng = cam.lng || cam.longitude || -65.7852;
-        const camIconHtml = `
-          <div class="custom-cam-pin" style="background: linear-gradient(135deg, #0284C7, #06B6D4); border: 2px solid #fff; border-radius: 50%; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 14px; box-shadow: 0 0 12px rgba(6, 182, 212, 0.9); cursor: pointer;" title="📹 ${cam.name}">
-            <i class="fa-solid fa-video"></i>
-          </div>
-        `;
-        const camIcon = L.divIcon({
-          html: camIconHtml,
-          className: 'custom-cam-marker-pin',
-          iconSize: [34, 34],
-          iconAnchor: [17, 17]
-        });
-
-        const camPopupHtml = `
-          <div style="min-width: 220px; font-family: sans-serif; padding: 4px; color: #0F172A;">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
-              <h4 style="margin: 0; font-size: 13px; font-weight: 800; color: #0284C7;">📹 ${cam.name}</h4>
-              <span style="font-size: 9px; font-weight: 800; background: rgba(16, 185, 129, 0.15); color: #10B981; padding: 2px 6px; border-radius: 4px;">● EN VIVO</span>
-            </div>
-            <div style="font-size: 10px; color: #475569; margin-bottom: 6px;">📍 ${cam.location || 'Propiedad Familiar'} • IP: ${cam.ip_address || '192.168.1.100'}</div>
-            <div style="width: 100%; height: 110px; border-radius: 8px; overflow: hidden; background: #000; margin-bottom: 8px; position: relative; cursor: pointer;" onclick="openLiveCameraModal('${cam.id}')">
-              <img src="/api/cameras/${cam.id}/feed" style="width:100%; height:100%; object-fit:cover;" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'300\' height=\'150\' viewBox=\'0 0 300 150\'><rect width=\'300\' height=\'150\' fill=\'%230F172A\'/><text x=\'150\' y=\'80\' fill=\'%2338BDF8\' font-size=\'14\' font-family=\'monospace\' text-anchor=\'middle\'>📹 ${cam.name.replace(/'/g, "")}</text></svg>';">
-              <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.25);">
-                <i class="fa-solid fa-play" style="color: #fff; font-size: 24px;"></i>
-              </div>
-            </div>
-            <div style="display: flex; gap: 4px;">
-              <button style="flex:1; background: #0284C7; color:#fff; border:none; padding:6px; border-radius:6px; font-size:10px; font-weight:800; cursor:pointer;" onclick="openLiveCameraModal('${cam.id}')">▶ Ver en Vivo</button>
-              <button style="flex:1; background: #EF4444; color:#fff; border:none; padding:6px; border-radius:6px; font-size:10px; font-weight:800; cursor:pointer;" onclick="triggerCameraAlarm('${cam.id}')">🚨 Sirena</button>
-            </div>
-          </div>
-        `;
-
-        if (window.cameraMarkers[cam.id]) {
-          window.cameraMarkers[cam.id].setLatLng([cLat, cLng]);
-          window.cameraMarkers[cam.id].setPopupContent(camPopupHtml);
-        } else {
-          const marker = L.marker([cLat, cLng], { icon: camIcon }).addTo(map);
-          marker.bindPopup(camPopupHtml);
-          window.cameraMarkers[cam.id] = marker;
-        }
-      });
-    };
-
-    if (window.systemCamerasCache && window.systemCamerasCache.length > 0) {
-      renderCamsOnMap(window.systemCamerasCache);
-    } else {
-      fetch('/api/cameras').then(r => r.json()).then(data => {
-        if (data && data.cameras) {
-          window.systemCamerasCache = data.cameras;
-          renderCamsOnMap(data.cameras);
-        }
-      }).catch(() => {});
-    }
+  // --- Ocultar Cámaras del Mapa (No mostrar cámaras en el mapa) ---
+  window.showCamerasOnMap = false;
+  if (window.cameraMarkers && map) {
+    Object.keys(window.cameraMarkers).forEach(camId => {
+      try {
+        map.removeLayer(window.cameraMarkers[camId]);
+      } catch (e) {}
+    });
+    window.cameraMarkers = {};
   }
 
   // Dibujar red inteligente de conexión (Mesh Links) entre familiares en el mapa
@@ -1048,21 +1015,120 @@ function triggerDomesticAlert(type) {
   showWhatsAppModal(title, msg, activeUser ? activeUser.lat : -28.46957, activeUser ? activeUser.lng : -65.78524);
 }
 
-// ==================== TAB 3: VENÍ A BUSCARME & CHAT ====================
+// ==================== TAB 3: VENÍ A BUSCARME & CHAT EN VIVO ====================
+function updateNearestFamilyBanner() {
+  const nameEl = document.getElementById('nearestMemberName');
+  if (!nameEl) return;
+
+  const current = activeUser || (familyMembers && familyMembers.length > 0 ? familyMembers[0] : null);
+  if (!current) {
+    nameEl.textContent = 'En busca de GPS...';
+    return;
+  }
+
+  const others = familyMembers.filter(m => m.id !== current.id);
+  if (others.length === 0) {
+    nameEl.textContent = `${current.name.split(' ')[0]} (Único Integrante)`;
+    return;
+  }
+
+  let closestMember = null;
+  let minDistanceMeters = Infinity;
+
+  others.forEach(m => {
+    if (typeof m.lat === 'number' && typeof m.lng === 'number') {
+      const distKm = calculateDistanceKm(current.lat, current.lng, m.lat, m.lng);
+      const distM = Math.round(distKm * 1000);
+      if (distM < minDistanceMeters) {
+        minDistanceMeters = distM;
+        closestMember = m;
+      }
+    }
+  });
+
+  if (closestMember) {
+    const firstName = closestMember.name.split(' ')[0];
+    const distText = minDistanceMeters >= 1000 ? `${(minDistanceMeters / 1000).toFixed(1)}km` : `${minDistanceMeters}m`;
+    nameEl.textContent = `${firstName} (a ${distText})`;
+  } else {
+    nameEl.textContent = 'Familiar Cercano (En rango)';
+  }
+}
+
 function triggerPickupRequest() {
   const current = activeUser || familyMembers[0];
-  notifyInPhone('🚗 Solicitud de Búsqueda', `${current.name} pide que lo vayan a buscar a su ubicación.`);
+  
+  // Captura de geolocalización de alta precisión
+  if ('geolocation' in navigator) {
+    navigator.geolocation.getCurrentPosition((pos) => {
+      current.lat = pos.coords.latitude;
+      current.lng = pos.coords.longitude;
+      executePickupBroadcast(current);
+    }, () => {
+      executePickupBroadcast(current);
+    }, { enableHighAccuracy: true, timeout: 5000 });
+  } else {
+    executePickupBroadcast(current);
+  }
+}
 
-  // Mensaje en el chat
-  appendChatMessage(
-    'incoming',
-    `🚗 <strong>${current.name}</strong> solicita que lo vayan a buscar.<br>📍 Ubicación: https://maps.google.com/?q=${current.lat},${current.lng}<br>🔋 Batería: ${current.battery}%`
-  );
+function executePickupBroadcast(current) {
+  const mapsUrl = `https://maps.google.com/?q=${current.lat.toFixed(6)},${current.lng.toFixed(6)}`;
+  const activityStr = (typeof userHealthData !== 'undefined' && userHealthData.activityState) ? userHealthData.activityState : 'En Reposo';
 
-  // Respuesta automática tras 2 segundos simulando a otro familiar
-  setTimeout(() => {
-    appendChatMessage('outgoing', `Lucía: "¡Hola ${current.name.split(' ')[0]}! Ya vi tu ubicación, voy en camino a buscarte."`);
-  }, 2000);
+  notifyInPhone('🚗 ¡Vení a Buscarme!', `${current.name} pide rescate/búsqueda en el mapa.`);
+
+  // 1. Auditoría y Registros
+  if (typeof logAuditAlert === 'function') {
+    logAuditAlert('SOLICITUD BUSCAME', current.name, `Señal de rescate emitida desde GPS (${current.zone || 'En movimiento'})`, false);
+  }
+  if (typeof logAuditTracking === 'function') {
+    logAuditTracking(current.name, '🚗 Solicitud Rescate', 'Punto de Encuentro GPS', '▶️ Búsqueda Activa');
+  }
+
+  // 2. Transmisión al Chat de Grupo y Servidor Python
+  const chatText = `🆘 *¡VENÍ A BUSCARME AQUÍ!* 🚗\n• Familiar: *${current.name}*\n• Estado IA: *${activityStr}* • Batería: *${current.battery}%*\n📍 Ubicación GPS en tiempo real:\n${mapsUrl}`;
+  
+  if (typeof sendMessageToPythonBot === 'function') {
+    sendMessageToPythonBot(chatText);
+  } else {
+    appendChatMessage('incoming', `🚗 <strong>${current.name}</strong> solicita que lo vayan a buscar.<br>📍 Ubicación: ${mapsUrl}<br>🔋 Batería: ${current.battery}% • Estado IA: ${activityStr}`);
+  }
+
+  // 3. Marcador de rescate pulsante en Leaflet Map
+  if (map) {
+    if (window.pickupMarker) { try { map.removeLayer(window.pickupMarker); } catch(e){} }
+    
+    const pickupIcon = L.divIcon({
+      className: 'pickup-beacon-pin',
+      html: `<div style="background: linear-gradient(135deg, #0284C7, #06B6D4); color: #fff; width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 0 20px #38BDF8, 0 0 40px rgba(56,189,248,0.5); border: 2px solid #fff;"><i class="fa-solid fa-location-arrow"></i></div>`,
+      iconSize: [38, 38],
+      iconAnchor: [19, 19]
+    });
+
+    window.pickupMarker = L.marker([current.lat, current.lng], { icon: pickupIcon }).addTo(map)
+      .bindPopup(`<strong>🆘 ¡VENÍ A BUSCARME AQUÍ!</strong><br><small>${current.name} (${current.role})<br>Batería: ${current.battery}% | Estado IA: ${activityStr}</small>`).openPopup();
+    
+    map.setView([current.lat, current.lng], 16);
+  }
+
+  // 4. Respuesta dinámicamente generada del familiar más cercano
+  const others = familyMembers.filter(m => m.id !== current.id);
+  const responder = others.length > 0 ? others[0] : null;
+  
+  if (responder) {
+    const responderFirstName = responder.name.split(' ')[0];
+    const userFirstName = current.name.split(' ')[0];
+    setTimeout(() => {
+      if (typeof appendChatMessage === 'function') {
+        appendChatMessage('outgoing', `${responderFirstName}: "¡Hola ${userFirstName}! Ya recibí tu señal de ubicación GPS en el mapa. Voy en camino a buscarte."`);
+      }
+    }, 1800);
+  }
+
+  if (typeof showModernToast === 'function') {
+    showModernToast('🚗 Señal Enviada', '¡Vení a buscarme aquí! emitido a toda la familia en el mapa y en el chat.', 'success');
+  }
 }
 
 function sendQuickReply(replyText) {
@@ -1324,6 +1390,8 @@ function renderDirectoryList() {
       </div>
     `;
   }).join('');
+
+  if (typeof updateNearestFamilyBanner === 'function') updateNearestFamilyBanner();
 }
 
 function sendDirectMemberWhatsApp(memberId) {
@@ -1393,6 +1461,41 @@ function sendExpressSosViaCommonMessage() {
 
   notifyInPhone('🚨 ALERTA SOS EXPRÉS', `¡${sender.name} ha emitido un SOS a ${target.name}!`);
   alert(`✅ Alerta SOS Común (Push/Háptica) enviada a ${target.name} con éxito.`);
+  closeExpressSosModal();
+}
+
+function triggerDirectExpressAlert() {
+  if (!expressSosTargetMemberId) return;
+  const target = familyMembers.find(m => m.id === expressSosTargetMemberId);
+  const sender = activeUser || familyMembers[0];
+  if (!target) return;
+
+  playAlarmSirenSound();
+
+  const title = '🚨 ALERTA EXPRÉS / NECESITA ASISTENCIA';
+  const body = `El familiar ${sender.name} ha emitido un pedido de asistencia exprés para ${target.name}.\n📍 Posición GPS: https://www.google.com/maps?q=${sender.lat},${sender.lng}`;
+
+  notifyInPhone(title, body);
+
+  if (typeof sendMessageToPythonBot === 'function') {
+    sendMessageToPythonBot(`🚨 *ALERTA EXPRÉS DE ASISTENCIA* 🚨\n• De: *${sender.name}*\n• Para: *${target.name}*\n• Asistencia: Solicitud de auxilio activada en vivo.`);
+  }
+
+  if (typeof logAuditAlert === 'function') {
+    logAuditAlert('ALERTA EXPRÉS ASISTENCIA', target.name, `Solicitud de auxilio enviada por ${sender.name}`, false);
+  }
+
+  closeExpressSosModal();
+  showModernToast('🚨 Alerta Exprés Enviada', `Solicitud de asistencia notificada a ${target.name} y a toda la familia.`, 'success');
+}
+
+function callTargetMemberFromExpress() {
+  if (!expressSosTargetMemberId) return;
+  const target = familyMembers.find(m => m.id === expressSosTargetMemberId);
+  if (!target || !target.phone) return;
+
+  const phone = target.phone.replace(/[^0-9+]/g, '');
+  window.location.href = `tel:${phone}`;
   closeExpressSosModal();
 }
 
@@ -3777,6 +3880,8 @@ function acknowledgeAlert() {
 
 // ==================== MÓDULO ANTIFRAUDE Y SIMULADOR DE ESTAFAS ====================
 
+let drillScoreStats = { correct: 0, total: 0 };
+
 const DRILL_CASES = [
   {
     id: 1,
@@ -3801,6 +3906,14 @@ const DRILL_CASES = [
     message: '"¡Tenemos a tu familiar en una camioneta! Juntá toda la plata y dólares que tengas en la casa y tiralos en una bolsa en la esquina o no lo ves más..."',
     adviceGood: '✅ ¡PERFECTO! El 99% son secuestros virtuales con audios grabados o llantos falsos. La app te confirma en tiempo real que tu familiar está en su lugar habitual sano y salvo.',
     adviceBad: '❌ ¡ALERTA! El miedo te hizo actuar sin pensar. Mantén la calma, abre la app de la Familia Andrada y comprueba que tu familiar sigue con vida y seguro.'
+  },
+  {
+    id: 4,
+    title: 'Caso 4: Falso Empleado Bancario / Token ANSES',
+    sender: 'Llamada de "Soporte Bancario / ANSES" (+54 11 4000-0000):',
+    message: '"Estimado cliente, detectamos una transferencia sospechosa bloqueada. Pase su Clave Token de 6 dígitos o su clave de Home Banking para revertirla inmediatamente..."',
+    adviceGood: '✅ ¡EXCELENTE! NINGÚN banco, entidad pública o ANSES te va a pedir claves token ni contraseñas por teléfono ni WhatsApp. Al rechazarlo mantienes tus ahorros protegidos.',
+    adviceBad: '❌ ¡PELIGRO GRAVE! Los bancos NUNCA piden claves token o contraseñas. Al entregar la clave token le das acceso total a tu cuenta bancaria a los delincuentes.'
   }
 ];
 
@@ -3852,15 +3965,20 @@ function broadcastFraudAlert() {
 
   notifyInPhone(alertTitle, alertMsg);
   showWhatsAppModal(alertTitle, alertMsg, member.lat, member.lng);
+  if (typeof logAuditAlert === 'function') {
+    logAuditAlert('ALERTA INTENTO ESTAFA', member.name, `Simulacro de estafa reportado a la familia para ${member.name}`, false);
+  }
 }
 
 function loadDrillCase(caseNum) {
   currentDrillCase = caseNum;
   const drillCase = DRILL_CASES.find(c => c.id === caseNum) || DRILL_CASES[0];
 
+  const senderEl = document.getElementById('drillSenderTitle');
   const msgEl = document.getElementById('drillMsgText');
   const feedbackEl = document.getElementById('drillFeedback');
 
+  if (senderEl) senderEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color: #F59E0B;"></i> ${drillCase.title} - ${drillCase.sender}`;
   if (msgEl) msgEl.textContent = drillCase.message;
   if (feedbackEl) {
     feedbackEl.classList.add('hidden');
@@ -3881,15 +3999,28 @@ function answerDrill(isGoodAnswer) {
   const drillCase = DRILL_CASES.find(c => c.id === currentDrillCase) || DRILL_CASES[0];
   if (!feedbackEl) return;
 
+  drillScoreStats.total++;
+  if (isGoodAnswer) drillScoreStats.correct++;
+
+  const scoreBadge = document.getElementById('drillScoreBadge');
+  if (scoreBadge) {
+    const pct = Math.round((drillScoreStats.correct / Math.max(1, drillScoreStats.total)) * 100);
+    scoreBadge.textContent = `🏆 Puntaje: ${drillScoreStats.correct}/${drillScoreStats.total} (${pct}% Blindado)`;
+  }
+
   feedbackEl.classList.remove('hidden', 'feedback-success', 'feedback-danger');
 
   if (isGoodAnswer) {
-    feedbackEl.classList.add('feedback-success');
-    feedbackEl.textContent = drillCase.adviceGood;
+    feedbackEl.style.background = 'rgba(16, 185, 129, 0.2)';
+    feedbackEl.style.color = '#6EE7B7';
+    feedbackEl.style.border = '1px solid rgba(16, 185, 129, 0.5)';
+    feedbackEl.innerHTML = `<strong>${drillCase.adviceGood}</strong><br><small style="color: #CBD5E1; margin-top: 4px; display: block;">🛡️ PROTOCOLO RECOMENDADO: 1. Mantén la calma. 2. Pide la palabra clave secreta. 3. Consulta la ubicación GPS en la app. 4. Llama a la línea oficial.</small>`;
     if ('vibrate' in navigator) navigator.vibrate([100, 50, 100]);
   } else {
-    feedbackEl.classList.add('feedback-danger');
-    feedbackEl.textContent = drillCase.adviceBad;
+    feedbackEl.style.background = 'rgba(239, 68, 68, 0.2)';
+    feedbackEl.style.color = '#FCA5A5';
+    feedbackEl.style.border = '1px solid rgba(239, 68, 68, 0.5)';
+    feedbackEl.innerHTML = `<strong>${drillCase.adviceBad}</strong><br><small style="color: #CBD5E1; margin-top: 4px; display: block;">⚠️ NUNCA transfieras dinero de urgencia. Corta la llamada y contáctate con tu familiar a través del canal oficial.</small>`;
     if ('vibrate' in navigator) navigator.vibrate([400]);
   }
 }
@@ -4656,12 +4787,6 @@ function executeSatellitePing() {
 }
 
 // ==================== RASTREO DESCENTRALIZADO BLE MESH ====================
-const BLE_BEACON_DATA = [
-  { name: 'Mateo Andrada', device: 'Galaxy S23 (Andrada-03)', rssi: -58, distMeters: 3.8, status: 'Cerca (En rango)' },
-  { name: 'Lucía Andrada', device: 'iPhone 15 (Andrada-02)', rssi: -72, distMeters: 11.2, status: 'En rango BLE' },
-  { name: 'Sofía Andrada', device: 'Motorola Edge (Andrada-04)', rssi: -84, distMeters: 24.5, status: 'Señal Débil' }
-];
-
 function scanBleMeshDevices() {
   const container = document.getElementById('bleMeshDevicesList');
   if (!container) return;
@@ -4672,8 +4797,36 @@ function scanBleMeshDevices() {
   const observerLat = user ? user.lat : -28.46957;
   const observerLng = user ? user.lng : -65.78524;
 
+  const otherMembers = Array.isArray(familyMembers) ? familyMembers.filter(m => !user || m.id !== user.id) : [];
+
   setTimeout(() => {
-    container.innerHTML = BLE_BEACON_DATA.map(d => `
+    if (otherMembers.length === 0) {
+      container.innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 12px; font-size: 11px;">No hay otros integrantes en el círculo BLE.</div>';
+      return;
+    }
+
+    const bleDevices = otherMembers.map(m => {
+      const distKm = calculateDistanceKm(observerLat, observerLng, m.lat || observerLat, m.lng || observerLng);
+      const distMeters = Math.round(distKm * 1000);
+      let rssi = -60 - Math.min(35, Math.round(distMeters / 10));
+      let status = 'Cerca (En rango)';
+      if (distMeters > 50) {
+        status = 'Señal Débil';
+      } else if (distMeters > 15) {
+        status = 'En rango BLE';
+      }
+      const deviceModel = m.device_model || (m.device_brand ? `${m.device_brand} (${m.device_type || 'Móvil'})` : 'Teléfono Celular');
+
+      return {
+        name: m.name,
+        device: `${deviceModel} (${m.role})`,
+        rssi: rssi,
+        distMeters: distMeters < 1 ? '< 5' : distMeters,
+        status: status
+      };
+    });
+
+    container.innerHTML = bleDevices.map(d => `
       <div class="ble-device-item">
         <div>
           <strong><i class="fa-solid fa-bluetooth" style="color: var(--accent-blue); margin-right: 4px;"></i> ${d.name}</strong>
@@ -4686,8 +4839,7 @@ function scanBleMeshDevices() {
       </div>
     `).join('');
 
-    // Notificar al backend Python sobre la baliza detectada
-    BLE_BEACON_DATA.forEach(b => {
+    bleDevices.forEach(b => {
       fetch('/api/ble-mesh/report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -4855,22 +5007,187 @@ function sendQuickCheckIn(statusText) {
   alert(`✅ Check-In Enviado:\n\n${msg}\n\nToda la Familia Andrada ha recibido tu notificación push de 1-toque.`);
 }
 
-// 3. Safe Walk (Acompáñame)
+// ==================== SINTETIZADOR AUDIO WEB AUDIO API (SONIDO DE SEGUIMIENTO EN VIVO & ALERTAS) ====================
+let trackingAudioCtx = null;
+
+function getTrackingAudioContext() {
+  if (!trackingAudioCtx) {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (AudioCtx) trackingAudioCtx = new AudioCtx();
+  }
+  if (trackingAudioCtx && trackingAudioCtx.state === 'suspended') {
+    trackingAudioCtx.resume();
+  }
+  return trackingAudioCtx;
+}
+
+function playTrackingRadarPingSound() {
+  try {
+    const ctx = getTrackingAudioContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    
+    // Oscilador 1: Sonar Ping Dual Tone (880Hz -> 1320Hz)
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, now);
+    osc.frequency.exponentialRampToValueAtTime(1320, now + 0.15);
+    
+    gain.gain.setValueAtTime(0.25, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+    
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    
+    osc.start(now);
+    osc.stop(now + 0.35);
+  } catch (e) {
+    console.warn('[AudioSynth] Error de reproducción radar ping:', e);
+  }
+}
+
+function playEmergencyAlertSound() {
+  try {
+    const ctx = getTrackingAudioContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(750, now);
+    osc.frequency.linearRampToValueAtTime(1100, now + 0.2);
+    osc.frequency.linearRampToValueAtTime(750, now + 0.4);
+    
+    gain.gain.setValueAtTime(0.35, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+    
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    
+    osc.start(now);
+    osc.stop(now + 0.5);
+  } catch (e) {
+    console.warn('[AudioSynth] Error alerta audio:', e);
+  }
+}
+
+// 3. Safe Walk (Acompáñame) - 2026 Enhanced Live Tracking & Safety Timer
 let safeWalkInterval = null;
-let safeWalkSecondsRemaining = 0;
-let selectedSafeWalkMinutes = 15;
+let safeWalkSecondsRemaining = 30 * 60;
+let selectedSafeWalkMinutes = 30;
+let selectedSafeWalkTransport = '🚖 Uber / Remis';
+let currentSafeWalkDestination = 'Casa Andrada';
+let customMapDestinationCoords = null;
+
+function enableMapDestinationPicker() {
+  closeSafeWalkTimerModal();
+  if (typeof switchTab === 'function') switchTab('tab-map');
+  
+  if (typeof showModernToast === 'function') {
+    showModernToast('📍 Marcar Destino', 'Toca cualquier punto del mapa para fijar tu destino de seguimiento.', 'info');
+  }
+  
+  if (map) {
+    const mapEl = document.getElementById('familyMap');
+    if (mapEl) mapEl.style.cursor = 'crosshair';
+
+    map.once('click', (e) => {
+      customMapDestinationCoords = { lat: e.latlng.lat, lng: e.latlng.lng };
+      if (mapEl) mapEl.style.cursor = '';
+
+      if (window.customDestPickerMarker) {
+        try { map.removeLayer(window.customDestPickerMarker); } catch(err) {}
+      }
+      window.customDestPickerMarker = L.marker([e.latlng.lat, e.latlng.lng], {
+        icon: L.divIcon({
+          className: 'custom-dest-pin',
+          html: '<div style="background:#10B981; color:#000; font-weight:900; padding:6px 10px; border-radius:12px; border:2px solid #fff; box-shadow:0 4px 14px rgba(0,0,0,0.6); font-size:12px; white-space:nowrap;">🏁 Destino Seleccionado</div>',
+          iconSize: [120, 30],
+          iconAnchor: [60, 15]
+        })
+      }).addTo(map);
+
+      const formattedLabel = `Punto Mapa (${e.latlng.lat.toFixed(4)}, ${e.latlng.lng.toFixed(4)})`;
+      setSafeWalkDestPreset(formattedLabel);
+      
+      if (typeof showModernToast === 'function') {
+        showModernToast('🏁 Destino Fijado', `Coordenadas guardadas: ${e.latlng.lat.toFixed(5)}, ${e.latlng.lng.toFixed(5)}`, 'success');
+      }
+      setTimeout(() => {
+        openSafeWalkTimerModal();
+      }, 500);
+    });
+  }
+}
+
+function selectSafeWalkTransport(transportType, btn) {
+  selectedSafeWalkTransport = transportType;
+  document.querySelectorAll('.btn-walk-transport').forEach(b => {
+    b.classList.remove('active');
+    b.style.background = 'rgba(255, 255, 255, 0.08)';
+    b.style.borderColor = 'var(--border-glass)';
+    b.style.color = '#fff';
+  });
+  if (btn) {
+    btn.classList.add('active');
+    btn.style.background = 'rgba(245, 158, 11, 0.25)';
+    btn.style.borderColor = 'rgba(245, 158, 11, 0.5)';
+    btn.style.color = '#F59E0B';
+  }
+}
 
 function selectSafeWalkDuration(minutes, btn) {
   selectedSafeWalkMinutes = minutes;
-  document.querySelectorAll('.btn-walk-time').forEach(b => b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
+  document.querySelectorAll('.btn-walk-time').forEach(b => {
+    b.classList.remove('active');
+    b.style.background = 'rgba(255,255,255,0.08)';
+    b.style.borderColor = 'var(--border-glass)';
+    b.style.color = '#fff';
+  });
+  if (btn) {
+    btn.classList.add('active');
+    btn.style.background = 'rgba(56, 189, 248, 0.25)';
+    btn.style.borderColor = 'rgba(56, 189, 248, 0.5)';
+    btn.style.color = '#38BDF8';
+  }
+}
+
+function setSafeWalkDestPreset(destName) {
+  const input = document.getElementById('safeWalkDestinationInput');
+  if (input) input.value = destName;
+}
+
+function openSafeWalkTimerModal() {
+  const modal = document.getElementById('safeWalkTimerModal');
+  if (modal) modal.classList.remove('hidden');
+}
+
+function closeSafeWalkTimerModal() {
+  const modal = document.getElementById('safeWalkTimerModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function startSafeWalkTimerFromModal() {
+  const destInput = document.getElementById('safeWalkDestinationInput');
+  const destination = (destInput && destInput.value.trim()) ? destInput.value.trim() : 'Casa Andrada';
+  closeSafeWalkTimerModal();
+  startSafeWalkTimer(destination, selectedSafeWalkMinutes, selectedSafeWalkTransport);
 }
 
 window.activeSafeWalkTrackingMemberId = null;
 
-function startSafeWalkTimer() {
-  const destInput = document.getElementById('safeWalkDestination');
-  const destination = (destInput && destInput.value.trim()) ? destInput.value.trim() : 'Casa Andrada';
+function startSafeWalkTimer(customDest = '', customMins = null, customTransport = '') {
+  const destInput = document.getElementById('safeWalkDestinationInput') || document.getElementById('safeWalkDestination');
+  const destination = customDest || (destInput && destInput.value.trim() ? destInput.value.trim() : 'Casa Andrada');
+  currentSafeWalkDestination = destination;
+  
+  if (customMins) selectedSafeWalkMinutes = customMins;
+  if (customTransport) selectedSafeWalkTransport = customTransport;
+
   const user = activeUser || (familyMembers && familyMembers.length > 0 ? familyMembers[0] : { name: 'Eduardo Andrada', id: 'carlos_andrada', lat: -28.46957, lng: -65.78524 });
   const lat = user.lat || -28.46957;
   const lng = user.lng || -65.78524;
@@ -4880,6 +5197,7 @@ function startSafeWalkTimer() {
   const setupForm = document.getElementById('safeWalkSetupForm');
   const activePanel = document.getElementById('safeWalkActivePanel');
   const statusBadge = document.getElementById('safeWalkStatusBadge');
+  const transportTag = document.getElementById('safeWalkTransportTag');
   const destLabel = document.getElementById('safeWalkDestinationLabel');
 
   if (setupForm) setupForm.classList.add('hidden');
@@ -4889,20 +5207,41 @@ function startSafeWalkTimer() {
     statusBadge.style.background = 'rgba(16, 185, 129, 0.2)';
     statusBadge.style.color = '#10B981';
   }
+  if (transportTag) {
+    transportTag.textContent = `${selectedSafeWalkTransport} Activo`;
+  }
   if (destLabel) destLabel.textContent = `Destino: ${destination}`;
 
-  // Mostrar el banner desplegable sobre el mapa en vivo
+  // Banner flotante sobre el mapa Leaflet
   const mapOverlay = document.getElementById('mapSafeWalkOverlay');
   const mapDestText = document.getElementById('mapSafeWalkDestText');
+  const mapFloatingStatus = document.querySelector('.map-floating-status');
   if (mapOverlay) mapOverlay.classList.remove('hidden');
-  if (mapDestText) mapDestText.textContent = `Destino: ${destination}`;
+  if (mapFloatingStatus) mapFloatingStatus.style.display = 'none';
+
+  let cleanDest = destination;
+  if (cleanDest.includes('Punto Mapa (')) {
+    cleanDest = '📍 Punto en Mapa';
+  }
+  if (mapDestText) {
+    mapDestText.textContent = `${selectedSafeWalkTransport} ➔ ${cleanDest}`;
+    mapDestText.title = `Destino: ${destination}`;
+  }
   
   updateSafeWalkDisplay();
+
+  // Reproducir sonido inicial de radar ping
+  playTrackingRadarPingSound();
   
   if (safeWalkInterval) clearInterval(safeWalkInterval);
   safeWalkInterval = setInterval(() => {
     safeWalkSecondsRemaining--;
     updateSafeWalkDisplay();
+
+    // Reproducir tono suave de radar cada 15 segundos durante el seguimiento
+    if (safeWalkSecondsRemaining % 15 === 0) {
+      playTrackingRadarPingSound();
+    }
     
     if (safeWalkSecondsRemaining <= 0) {
       clearInterval(safeWalkInterval);
@@ -4910,62 +5249,89 @@ function startSafeWalkTimer() {
     }
   }, 1000);
   
-  // 1. Enviar mensaje automático al chat del grupo
+  // Coordenadas aproximadas según destino o custom map picker
+  let destLat = -28.46957;
+  let destLng = -65.78524;
+  if (customMapDestinationCoords) {
+    destLat = customMapDestinationCoords.lat;
+    destLng = customMapDestinationCoords.lng;
+  } else {
+    const dLower = destination.toLowerCase();
+    if (dLower.includes('unca') || dLower.includes('facultad') || dLower.includes('trabajo')) {
+      destLat = -28.45940; destLng = -65.78910;
+    } else if (dLower.includes('colegio') || dLower.includes('escuela')) {
+      destLat = -28.46320; destLng = -65.78110;
+    }
+  }
+
+  // Perfiles de transporte inteligente (Color de ruta, estilo de línea y velocidad)
+  const TRANSPORT_PROFILES = {
+    '🚖 Uber / Remis': { speedKmH: 40, color: '#0284C7', dashArray: null },
+    '🚗 Vehículo': { speedKmH: 45, color: '#38BDF8', dashArray: null },
+    '🏍️ Moto': { speedKmH: 30, color: '#F59E0B', dashArray: '10, 8' },
+    '🚶‍♂️ Caminando': { speedKmH: 5, color: '#10B981', dashArray: '4, 8' },
+    '🚌 Colectivo': { speedKmH: 22, color: '#A855F7', dashArray: null }
+  };
+  const profile = TRANSPORT_PROFILES[selectedSafeWalkTransport] || TRANSPORT_PROFILES['🚖 Uber / Remis'];
+  const distKm = calculateDistanceKm(lat, lng, destLat, destLng);
+  const etaMins = Math.max(2, Math.ceil((distKm / profile.speedKmH) * 60) + 1);
+
+  // 1. Emitir MENSAJE DE SEGUIMIENTO EN TIEMPO REAL al Chat Familiar
   const mapsUrl = `https://www.google.com/maps?q=${lat.toFixed(6)},${lng.toFixed(6)}`;
-  const chatMsg = `🚶‍♂️ *INICIO DE ACOMPÁÑAME (SAFE WALK)* 🛡️\n• Familiar: *${user.name}*\n• Tiempo Estimado: *${selectedSafeWalkMinutes} min*\n• Destino: *${destination}*\n📍 Ubicación GPS en tiempo real:\n${mapsUrl}`;
+  const chatMsg = `🚶‍♂️ *INICIO DE SEGUIMIENTO EN TIEMPO REAL (Safe Walk)* 🛡️\n• Familiar: *${user.name}*\n• Transporte: *${selectedSafeWalkTransport}*\n• Distancia Estimada: *${distKm.toFixed(2)} km* (ETA: *${etaMins} min*)\n• Tiempo Límite: *${selectedSafeWalkMinutes} min*\n• Destino: *${destination}*\n📍 Posición GPS en vivo en el mapa:\n${mapsUrl}`;
+  
   if (typeof sendMessageToPythonBot === 'function') {
     sendMessageToPythonBot(chatMsg);
   }
 
-  // 2. Seleccionar familiar y activar seguimiento en vivo en el mapa
+  // 2. Activar la marca de usuario en modo de seguimiento
   window.activeSafeWalkTrackingMemberId = user.id;
+  user.tracking = true;
+  user.tracking_mode = selectedSafeWalkTransport;
+
   if (typeof selectMember === 'function') selectMember(user.id);
 
-  // Coordenadas aproximadas según destino
-  let destLat = -28.46957;
-  let destLng = -65.78524;
-  const dLower = destination.toLowerCase();
-  if (dLower.includes('unca') || dLower.includes('facultad') || dLower.includes('trabajo')) {
-    destLat = -28.45940; destLng = -65.78910;
-  } else if (dLower.includes('colegio') || dLower.includes('escuela')) {
-    destLat = -28.46320; destLng = -65.78110;
-  }
-
   if (map) {
-    if (window.safeWalkPolyline) map.removeLayer(window.safeWalkPolyline);
-    if (window.safeWalkDestCircle) map.removeLayer(window.safeWalkDestCircle);
+    if (window.safeWalkPolyline) { try { map.removeLayer(window.safeWalkPolyline); } catch(e) {} }
+    if (window.safeWalkDestCircle) { try { map.removeLayer(window.safeWalkDestCircle); } catch(e) {} }
 
     window.safeWalkPolyline = L.polyline([[lat, lng], [destLat, destLng]], {
-      color: '#38BDF8',
+      color: profile.color,
       weight: 5,
-      dashArray: '8, 12',
-      opacity: 0.9
+      dashArray: profile.dashArray,
+      opacity: 0.95
     }).addTo(map);
 
     window.safeWalkDestCircle = L.circle([destLat, destLng], {
-      color: '#10B981',
-      fillColor: '#10B981',
+      color: profile.color,
+      fillColor: profile.color,
       fillOpacity: 0.35,
-      radius: 45,
+      radius: 50,
       weight: 3
-    }).addTo(map).bindPopup(`<strong>🏁 Destino Acompáñame:</strong> ${destination}`);
+    }).addTo(map).bindPopup(`<strong>🏁 Destino:</strong> ${destination}<br><small>Transporte: ${selectedSafeWalkTransport} | Distancia: ${distKm.toFixed(2)} km | ETA: ~${etaMins} min</small>`);
 
-    // Centrar mapa abarcando origen y destino
     const bounds = L.latLngBounds([[lat, lng], [destLat, destLng]]);
     map.fitBounds(bounds, { padding: [50, 50], maxZoom: 17 });
   }
 
   const mapStatusText = document.getElementById('mapStatusText');
   if (mapStatusText) {
-    mapStatusText.innerHTML = `<strong style="color: #38BDF8;"><i class="fa-solid fa-person-walking"></i> Siguiendo Acompáñame: ${user.name.split(' ')[0]} (${selectedSafeWalkMinutes}m)</strong>`;
+    mapStatusText.innerHTML = `<strong style="color: ${profile.color};"><i class="fa-solid fa-location-arrow"></i> ${selectedSafeWalkTransport} a ${destination.split(' ')[0]} (${distKm.toFixed(1)}km / ~${etaMins}m)</strong>`;
   }
 
-  // 3. Cambiar automáticamente a la pantalla del Mapa en tiempo real
+  // 3. Cambiar al Mapa
   if (typeof switchTab === 'function') {
     switchTab('tab-map');
   }
 
-  notifyInPhone('🛡️ Acompáñame Iniciado', `Supervisando trayecto a: ${destination} (${selectedSafeWalkMinutes} min)`);
+  if (typeof showModernToast === 'function') {
+    showModernToast('🛡️ SafeWalk Iniciado', `Monitoreando ${selectedSafeWalkTransport} a ${destination} (${selectedSafeWalkMinutes} min). Alerta emitida a la familia.`, 'success');
+  }
+
+  notifyInPhone('🛡️ Acompáñame Iniciado', `Supervisando trayecto en ${selectedSafeWalkTransport} a: ${destination} (${selectedSafeWalkMinutes} min)`);
+  if (typeof logAuditTracking === 'function') {
+    logAuditTracking(user.name, selectedSafeWalkTransport, destination, '▶️ En Seguimiento (Vivo)');
+  }
 }
 
 function updateSafeWalkDisplay() {
@@ -4977,13 +5343,45 @@ function updateSafeWalkDisplay() {
   const timeStr = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 
   if (display) display.textContent = timeStr;
-  if (mapTimerDisplay) mapTimerDisplay.textContent = timeStr;
+  if (mapTimerDisplay) mapTimerDisplay.textContent = `⏱️ ${timeStr}`;
+}
+
+function finishSafeWalk() {
+  if (safeWalkInterval) clearInterval(safeWalkInterval);
+  const user = activeUser || (familyMembers && familyMembers.length > 0 ? familyMembers[0] : { name: 'Eduardo Andrada' });
+  
+  // Mensaje de llegada exitosa al Chat
+  const arrivalMsg = `✅ *LLEGADA SEGURA CONFIRMADA* 🏁\n• Familiar: *${user.name}*\n• Destino: *${currentSafeWalkDestination}*\n• Transporte: *${selectedSafeWalkTransport}*\n• Estado: Llegó seguro/a y a tiempo.`;
+  if (typeof sendMessageToPythonBot === 'function') {
+    sendMessageToPythonBot(arrivalMsg);
+  }
+
+  if (typeof showModernToast === 'function') {
+    showModernToast('✅ Llegada Confirmada', '¡Excelente! Notificado a toda la familia que llegaste seguro a tu destino.', 'success');
+  }
+
+  if (typeof logAuditTracking === 'function') {
+    logAuditTracking(user.name, selectedSafeWalkTransport, currentSafeWalkDestination, '✅ Llegó Seguro');
+  }
+
+  resetSafeWalkUI();
 }
 
 function cancelSafeWalk() {
   if (safeWalkInterval) clearInterval(safeWalkInterval);
+  const user = activeUser || (familyMembers && familyMembers.length > 0 ? familyMembers[0] : { name: 'Eduardo Andrada' });
+  
+  const cancelMsg = `ℹ️ *ACOMPÁÑAME CONCLUIDO*: ${user.name} finalizó la supervisión del trayecto a ${currentSafeWalkDestination}.`;
+  if (typeof sendMessageToPythonBot === 'function') {
+    sendMessageToPythonBot(cancelMsg);
+  }
+
+  if (typeof logAuditTracking === 'function') {
+    logAuditTracking(user.name, selectedSafeWalkTransport, currentSafeWalkDestination, '⏹️ Cancelado');
+  }
+
   resetSafeWalkUI();
-  notifyInPhone('🛡️ Acompáñame Cancelado', 'Has cancelado el trayecto supervisado.');
+  notifyInPhone('🛡️ Acompáñame Cancelado', 'Has concluido el trayecto supervisado.');
 }
 
 function resetSafeWalkUI() {
@@ -5000,8 +5398,12 @@ function resetSafeWalkUI() {
     statusBadge.style.color = 'var(--accent-cyan)';
   }
   if (mapOverlay) mapOverlay.classList.add('hidden');
+  const mapFloatingStatus = document.querySelector('.map-floating-status');
+  if (mapFloatingStatus) mapFloatingStatus.style.display = 'flex';
   
   window.activeSafeWalkTrackingMemberId = null;
+  if (activeUser) activeUser.tracking = false;
+
   if (map) {
     if (window.safeWalkPolyline) { try { map.removeLayer(window.safeWalkPolyline); } catch(e) {} window.safeWalkPolyline = null; }
     if (window.safeWalkDestCircle) { try { map.removeLayer(window.safeWalkDestCircle); } catch(e) {} window.safeWalkDestCircle = null; }
@@ -5014,14 +5416,22 @@ function resetSafeWalkUI() {
 }
 
 function openFinishSafeWalkModal() {
-  openDuressKeypad();
+  finishSafeWalk();
 }
 
 function triggerSafeWalkExpiredAlert(destination) {
   const user = activeUser || familyMembers[0];
   resetSafeWalkUI();
-  const alertMsg = `🚨 ALERTA PREVENTIVA ACOMPÁÑAME: ${user.name} NO confirmó llegada de su trayecto a "${destination}".`;
+  const alertMsg = `🚨 *ALERTA URGENTE PREVENTIVA ACOMPÁÑAME*: ${user.name} NO confirmó su llegada de trayecto (${selectedSafeWalkTransport}) a "${destination}".\nVer posición GPS urgente en el mapa: https://www.google.com/maps?q=${user.lat},${user.lng}`;
   
+  if (typeof sendMessageToPythonBot === 'function') {
+    sendMessageToPythonBot(alertMsg);
+  }
+
+  if (typeof broadcastSystemAlertToChat === 'function') {
+    broadcastSystemAlertToChat('ALERTA ACOMPÁÑAME EXPIRADO', `Sin confirmación de llegada a ${destination}`, 'danger', user);
+  }
+
   showWhatsAppModal('🚨 ALERTA PREVENTIVA ACOMPÁÑAME', alertMsg, user.lat, user.lng);
 }
 
@@ -5728,6 +6138,9 @@ function dispatchSosPayload(user) {
 
   notifyInPhone('🚨 ALERTA SOS DISPARADA', `Emergencia enviada para ${user.name}`);
   showWhatsAppModal(header, body, user.lat, user.lng);
+  if (typeof logAuditAlert === 'function') {
+    logAuditAlert('EMERGENCIA SOS PÁNICO', user.name, 'Activación de sirena y GPS enviada a la familia', false);
+  }
 }
 
 // --- F. Centro WhatsApp de Emergencia ---
@@ -5802,7 +6215,9 @@ function copyWaMessageToClipboard() {
 
 // --- G. Panel Administrador Mejorado & Cámaras Multi-Red ---
 function switchAdminTab(tabName) {
-  const tabs = ['members', 'cams', 'msgs', 'gps', 'config'];
+  if (tabName.toLowerCase() === 'safezones') tabName = 'safeZones';
+
+  const tabs = ['members', 'cams', 'msgs', 'gps', 'safeZones', 'config'];
   tabs.forEach(t => {
     const view = document.getElementById(`adminTab${t.charAt(0).toUpperCase() + t.slice(1)}`);
     const btn = document.getElementById(`adminTab${t.charAt(0).toUpperCase() + t.slice(1)}Btn`);
@@ -5819,7 +6234,337 @@ function switchAdminTab(tabName) {
     renderAdminCamerasList();
   } else if (tabName === 'msgs') {
     loadAdminMessagesHistory();
+  } else if (tabName === 'safeZones') {
+    renderAdminSafeZonesList();
   }
+}
+
+// ==================== ZONAS SEGURAS & LUGARES FRECUENTES (ADMIN) ====================
+function loadStoredSafeZones() {
+  const saved = localStorage.getItem('andrada_family_safe_zones');
+  if (saved) {
+    try {
+      familySafeZones = JSON.parse(saved);
+    } catch (e) {
+      familySafeZones = [...DEFAULT_SAFE_ZONES];
+    }
+  } else {
+    familySafeZones = [...DEFAULT_SAFE_ZONES];
+    saveSafeZones();
+  }
+}
+
+function saveSafeZones() {
+  localStorage.setItem('andrada_family_safe_zones', JSON.stringify(familySafeZones));
+  updateMapSafeZonesLayer();
+  if (typeof updateMapMarkers === 'function') updateMapMarkers();
+
+  fetch('/api/safe-zones', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ safe_zones: familySafeZones })
+  }).catch(() => {});
+}
+
+function updateMapSafeZonesLayer() {
+  if (!map) return;
+  if (!window.safeZonesLayerGroup) {
+    window.safeZonesLayerGroup = L.layerGroup().addTo(map);
+  } else {
+    window.safeZonesLayerGroup.clearLayers();
+  }
+
+  familySafeZones.forEach(zone => {
+    const iconClass = zone.icon || (zone.type === 'casa' ? 'fa-house-user' : zone.type === 'trabajo' ? 'fa-briefcase' : zone.type === 'escuela' ? 'fa-graduation-cap' : 'fa-shield-cat');
+    const typeLabel = zone.type === 'casa' ? '🏠 Casa / Hogar' : zone.type === 'trabajo' ? '💼 Trabajo' : zone.type === 'escuela' ? '🏫 Escuela' : '📍 Zona Segura';
+    
+    const circle = L.circle([zone.lat, zone.lng], {
+      color: zone.color || '#10B981',
+      fillColor: zone.color || '#10B981',
+      fillOpacity: 0.18,
+      radius: zone.radius || 250,
+      weight: 2,
+      dashArray: '5, 8'
+    });
+
+    const zoneIcon = L.divIcon({
+      className: 'safe-zone-marker-icon',
+      html: `<div style="background:${zone.color || '#10B981'}; color:#fff; border-radius:50%; width:30px; height:30px; display:flex; align-items:center; justify-content:center; border:2px solid #fff; box-shadow:0 0 12px ${zone.color || '#10B981'}; font-size:13px;" title="${zone.name}"><i class="fa-solid ${iconClass}"></i></div>`,
+      iconSize: [30, 30],
+      iconAnchor: [15, 15]
+    });
+
+    const marker = L.marker([zone.lat, zone.lng], { icon: zoneIcon });
+    const memberName = zone.member_name || (zone.member_id === 'all' ? 'Toda la Familia' : 'Integrante');
+
+    const popupHtml = `
+      <div style="font-family: 'Inter', sans-serif; font-size: 12px; color: #1E293B; min-width: 180px;">
+        <div style="font-weight: 800; font-size: 13px; color: ${zone.color || '#10B981'}; margin-bottom: 4px; display:flex; align-items:center; gap:6px;">
+          <i class="fa-solid ${iconClass}"></i> ${zone.name}
+        </div>
+        <div style="font-size: 11px; margin-bottom: 2px;"><b>Tipo:</b> ${typeLabel}</div>
+        <div style="font-size: 11px; margin-bottom: 2px;"><b>Asignado a:</b> ${memberName}</div>
+        <div style="font-size: 11px; margin-bottom: 2px;"><b>Radio:</b> ${zone.radius || 250} metros</div>
+        ${zone.address ? `<div style="font-size: 10.5px; color: #64748B; margin-top: 4px;">📍 ${zone.address}</div>` : ''}
+      </div>
+    `;
+
+    circle.bindPopup(popupHtml);
+    marker.bindPopup(popupHtml);
+
+    window.safeZonesLayerGroup.addLayer(circle);
+    window.safeZonesLayerGroup.addLayer(marker);
+  });
+}
+
+function getMemberCurrentSafeZone(member) {
+  if (!member || !member.lat || !member.lng) return null;
+  let matchedZone = null;
+  let minDistance = Infinity;
+
+  familySafeZones.forEach(zone => {
+    if (zone.member_id === 'all' || zone.member_id === member.id || zone.member_name === member.name) {
+      const distKm = calculateDistanceKm(member.lat, member.lng, zone.lat, zone.lng);
+      const distMeters = distKm * 1000;
+      if (distMeters <= (zone.radius || 250)) {
+        if (distMeters < minDistance) {
+          minDistance = distMeters;
+          matchedZone = zone;
+        }
+      }
+    }
+  });
+
+  return matchedZone;
+}
+
+function toggleAdminAddSafeZoneForm(resetEdit = true) {
+  const box = document.getElementById('adminAddSafeZoneFormBox');
+  if (!box) return;
+
+  populateAdminMemberOptions();
+
+  if (box.classList.contains('hidden')) {
+    box.classList.remove('hidden');
+    if (resetEdit) {
+      document.getElementById('adminZoneEditId').value = '';
+      document.getElementById('adminZoneName').value = '';
+      document.getElementById('adminZoneType').value = 'casa';
+      document.getElementById('adminZoneMemberId').value = 'all';
+      document.getElementById('adminZoneRadius').value = '250';
+      document.getElementById('adminZoneLat').value = activeUser?.lat || -28.469570;
+      document.getElementById('adminZoneLng').value = activeUser?.lng || -65.785240;
+      document.getElementById('adminZoneColor').value = '#10B981';
+      document.getElementById('adminZoneAddress').value = '';
+      document.getElementById('adminSafeZoneFormTitle').innerText = 'Registrar Nueva Zona Segura / Lugar';
+      document.getElementById('btnToggleSafeZoneFormText').innerText = 'Ocultar Formulario';
+    }
+  } else {
+    box.classList.add('hidden');
+    document.getElementById('btnToggleSafeZoneFormText').innerText = '+ Crear Nueva Zona Segura';
+  }
+}
+
+function autoSelectZoneIcon(type) {
+  const colorSelect = document.getElementById('adminZoneColor');
+  if (!colorSelect) return;
+  if (type === 'casa') colorSelect.value = '#10B981';
+  else if (type === 'trabajo') colorSelect.value = '#F59E0B';
+  else if (type === 'escuela') colorSelect.value = '#38BDF8';
+  else colorSelect.value = '#8B5CF6';
+}
+
+function populateAdminMemberOptions() {
+  const select = document.getElementById('adminZoneMemberId');
+  if (!select) return;
+  
+  let html = `<option value="all">👨‍👩‍👧‍👦 Toda la Familia (Global)</option>`;
+  if (Array.isArray(familyMembers)) {
+    familyMembers.forEach(m => {
+      html += `<option value="${m.id}">👤 ${m.name} (${m.role})</option>`;
+    });
+  }
+  select.innerHTML = html;
+}
+
+function renderAdminSafeZonesList() {
+  const container = document.getElementById('adminSafeZonesListContainer');
+  if (!container) return;
+
+  if (!familySafeZones || familySafeZones.length === 0) {
+    container.innerHTML = `
+      <div style="text-align: center; color: var(--text-secondary); padding: 24px; background: rgba(255,255,255,0.04); border-radius: 12px; border: 1px solid var(--border-glass);">
+        <i class="fa-solid fa-shield-cat" style="font-size: 28px; margin-bottom: 8px; color: var(--accent-cyan);"></i>
+        <div style="font-size: 13px; font-weight: 700; color: #fff;">No hay zonas seguras configuradas.</div>
+        <div style="font-size: 11px; margin-top: 4px;">Haz clic en "+ Crear Nueva Zona Segura" para registrar Casa Andrada, escuelas o lugares de trabajo.</div>
+      </div>
+    `;
+    return;
+  }
+
+  let html = '';
+  familySafeZones.forEach(zone => {
+    const iconClass = zone.icon || (zone.type === 'casa' ? 'fa-house-user' : zone.type === 'trabajo' ? 'fa-briefcase' : zone.type === 'escuela' ? 'fa-graduation-cap' : 'fa-shield-cat');
+    const typeLabel = zone.type === 'casa' ? '🏠 Casa / Hogar' : zone.type === 'trabajo' ? '💼 Trabajo' : zone.type === 'escuela' ? '🏫 Escuela' : '📍 Zona Segura';
+    const memberName = zone.member_name || (zone.member_id === 'all' ? 'Toda la Familia (Global)' : 'Integrante Especificado');
+    const zoneColor = zone.color || '#10B981';
+
+    html += `
+      <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid ${zoneColor}44; border-left: 4px solid ${zoneColor}; border-radius: 10px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+        <div style="flex: 1;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+            <div style="background: ${zoneColor}22; color: ${zoneColor}; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; border: 1px solid ${zoneColor}66;">
+              <i class="fa-solid ${iconClass}"></i>
+            </div>
+            <div style="font-size: 13px; font-weight: 800; color: #fff;">${zone.name}</div>
+            <span style="font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; background: ${zoneColor}22; color: ${zoneColor}; border: 1px solid ${zoneColor}44;">${typeLabel}</span>
+          </div>
+          <div style="font-size: 11px; color: var(--text-secondary); display: flex; flex-wrap: wrap; gap: 12px; margin-top: 4px;">
+            <span><i class="fa-solid fa-user-tag" style="color: var(--accent-cyan);"></i> Integrante: <strong>${memberName}</strong></span>
+            <span><i class="fa-solid fa-bullseye" style="color: var(--accent-purple);"></i> Radio: <strong>${zone.radius || 250}m</strong></span>
+            <span><i class="fa-solid fa-location-dot" style="color: #EF4444;"></i> GPS: <strong>${zone.lat.toFixed(5)}, ${zone.lng.toFixed(5)}</strong></span>
+          </div>
+          ${zone.address ? `<div style="font-size: 10.5px; color: #94A3B8; margin-top: 4px;">📍 ${zone.address}</div>` : ''}
+        </div>
+
+        <div style="display: flex; gap: 6px; align-items: center;">
+          <button class="btn-sm" style="background: rgba(56, 189, 248, 0.2); color: var(--accent-cyan); border: 1px solid var(--accent-cyan); padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer;" onclick="centerMapOnZone('${zone.id}')" title="Centrar mapa en esta zona">
+            <i class="fa-solid fa-crosshairs"></i> Mapa
+          </button>
+          <button class="btn-sm" style="background: rgba(245, 158, 11, 0.2); color: var(--accent-amber); border: 1px solid var(--accent-amber); padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer;" onclick="editAdminSafeZone('${zone.id}')" title="Editar datos de zona">
+            <i class="fa-solid fa-pen-to-square"></i> Editar
+          </button>
+          <button class="btn-sm" style="background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.4); padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer;" onclick="deleteAdminSafeZone('${zone.id}')" title="Eliminar esta zona">
+            <i class="fa-solid fa-trash-can"></i>
+          </button>
+        </div>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+}
+
+function handleAdminSaveSafeZone(e) {
+  e.preventDefault();
+  const editId = document.getElementById('adminZoneEditId').value;
+  const name = document.getElementById('adminZoneName').value.trim();
+  const type = document.getElementById('adminZoneType').value;
+  const memberId = document.getElementById('adminZoneMemberId').value;
+  const radius = parseFloat(document.getElementById('adminZoneRadius').value) || 250;
+  const lat = parseFloat(document.getElementById('adminZoneLat').value);
+  const lng = parseFloat(document.getElementById('adminZoneLng').value);
+  const color = document.getElementById('adminZoneColor').value;
+  const address = document.getElementById('adminZoneAddress').value.trim();
+
+  if (!name || isNaN(lat) || isNaN(lng)) {
+    if (typeof showToastAlert === 'function') showToastAlert('⚠️ Por favor completa el nombre y coordenadas GPS válidas.', 'error');
+    return;
+  }
+
+  let memberName = 'Familia Andrada (Todos)';
+  if (memberId !== 'all' && Array.isArray(familyMembers)) {
+    const foundM = familyMembers.find(m => m.id === memberId);
+    if (foundM) memberName = foundM.name;
+  }
+
+  const iconClass = type === 'casa' ? 'fa-house-user' : type === 'trabajo' ? 'fa-briefcase' : type === 'escuela' ? 'fa-graduation-cap' : 'fa-shield-cat';
+
+  if (editId) {
+    const idx = familySafeZones.findIndex(z => z.id === editId);
+    if (idx !== -1) {
+      familySafeZones[idx] = {
+        ...familySafeZones[idx],
+        name, type, member_id: memberId, member_name: memberName,
+        radius, lat, lng, color, icon: iconClass, address
+      };
+      if (typeof showToastAlert === 'function') showToastAlert(`🛡️ Zona "${name}" actualizada correctamente.`, 'info');
+    }
+  } else {
+    const newZone = {
+      id: 'sz_' + Date.now(),
+      name, type, member_id: memberId, member_name: memberName,
+      radius, lat, lng, color, icon: iconClass, address
+    };
+    familySafeZones.push(newZone);
+    if (typeof showToastAlert === 'function') showToastAlert(`🛡️ Nueva Zona Segura "${name}" registrada.`, 'info');
+  }
+
+  saveSafeZones();
+  renderAdminSafeZonesList();
+  toggleAdminAddSafeZoneForm(false);
+}
+
+function editAdminSafeZone(zoneId) {
+  const zone = familySafeZones.find(z => z.id === zoneId);
+  if (!zone) return;
+
+  toggleAdminAddSafeZoneForm(false);
+  document.getElementById('adminAddSafeZoneFormBox').classList.remove('hidden');
+  document.getElementById('adminZoneEditId').value = zone.id;
+  document.getElementById('adminZoneName').value = zone.name;
+  document.getElementById('adminZoneType').value = zone.type || 'casa';
+  document.getElementById('adminZoneMemberId').value = zone.member_id || 'all';
+  document.getElementById('adminZoneRadius').value = zone.radius || 250;
+  document.getElementById('adminZoneLat').value = zone.lat;
+  document.getElementById('adminZoneLng').value = zone.lng;
+  document.getElementById('adminZoneColor').value = zone.color || '#10B981';
+  document.getElementById('adminZoneAddress').value = zone.address || '';
+  document.getElementById('adminSafeZoneFormTitle').innerText = `Editar Zona: ${zone.name}`;
+}
+
+function deleteAdminSafeZone(zoneId) {
+  const zone = familySafeZones.find(z => z.id === zoneId);
+  if (!zone) return;
+  if (!confirm(`¿Estás seguro de eliminar la zona segura "${zone.name}"?`)) return;
+
+  familySafeZones = familySafeZones.filter(z => z.id !== zoneId);
+  saveSafeZones();
+  renderAdminSafeZonesList();
+  if (typeof showToastAlert === 'function') showToastAlert(`🗑️ Zona "${zone.name}" eliminada.`, 'info');
+}
+
+function centerMapOnZone(zoneId) {
+  const zone = familySafeZones.find(z => z.id === zoneId);
+  if (!zone) return;
+  closeAdminModal();
+  if (map) {
+    map.flyTo([zone.lat, zone.lng], 16, { animate: true });
+    if (typeof showToastAlert === 'function') showToastAlert(`📍 Mapa centrado en zona segura: ${zone.name}`, 'info');
+  }
+}
+
+function captureCurrentGpsForAdminZone() {
+  if ('geolocation' in navigator) {
+    navigator.geolocation.getCurrentPosition(pos => {
+      document.getElementById('adminZoneLat').value = pos.coords.latitude.toFixed(6);
+      document.getElementById('adminZoneLng').value = pos.coords.longitude.toFixed(6);
+      if (typeof showToastAlert === 'function') showToastAlert('🎯 Coordenadas de tu GPS actual aplicadas.', 'info');
+    }, err => {
+      if (typeof showToastAlert === 'function') showToastAlert('⚠️ No se pudo obtener la ubicación GPS actual.', 'error');
+    }, { enableHighAccuracy: true });
+  } else {
+    alert('Tu navegador no soporta Geolocation.');
+  }
+}
+
+function pickGpsFromMapForAdminZone() {
+  if (!map) return;
+  closeAdminModal();
+  if (typeof showToastAlert === 'function') showToastAlert('🗺️ Haz clic en el mapa para capturar las coordenadas de la Zona Segura.', 'info');
+
+  const onMapClick = function(e) {
+    const lat = e.latlng.lat.toFixed(6);
+    const lng = e.latlng.lng.toFixed(6);
+    document.getElementById('adminZoneLat').value = lat;
+    document.getElementById('adminZoneLng').value = lng;
+    map.off('click', onMapClick);
+    openAdminModal();
+    switchAdminTab('safeZones');
+    if (typeof showToastAlert === 'function') showToastAlert(`📍 Coordenadas capturadas del mapa: Lat ${lat}, Lng ${lng}`, 'info');
+  };
+
+  map.once('click', onMapClick);
 }
 
 
@@ -6013,12 +6758,193 @@ function deleteCameraFromAdmin(camId) {
     }).catch(() => {});
 }
 
-// --- GESTIÓN E HISTORIAL DE MENSAJES (ADMIN) ---
+// ==================== GESTIÓN DE TELÉFONO OFICIAL & ALERTA FAMILIAR ====================
+function getOfficialEmergencyPhone() {
+  return localStorage.getItem('andrada_official_phone') || '911';
+}
+
+function saveOfficialPhoneFromAdmin() {
+  const input = document.getElementById('adminOfficialPhoneInput');
+  if (!input) return;
+  const phone = input.value.trim();
+  if (!phone) {
+    showModernToast('Ajustes Emergencia', 'Ingresa un número oficial válido', 'warning');
+    return;
+  }
+  localStorage.setItem('andrada_official_phone', phone);
+  showModernToast('Ajustes Emergencia', `Teléfono oficial de emergencia actualizado a: ${phone}`, 'success');
+}
+
+function getAlertAllFamilySetting() {
+  return localStorage.getItem('andrada_alert_all_family') !== 'false';
+}
+
+function saveAlertAllFamilySetting(enabled) {
+  localStorage.setItem('andrada_alert_all_family', enabled ? 'true' : 'false');
+  showModernToast('Ajustes Emergencia', enabled ? 'Alerta automática a toda la familia activada' : 'Alerta a toda la familia desactivada', 'info');
+}
+
+// ==================== GESTIÓN DE AUDITORÍA, HISTORIAL Y MONITOREO (ADMIN) ====================
+let activeAuditSubtab = 'chat';
+let auditAlertLogs = [];
+let auditTrackingLogs = [];
+
+function loadStoredAuditState() {
+  try {
+    const savedAlerts = localStorage.getItem('andrada_audit_alerts');
+    if (savedAlerts) auditAlertLogs = JSON.parse(savedAlerts);
+  } catch (e) { auditAlertLogs = []; }
+
+  try {
+    const savedTracking = localStorage.getItem('andrada_audit_tracking');
+    if (savedTracking) auditTrackingLogs = JSON.parse(savedTracking);
+  } catch (e) { auditTrackingLogs = []; }
+
+  if (!Array.isArray(auditAlertLogs) || auditAlertLogs.length === 0) {
+    auditAlertLogs = [
+      { id: 'alt_1', type: 'PANICO SOS', user: 'Mateo Andrada', details: 'Prueba de botón SOS superada', isFalse: false, timestamp: 'Hoy ' + new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) },
+      { id: 'alt_2', type: 'FALSA ALERTA', user: 'Lucía Andrada', details: 'Alerta cancelada por el usuario', isFalse: true, timestamp: 'Ayer 21:10' }
+    ];
+    saveAuditAlerts();
+  }
+
+  if (!Array.isArray(auditTrackingLogs) || auditTrackingLogs.length === 0) {
+    auditTrackingLogs = [
+      { id: 'trk_1', user: 'Lucía Andrada', transport: '🚖 Uber / Remis', destination: 'Casa Andrada', status: '✅ Llegó Seguro', timestamp: 'Hoy 19:30' },
+      { id: 'trk_2', user: 'Mateo Andrada', transport: '🚶‍♂️ Safe Walk', destination: 'Escuela Normal', status: '✅ Llegó Seguro', timestamp: 'Ayer 08:15' }
+    ];
+    saveAuditTracking();
+  }
+}
+
+function saveAuditAlerts() {
+  localStorage.setItem('andrada_audit_alerts', JSON.stringify(auditAlertLogs));
+}
+
+function saveAuditTracking() {
+  localStorage.setItem('andrada_audit_tracking', JSON.stringify(auditTrackingLogs));
+}
+
+function logAuditAlert(type, user, details, isFalse = false) {
+  if (!user) user = activeUser ? activeUser.name : 'Familiar';
+  const newLog = {
+    id: 'alt_' + Date.now(),
+    type: type || 'ALERTA SOS',
+    user: user,
+    details: details || 'Alerta emitida desde la app',
+    isFalse: isFalse,
+    timestamp: 'Hoy ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  };
+  if (!Array.isArray(auditAlertLogs)) auditAlertLogs = [];
+  auditAlertLogs.unshift(newLog);
+  if (auditAlertLogs.length > 50) auditAlertLogs.pop();
+  saveAuditAlerts();
+}
+
+function logAuditTracking(user, transport, destination, status) {
+  if (!user) user = activeUser ? activeUser.name : 'Familiar';
+  const newLog = {
+    id: 'trk_' + Date.now(),
+    user: user,
+    transport: transport || '🚶‍♂️ Safe Walk',
+    destination: destination || 'Ubicación General',
+    status: status || '✅ En Proceso',
+    timestamp: 'Hoy ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  };
+  if (!Array.isArray(auditTrackingLogs)) auditTrackingLogs = [];
+  auditTrackingLogs.unshift(newLog);
+  if (auditTrackingLogs.length > 50) auditTrackingLogs.pop();
+  saveAuditTracking();
+}
+
+function switchAuditSubtab(subtab) {
+  activeAuditSubtab = subtab;
+  
+  const chatBtn = document.getElementById('auditSubtabChatBtn');
+  const alertsBtn = document.getElementById('auditSubtabAlertsBtn');
+  const trackingBtn = document.getElementById('auditSubtabTrackingBtn');
+
+  [chatBtn, alertsBtn, trackingBtn].forEach(btn => {
+    if (!btn) return;
+    btn.style.background = 'rgba(255,255,255,0.06)';
+    btn.style.color = '#CBD5E1';
+    btn.style.borderColor = 'var(--border-glass)';
+  });
+
+  const activeBtn = subtab === 'chat' ? chatBtn : (subtab === 'alerts' ? alertsBtn : trackingBtn);
+  if (activeBtn) {
+    activeBtn.style.background = 'rgba(56, 189, 248, 0.2)';
+    activeBtn.style.color = '#38BDF8';
+    activeBtn.style.borderColor = '#38BDF8';
+  }
+
+  loadAdminMessagesHistory();
+}
+
 function loadAdminMessagesHistory() {
   const container = document.getElementById('adminMessagesListContainer');
   const badge = document.getElementById('adminMsgTotalBadge');
+  const catLabel = document.getElementById('auditActiveCategoryLabel');
   if (!container) return;
 
+  loadStoredAuditState();
+
+  if (activeAuditSubtab === 'alerts') {
+    if (catLabel) catLabel.textContent = 'Mostrando Alertas Emitidas (Reales y Falsas)';
+    if (badge) badge.textContent = auditAlertLogs.length;
+
+    if (auditAlertLogs.length === 0) {
+      container.innerHTML = '<div style="font-size: 11px; color: var(--text-muted); text-align: center; padding: 16px;">No hay alertas registradas en la auditoría.</div>';
+      return;
+    }
+
+    container.innerHTML = auditAlertLogs.map(a => `
+      <div class="admin-msg-card" style="display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.25); padding: 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);">
+        <input type="checkbox" class="admin-msg-checkbox" value="${a.id}" style="width: 16px; height: 16px; cursor: pointer; accent-color: var(--accent-cyan);">
+        <div style="flex: 1; min-width: 0;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+            <span style="font-size: 11px; font-weight: 800; color: #fff;">${a.user}</span>
+            <span style="font-size: 10px; color: var(--text-muted); font-family: monospace;">${a.timestamp}</span>
+          </div>
+          <div style="font-size: 11px; color: #CBD5E1;">${a.details}</div>
+        </div>
+        <span style="font-size: 9.5px; font-weight: 800; padding: 3px 8px; border-radius: 6px; ${a.isFalse ? 'background: rgba(245, 158, 11, 0.2); color: #F59E0B;' : 'background: rgba(239, 68, 68, 0.25); color: #EF4444;'}">
+          ${a.type} ${a.isFalse ? '(FALSA)' : ''}
+        </span>
+      </div>
+    `).join('');
+    return;
+  }
+
+  if (activeAuditSubtab === 'tracking') {
+    if (catLabel) catLabel.textContent = 'Mostrando Historial de Seguimientos y Uber/Remis';
+    if (badge) badge.textContent = auditTrackingLogs.length;
+
+    if (auditTrackingLogs.length === 0) {
+      container.innerHTML = '<div style="font-size: 11px; color: var(--text-muted); text-align: center; padding: 16px;">No hay registros de seguimiento activos o pasados.</div>';
+      return;
+    }
+
+    container.innerHTML = auditTrackingLogs.map(t => `
+      <div class="admin-msg-card" style="display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.25); padding: 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);">
+        <input type="checkbox" class="admin-msg-checkbox" value="${t.id}" style="width: 16px; height: 16px; cursor: pointer; accent-color: var(--accent-cyan);">
+        <div style="flex: 1; min-width: 0;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+            <span style="font-size: 11px; font-weight: 800; color: #fff;">${t.user} (${t.transport})</span>
+            <span style="font-size: 10px; color: var(--text-muted); font-family: monospace;">${t.timestamp}</span>
+          </div>
+          <div style="font-size: 11px; color: #38BDF8;">Destino: ${t.destination}</div>
+        </div>
+        <span style="font-size: 9.5px; font-weight: 800; padding: 3px 8px; border-radius: 6px; background: rgba(16, 185, 129, 0.2); color: #6EE7B7;">
+          ${t.status}
+        </span>
+      </div>
+    `).join('');
+    return;
+  }
+
+  // SUBTAB CHAT
+  if (catLabel) catLabel.textContent = 'Mostrando Chat del Círculo Familiar';
   fetch('/api/messages')
     .then(res => res.json())
     .then(data => {
@@ -6026,12 +6952,12 @@ function loadAdminMessagesHistory() {
       if (badge) badge.textContent = msgs.length;
 
       if (msgs.length === 0) {
-        container.innerHTML = '<div style="font-size: 11px; color: var(--text-muted); text-align: center; padding: 16px;">Historial de mensajes vacío. No hay registros almacenados.</div>';
+        container.innerHTML = '<div style="font-size: 11px; color: var(--text-muted); text-align: center; padding: 16px;">Historial de chat vacío. No hay mensajes almacenados.</div>';
         return;
       }
 
       container.innerHTML = msgs.map(m => `
-        <div class="admin-msg-card">
+        <div class="admin-msg-card" style="display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.25); padding: 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06);">
           <input type="checkbox" class="admin-msg-checkbox" value="${m.id}" style="width: 16px; height: 16px; cursor: pointer; accent-color: var(--accent-cyan);">
           <div style="flex: 1; min-width: 0;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
@@ -6055,23 +6981,42 @@ function toggleSelectAllAdminMsgs(checked) {
   checkboxes.forEach(cb => cb.checked = checked);
 }
 
-function deleteSelectedAdminMessages() {
+function deleteSelectedAdminAuditItems() {
   const checkboxes = document.querySelectorAll('.admin-msg-checkbox:checked');
   const ids = Array.from(checkboxes).map(cb => cb.value);
 
   if (ids.length === 0) {
-    showModernToast('Selección de Mensajes', 'Por favor marca al menos un mensaje para eliminar.', 'warning');
+    showModernToast('Auditoría', 'Por favor selecciona al menos un registro para eliminar.', 'warning');
     return;
   }
 
-  if (!confirm(`¿Deseas eliminar ${ids.length} mensaje(s) seleccionado(s) del historial para ahorrar espacio?`)) return;
+  if (!confirm(`¿Deseas eliminar ${ids.length} registro(s) seleccionado(s) de la auditoría?`)) return;
 
+  if (activeAuditSubtab === 'alerts') {
+    const idSet = new Set(ids);
+    auditAlertLogs = auditAlertLogs.filter(a => !idSet.has(a.id));
+    saveAuditAlerts();
+    showModernToast('Auditoría Limpiada', `Se borraron ${ids.length} alertas de la auditoría.`, 'success');
+    loadAdminMessagesHistory();
+    return;
+  }
+
+  if (activeAuditSubtab === 'tracking') {
+    const idSet = new Set(ids);
+    auditTrackingLogs = auditTrackingLogs.filter(t => !idSet.has(t.id));
+    saveAuditTracking();
+    showModernToast('Auditoría Limpiada', `Se borraron ${ids.length} seguimientos de la auditoría.`, 'success');
+    loadAdminMessagesHistory();
+    return;
+  }
+
+  // CHAT
   fetch('/api/messages/delete-selected', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ message_ids: ids })
   }).then(res => res.json()).then(data => {
-    showModernToast('Espacio Liberado', `Se eliminaron ${data.deleted_count} mensaje(s) del historial.`, 'success');
+    showModernToast('Espacio Liberado', `Se eliminaron ${data.deleted_count} mensaje(s) del historial del chat.`, 'success');
     loadAdminMessagesHistory();
   }).catch(() => {
     showModernToast('Error', 'No se pudieron eliminar los mensajes.', 'error');
@@ -6079,15 +7024,34 @@ function deleteSelectedAdminMessages() {
 }
 
 function clearAllAdminMessages() {
-  if (!confirm('⚠️ ¿VACIAR HISTORIAL COMPLETO? Esta acción eliminará permanentemente todos los mensajes almacenados.')) return;
+  if (!confirm('⚠️ ¿VACIAR HISTORIAL DEL CHAT? Esta acción eliminará permanentemente todos los mensajes almacenados.')) return;
 
   fetch('/api/messages/clear-all', { method: 'DELETE' })
     .then(res => res.json())
     .then(data => {
-      showModernToast('Historial Vacío', 'Se han eliminado todos los mensajes para liberar almacenamiento.', 'success');
+      showModernToast('Historial Vacío', 'Se han eliminado todos los mensajes del chat.', 'success');
       loadAdminMessagesHistory();
     }).catch(() => {
       showModernToast('Error', 'No se pudo vaciar el historial.', 'error');
+    });
+}
+
+function clearAllAdminAuditLogs() {
+  if (!confirm('🚨 ¿VACIAR AUDITORÍA Y MONITOREO GLOBAL?\n\nSe eliminarán todas las alertas (reales/falsas), registros de seguimiento Safe Walk/Uber e historial del chat.')) return;
+
+  auditAlertLogs = [];
+  auditTrackingLogs = [];
+  saveAuditAlerts();
+  saveAuditTracking();
+
+  fetch('/api/messages/clear-all', { method: 'DELETE' })
+    .then(res => res.json())
+    .then(() => {
+      showModernToast('Auditoría Vaciada', 'Se borraron todas las alertas, seguimientos e historial de chat por completo.', 'success');
+      loadAdminMessagesHistory();
+    }).catch(() => {
+      showModernToast('Auditoría Vaciada', 'Se borraron los registros de auditoría locales.', 'success');
+      loadAdminMessagesHistory();
     });
 }
 
@@ -6096,13 +7060,37 @@ function changeGpsTrackingInterval(mode) {
 }
 
 function resetAppDatabaseFromAdmin() {
-  if (!confirm('⚠️ ¿ESTÁS SEGURO? Esto restablecerá la lista de familiares a los valores iniciales predeterminados.')) return;
-  familyMembers = [...DEFAULT_MEMBERS];
-  saveMembers();
-  renderDirectoryList();
-  renderMemberChips();
-  notifyInPhone('🔄 Sistema Restablecido', 'Base de datos restablecida con éxito.');
-  alert('✅ Base de datos restablecida a los valores iniciales de la Familia Andrada.');
+  if (!confirm('⚠️ ¿ESTÁS SEGURO DE RESTABLECER LA APP?\n\nEsto BORRARÁ TODOS los datos guardados en LocalStorage, la sesión activa, historiales y caché del navegador para permitir registrar la estructura familiar desde cero.')) return;
+
+  try {
+    localStorage.clear();
+    sessionStorage.clear();
+    if ('caches' in window) {
+      caches.keys().then(names => {
+        names.forEach(name => caches.delete(name));
+      });
+    }
+  } catch(e) {}
+
+  familyMembers = [];
+  familySafeZones = typeof DEFAULT_SAFE_ZONES !== 'undefined' ? [...DEFAULT_SAFE_ZONES] : [];
+  
+  if (typeof updateMapMarkers === 'function') updateMapMarkers();
+  if (typeof renderDirectoryList === 'function') renderDirectoryList();
+  if (typeof renderMemberChips === 'function') renderMemberChips();
+
+  if (typeof showToastAlert === 'function') {
+    showToastAlert('🔄 Aplicación Restablecida. Registra al primer integrante.', 'Sistema Limpio');
+  }
+
+  // Cambiar a la pestaña de miembros en el panel admin y desplegar el formulario de registro
+  switchAdminTab('members');
+  const formBox = document.getElementById('adminAddMemberFormBox');
+  if (formBox && formBox.classList.contains('hidden')) {
+    if (typeof toggleAdminAddMemberForm === 'function') toggleAdminAddMemberForm();
+  }
+
+  alert('🔄 Aplicación restablecida con éxito. Todos los datos locales y caché fueron eliminados.\n\nPor favor, añade al primer integrante del círculo familiar.');
 }
 
 // ==============================================================================
@@ -6876,20 +7864,6 @@ function loginWithBiometrics() {
   }, 900);
 }
 
-function openSafeWalkTimerModal() {
-  const modal = document.getElementById('safeguardModal') || document.getElementById('expressSosModal');
-  if (modal) {
-    modal.classList.remove('hidden');
-  } else {
-    showModernToast('🚶 SafeWalk Activo', 'Monitoreo preventivo de trayecto configurado con éxito.', 'info');
-  }
-}
-
-function confirmAloneSafetyCheck() {
-  const timer = document.getElementById('aloneTimerDisplay');
-  if (timer) timer.textContent = '29:59';
-  showModernToast('🛡️ Vigilancia Confirmada', '¡Estado reportado a toda la familia! Temporizador de 30 min reiniciado.', 'success');
-}
 
 function closeWhatsAppAlertModal() {
   const modal = document.getElementById('whatsappAlertModal');
@@ -7743,4 +8717,330 @@ window.loadStoredAuditLogs = loadStoredAuditLogs;
 window.logLocationQuery = logLocationQuery;
 window.logLocationView = logLocationView;
 window.renderAuditLogs = renderAuditLogs;
+
+// ==================== BATERÍA REAL Y DETECCIÓN DE DISPOSITIVO (MARCA Y MODELO) ====================
+function detectUserDeviceMetadata() {
+  const ua = navigator.userAgent || '';
+  let deviceType = 'PC / Laptop';
+  let deviceBrand = 'Equipo PC';
+  let deviceModel = 'Windows / Mac PC';
+
+  if (/Android/i.test(ua)) {
+    deviceType = 'Teléfono Móvil';
+    deviceBrand = 'Android';
+    if (/Samsung|SM-|SGH-|SCH-|GT-/i.test(ua)) deviceBrand = 'Samsung Galaxy';
+    else if (/Redmi|MI |Xiaomi/i.test(ua)) deviceBrand = 'Xiaomi / Redmi';
+    else if (/Moto|Motorola/i.test(ua)) deviceBrand = 'Motorola Moto';
+    else if (/Pixel/i.test(ua)) deviceBrand = 'Google Pixel';
+    else if (/HUAWEI|Honor/i.test(ua)) deviceBrand = 'Huawei';
+    deviceModel = `${deviceBrand}`;
+  } else if (/iPhone|iPad|iPod/i.test(ua)) {
+    deviceType = /iPad/i.test(ua) ? 'Tablet' : 'Teléfono Móvil';
+    deviceBrand = 'Apple';
+    if (/iPhone/i.test(ua)) deviceModel = 'Apple iPhone';
+    else if (/iPad/i.test(ua)) deviceModel = 'Apple iPad';
+    else deviceModel = 'Apple Dispositivo';
+  } else if (/Macintosh|Mac OS X/i.test(ua)) {
+    deviceType = 'PC / Laptop';
+    deviceBrand = 'Apple';
+    deviceModel = 'MacBook Pro / Mac';
+  } else if (/Windows/i.test(ua)) {
+    deviceType = 'PC Desktop / Laptop';
+    deviceBrand = 'PC Windows';
+    deviceModel = 'Windows 11 PC';
+  }
+
+  return { deviceType, deviceBrand, deviceModel };
+}
+
+async function syncRealBatteryAndDeviceStatus() {
+  const devMeta = detectUserDeviceMetadata();
+  let batteryLevel = (activeUser && activeUser.battery) || 85;
+  let isCharging = false;
+
+  if ('getBattery' in navigator) {
+    try {
+      const battery = await navigator.getBattery();
+      batteryLevel = Math.round(battery.level * 100);
+      isCharging = Boolean(battery.charging);
+
+      battery.addEventListener('levelchange', () => {
+        const newLvl = Math.round(battery.level * 100);
+        if (activeUser) {
+          activeUser.battery = newLvl;
+          activeUser.is_charging = battery.charging;
+          if (typeof renderMemberChips === 'function') renderMemberChips();
+          if (typeof updateMapMarkers === 'function') updateMapMarkers();
+        }
+      });
+      battery.addEventListener('chargingchange', () => {
+        if (activeUser) {
+          activeUser.is_charging = battery.charging;
+          if (typeof renderMemberChips === 'function') renderMemberChips();
+          if (typeof updateMapMarkers === 'function') updateMapMarkers();
+        }
+      });
+    } catch(e) {
+      console.log('[Battery] API restricted:', e);
+    }
+  }
+
+  if (activeUser) {
+    activeUser.battery = batteryLevel;
+    activeUser.is_charging = isCharging;
+    activeUser.device_type = devMeta.deviceType;
+    activeUser.device_brand = devMeta.deviceBrand;
+    activeUser.device_model = devMeta.deviceModel;
+
+    localStorage.setItem('andrada_user_battery', batteryLevel);
+    localStorage.setItem('andrada_user_device', devMeta.deviceModel);
+  }
+
+  familyMembers.forEach(m => {
+    if (!m.device_model) {
+      m.device_model = (m.id === (activeUser && activeUser.id)) ? devMeta.deviceModel : 'Teléfono Móvil';
+    }
+  });
+
+  if (typeof renderMemberChips === 'function') renderMemberChips();
+  if (typeof updateMapMarkers === 'function') updateMapMarkers();
+}
+
+// ==================== INICIAR SEGUIMIENTO Y WHATSAPP CON GOOGLE MAPS ====================
+function sendTrackingWhatsAppAlert(targetMember) {
+  const current = targetMember || activeUser || familyMembers[0];
+  const lat = current.lat || -28.4696;
+  const lng = current.lng || -65.7852;
+  const mapsUrl = `https://www.google.com/maps?q=${lat.toFixed(6)},${lng.toFixed(6)}`;
+  const batteryStr = `${current.battery || 85}%${current.is_charging ? ' ⚡ (Cargando)' : ''}`;
+  const devModel = current.device_model || (detectUserDeviceMetadata().deviceModel);
+  const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  let trustedPhone = current.trusted_contact_phone || localStorage.getItem('andrada_trusted_phone');
+  if (!trustedPhone) {
+    const trustedMember = familyMembers.find(m => m.phone && m.id !== current.id) || familyMembers[0];
+    trustedPhone = (trustedMember && trustedMember.phone) ? trustedMember.phone : '+543834123456';
+  }
+
+  const cleanPhone = trustedPhone.replace(/[^\d+]/g, '');
+  const msgText = `🚨 *SEGUIMIENTO EN TIEMPO REAL INICIADO* 🚨\n\n` +
+    `Hola! *${current.name}* inició un seguimiento de seguridad en vivo.\n\n` +
+    `📍 *Ubicación en vivo (Google Maps):*\n${mapsUrl}\n\n` +
+    `🔋 Batería: ${batteryStr}\n` +
+    `📱 Dispositivo: ${devModel}\n` +
+    `⏱️ Hora: ${timeStr}\n\n` +
+    `Por favor ingresa al mapa para seguir mi posición en directo.`;
+
+  const waUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(msgText)}`;
+  window.open(waUrl, '_blank');
+}
+
+window.enableDirectMemberTracking = function(memberId) {
+  const targetMember = familyMembers.find(m => m.id === memberId) || activeUser || familyMembers[0];
+  if (!targetMember) return;
+
+  window.activeSafeWalkTrackingMemberId = targetMember.id;
+  targetMember.needs_tracking = true;
+  targetMember.has_alert = true;
+
+  if (typeof locationWebSocket !== 'undefined' && locationWebSocket && locationWebSocket.readyState === WebSocket.OPEN) {
+    locationWebSocket.send(JSON.stringify({
+      type: 'START_TRACKING_BROADCAST',
+      sender_id: (activeUser && activeUser.id) || 'u1',
+      target_member_id: targetMember.id,
+      member_name: targetMember.name,
+      alert_msg: `🚨 ${targetMember.name} inició seguimiento en vivo`,
+      lat: targetMember.lat,
+      lng: targetMember.lng
+    }));
+  }
+
+  showModernToast(
+    '📡 SEGUIMIENTO EN TIEMPO REAL ACTIVO',
+    `Aviso enviado a la familia. Se abrió WhatsApp con la ubicación de Google Maps para tu contacto de confianza.`,
+    'warning'
+  );
+  notifyInPhone('🚨 SEGUIMIENTO INICIADO', `Siguiendo la posición de ${targetMember.name} en vivo.`);
+
+  triggerRealtimeAlertOnMap(targetMember.id, 'SEGUIMIENTO EN VIVO', `${targetMember.name} en movimiento monitoreado.`);
+
+  sendTrackingWhatsAppAlert(targetMember);
+};
+
+// ==================== MODO QUEDO SOLO/SOLA EN CASA (MEJORAS INTEGRALES) ====================
+let aloneSafetyTimerInterval = null;
+let aloneCountdownSeconds = 1800; // 30 minutos
+let aloneAudioContext = null;
+let aloneAudioAnalyser = null;
+let aloneAudioStream = null;
+
+function toggleAloneMode(isActive) {
+  const titleEl = document.getElementById('aloneStatusTitle');
+  const subEl = document.getElementById('aloneStatusSub');
+  const alertBox = document.getElementById('aloneActiveAlert');
+  const me = activeUser || familyMembers[0];
+
+  if (isActive) {
+    if (titleEl) titleEl.textContent = '🛡️ Modo Casa Activado';
+    if (subEl) subEl.textContent = 'Vigilancia y comprobación periódica activa para tu tranquilidad.';
+    if (alertBox) alertBox.classList.remove('hidden');
+
+    startAloneSafetyTimer();
+    toggleAloneNoiseDetector(true);
+
+    if (typeof locationWebSocket !== 'undefined' && locationWebSocket && locationWebSocket.readyState === WebSocket.OPEN) {
+      locationWebSocket.send(JSON.stringify({
+        type: 'ALONE_MODE_TOGGLE',
+        is_active: true,
+        member_id: me.id,
+        member_name: me.name,
+        msg: `🏠 ${me.name} activó el Modo Quedo Solo en Casa.`
+      }));
+    }
+
+    showModernToast('🛡️ MODO CASA ACTIVADO', 'Toda la familia ha sido notificada de que estás a solas.', 'success');
+  } else {
+    if (titleEl) titleEl.textContent = 'Modo Casa Desactivado';
+    if (subEl) subEl.textContent = 'Toca para avisar a toda la familia que estás en casa a solas.';
+    if (alertBox) alertBox.classList.add('hidden');
+
+    stopAloneSafetyTimer();
+    toggleAloneNoiseDetector(false);
+
+    if (typeof locationWebSocket !== 'undefined' && locationWebSocket && locationWebSocket.readyState === WebSocket.OPEN) {
+      locationWebSocket.send(JSON.stringify({
+        type: 'ALONE_MODE_TOGGLE',
+        is_active: false,
+        member_id: me.id,
+        member_name: me.name,
+        msg: `🟢 ${me.name} desactivó el Modo Quedo Solo en Casa.`
+      }));
+    }
+
+    showModernToast('Modo Casa Desactivado', 'Has desactivado la vigilancia automática.', 'info');
+  }
+}
+
+function startAloneSafetyTimer() {
+  stopAloneSafetyTimer();
+  aloneCountdownSeconds = 1800; // 30m
+  updateAloneTimerDisplay();
+
+  aloneSafetyTimerInterval = setInterval(() => {
+    aloneCountdownSeconds--;
+    updateAloneTimerDisplay();
+
+    if (aloneCountdownSeconds <= 0) {
+      stopAloneSafetyTimer();
+      triggerDomesticAlert('ALONE_SAFETY_TIMEOUT');
+    }
+  }, 1000);
+}
+
+function stopAloneSafetyTimer() {
+  if (aloneSafetyTimerInterval) {
+    clearInterval(aloneSafetyTimerInterval);
+    aloneSafetyTimerInterval = null;
+  }
+}
+
+function updateAloneTimerDisplay() {
+  const display = document.getElementById('aloneTimerDisplay');
+  if (!display) return;
+  const m = Math.floor(aloneCountdownSeconds / 60);
+  const s = aloneCountdownSeconds % 60;
+  display.textContent = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
+
+function confirmAloneSafetyCheck() {
+  aloneCountdownSeconds = 1800; // Reiniciar 30m
+  updateAloneTimerDisplay();
+  showModernToast('✅ COMPROBACIÓN CONFIRMADA', 'Temporizador de seguridad reiniciado por 30 minutos.', 'success');
+}
+
+async function toggleAloneNoiseDetector(enable) {
+  if (enable) {
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+      aloneAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      aloneAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+      aloneAudioAnalyser = aloneAudioContext.createAnalyser();
+      const source = aloneAudioContext.createMediaStreamSource(aloneAudioStream);
+      source.connect(aloneAudioAnalyser);
+      aloneAudioAnalyser.fftSize = 256;
+
+      const bufferLength = aloneAudioAnalyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+
+      const checkVolume = () => {
+        if (!aloneAudioStream) return;
+        aloneAudioAnalyser.getByteFrequencyData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < bufferLength; i++) sum += dataArray[i];
+        const average = sum / bufferLength;
+
+        if (average > 75) {
+          showModernToast('⚠️ RUIDO ELEVADO DETECTADO', `Se detectó un pico acústico en la habitación.`, 'error');
+        }
+        requestAnimationFrame(checkVolume);
+      };
+      checkVolume();
+    } catch(e) {
+      console.log('[AudioMonitor] Permiso de micrófono denegado:', e);
+    }
+  } else {
+    if (aloneAudioStream) {
+      aloneAudioStream.getTracks().forEach(t => t.stop());
+      aloneAudioStream = null;
+    }
+    if (aloneAudioContext) {
+      aloneAudioContext.close();
+      aloneAudioContext = null;
+    }
+  }
+}
+
+function stopTrackingAndReset() {
+  if (safeWalkInterval) {
+    clearInterval(safeWalkInterval);
+    safeWalkInterval = null;
+  }
+  resetSafeWalkUI();
+  if (typeof showModernToast === 'function') {
+    showModernToast('🛑 Seguimiento Restablecido', 'El monitoreo de trayecto ha sido detenido.', 'info');
+  }
+}
+
+function stopAllActiveAlerts() {
+  if (typeof cancelPanicCountdown === 'function') cancelPanicCountdown();
+  resetSafeWalkUI();
+  if (typeof stopAloneSafetyTimer === 'function') stopAloneSafetyTimer();
+  const alertModal = document.getElementById('sosAlertModal');
+  if (alertModal) alertModal.classList.add('hidden');
+  const safeModal = document.getElementById('safeguardModal');
+  if (safeModal) safeModal.classList.add('hidden');
+  if (typeof showModernToast === 'function') {
+    showModernToast('🛡️ Alertas Restablecidas', 'Todas las alarmas de emergencia y seguimiento fueron desactivadas.', 'success');
+  }
+}
+
+window.detectUserDeviceMetadata = detectUserDeviceMetadata;
+window.syncRealBatteryAndDeviceStatus = syncRealBatteryAndDeviceStatus;
+window.sendTrackingWhatsAppAlert = sendTrackingWhatsAppAlert;
+window.toggleAloneMode = toggleAloneMode;
+window.confirmAloneSafetyCheck = confirmAloneSafetyCheck;
+window.selectSafeWalkTransport = selectSafeWalkTransport;
+window.selectSafeWalkDuration = selectSafeWalkDuration;
+window.setSafeWalkDestPreset = setSafeWalkDestPreset;
+window.openSafeWalkTimerModal = openSafeWalkTimerModal;
+window.closeSafeWalkTimerModal = closeSafeWalkTimerModal;
+window.startSafeWalkTimerFromModal = startSafeWalkTimerFromModal;
+window.startSafeWalkTimer = startSafeWalkTimer;
+window.finishSafeWalk = finishSafeWalk;
+window.cancelSafeWalk = cancelSafeWalk;
+window.enableMapDestinationPicker = enableMapDestinationPicker;
+window.playTrackingRadarPingSound = playTrackingRadarPingSound;
+window.playEmergencyAlertSound = playEmergencyAlertSound;
+window.stopTrackingAndReset = stopTrackingAndReset;
+window.stopAllActiveAlerts = stopAllActiveAlerts;
 

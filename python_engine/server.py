@@ -221,6 +221,25 @@ def system_info():
 def get_safe_zones():
     return {"safe_zones": SAFE_ZONES_ANDRADA}
 
+@app.post("/api/safe-zones")
+async def update_safe_zones(request: Request):
+    global SAFE_ZONES_ANDRADA
+    try:
+        data = await request.json()
+        zones = data.get("safe_zones", [])
+        if isinstance(zones, list) and len(zones) > 0:
+            SAFE_ZONES_ANDRADA = zones
+            return {"status": "ok", "count": len(SAFE_ZONES_ANDRADA), "safe_zones": SAFE_ZONES_ANDRADA}
+        return JSONResponse(status_code=400, content={"error": "Lista de zonas inválida"})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+@app.delete("/api/safe-zones/{zone_id}")
+def delete_safe_zone(zone_id: str):
+    global SAFE_ZONES_ANDRADA
+    SAFE_ZONES_ANDRADA = [z for z in SAFE_ZONES_ANDRADA if z.get("id") != zone_id and z.get("name") != zone_id]
+    return {"status": "ok", "remaining": len(SAFE_ZONES_ANDRADA)}
+
 @app.get("/api/my-ip")
 def get_my_ip(request: Request):
     client_ip = request.client.host if request.client else "190.18.24.112"
@@ -657,6 +676,61 @@ def get_cameras(admin: Optional[bool] = False):
     sanitized_list = [sanitize_camera_dict(c, is_admin=bool(admin)) for c in cams]
     return {"cameras": sanitized_list}
 
+@app.get("/api/cameras/detect")
+@app.post("/api/cameras/detect")
+def detect_cameras_endpoint():
+    """
+    Escanea activamente el sistema host (webcams USB/integradas vía OpenCV)
+    y la red local (cámaras IP ONVIF/RTSP/HTTP).
+    Devuelve la lista detallada de dispositivos encontrados en tiempo real.
+    """
+    detected = []
+    
+    # 1. Escaneo de webcams físicas conectadas al equipo
+    try:
+        import cv2
+        for idx in range(4):
+            cap = cv2.VideoCapture(idx, cv2.CAP_DSHOW if hasattr(cv2, 'CAP_DSHOW') else cv2.CAP_ANY)
+            if cap.isOpened():
+                ret, frame = cap.read()
+                if ret and frame is not None:
+                    h, w = frame.shape[:2]
+                    detected.append({
+                        "id": f"webcam_{idx}",
+                        "name": f"Cámara Web Integrada HD #{idx+1}" if idx == 0 else f"Webcam USB #{idx+1}",
+                        "type": "USB_WEBCAM",
+                        "status": "ONLINE",
+                        "is_online": True,
+                        "resolution": f"{w}x{h}",
+                        "ip_address": "127.0.0.1 (Local Host)",
+                        "location": "Equipo Local (PC/Servidor)",
+                        "stream_url": f"/api/cameras/webcam_{idx}/feed",
+                        "raw_stream_url": f"/api/cameras/webcam_{idx}/feed"
+                    })
+                cap.release()
+    except Exception as err:
+        logger.info(f"OpenCV webcam detection note: {err}")
+
+    # 2. Escaneo de subred para cámaras IP ONVIF / RTSP
+    try:
+        ip_cams = scan_local_subnet_cameras()
+        if ip_cams:
+            for c in ip_cams:
+                c["type"] = "NETWORK_IP"
+                detected.append(c)
+    except Exception:
+        pass
+
+    # 3. Cámaras configuradas registradas
+    cams = DATA_STORE.get("cameras", DEFAULT_CAMERAS)
+    for c in cams:
+        if not any(d["id"] == c["id"] for d in detected):
+            sanitized = sanitize_camera_dict(c, is_admin=False)
+            sanitized["type"] = "CONFIGURED_IP"
+            detected.append(sanitized)
+
+    return {"status": "SUCCESS", "count": len(detected), "cameras": detected}
+
 class DiscoverIpInput(BaseModel):
     target_ip: Optional[str] = None
     port: Optional[int] = 554
@@ -849,15 +923,16 @@ def get_camera_status(cam_id: str):
 
 @app.get("/api/cameras/{cam_id}/feed")
 @app.get("/api/cameras/{cam_id}/stream")
-def stream_camera_feed(cam_id: str, info: Optional[bool] = False):
+def stream_camera_feed(cam_id: str, info: Optional[bool] = False, mode: Optional[str] = None):
     """
     Endpoint proxy seguro para la transmisión de video HTML5 en tiempo real.
     Soporta consumo directo desde cualquier red (PC, Celular 4G/5G, Wi-Fi).
+    Integra OpenCV para transmisión MJPEG en vivo si hay webcams conectadas.
     """
     cameras = DATA_STORE.get("cameras", [])
     cam = next((c for c in cameras if c["id"] == cam_id), None)
     if not cam:
-        cam = {"id": cam_id, "name": "Cámara IP Yoosee", "location": "Cochera Exterior", "ip_address": "192.168.1.105"}
+        cam = {"id": cam_id, "name": f"Cámara {cam_id}", "location": "Cochera / Entrada", "ip_address": "192.168.1.105"}
 
     target_url = cam.get("raw_stream_url") or cam.get("stream_url")
     if str(target_url).startswith("/api/cameras") or str(target_url) in ["undefined", "null", "none", "", "None"]:
@@ -871,6 +946,38 @@ def stream_camera_feed(cam_id: str, info: Optional[bool] = False):
             "protocol": cam.get("protocol", "rtsp"),
             "target_url": target_url or f"/api/cameras/{cam_id}/feed"
         }
+
+    # Transmisión OpenCV directa si se detecta webcam física local (webcam_0, webcam_1, etc.)
+    if cam_id.startswith("webcam_") or mode == "mjpeg":
+        try:
+            import cv2
+            dev_idx = 0
+            if cam_id.startswith("webcam_"):
+                try:
+                    dev_idx = int(cam_id.split("_")[1])
+                except ValueError:
+                    dev_idx = 0
+
+            cap = cv2.VideoCapture(dev_idx, cv2.CAP_DSHOW if hasattr(cv2, 'CAP_DSHOW') else cv2.CAP_ANY)
+            if cap.isOpened():
+                def generate_frames():
+                    try:
+                        while True:
+                            ret, frame = cap.read()
+                            if not ret or frame is None:
+                                break
+                            now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            cv2.putText(frame, f"LIVE HD - {now_str}", (15, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+                            _, buffer = cv2.imencode('.jpg', frame, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
+                            yield (b'--frame\r\n'
+                                   b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
+                    finally:
+                        cap.release()
+
+                from fastapi.responses import StreamingResponse
+                return StreamingResponse(generate_frames(), media_type="multipart/x-mixed-replace; boundary=frame")
+        except Exception as e:
+            logger.info(f"OpenCV streaming fallback: {e}")
 
     # Si hay una URL HTTP/HTTPS externa válida y no es bucle
     if target_url and (target_url.startswith("http://") or target_url.startswith("https://")):
@@ -1549,6 +1656,31 @@ def receive_silent_sos(data: SilentSosInput):
         "message": "Alerta silenciosa registrada con éxito",
         "evaluation": evaluation
     }
+
+@app.post("/api/sos-clear")
+async def clear_sos_alert(request: Request):
+    try:
+        body = await request.json()
+        member_id = body.get("member_id")
+        alerts = DATA_STORE.get("alerts", [])
+        if member_id:
+            DATA_STORE["alerts"] = [a for a in alerts if a.get("member_id") != member_id]
+        else:
+            DATA_STORE["alerts"] = []
+        save_data_store(DATA_STORE)
+        
+        try:
+            await location_manager.broadcast_location("system", {
+                "type": "SOS_CLEAR",
+                "member_id": member_id,
+                "timestamp": datetime.now().isoformat()
+            })
+        except Exception:
+            pass
+        
+        return {"status": "ok", "message": "Alerta SOS desactivada exitosamente"}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
 
 # ==============================================================================
 # ENDPOINTS GESTIÓN DE CÁMARAS DE SEGURIDAD Y TRANSMISIÓN EN VIVO 2026

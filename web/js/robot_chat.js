@@ -137,6 +137,21 @@ function removeTypingIndicator() {
   if (el) el.remove();
 }
 
+function scrollChatToBottom(smooth = true) {
+  const container = getChatMessagesTab();
+  if (!container) return;
+  const triggerScroll = () => {
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: smooth ? 'smooth' : 'auto'
+    });
+    container.scrollTop = container.scrollHeight;
+  };
+  triggerScroll();
+  setTimeout(triggerScroll, 40);
+  setTimeout(triggerScroll, 120);
+}
+
 function appendChatMessage(type, text, senderName = '', timestamp = '') {
   removeTypingIndicator();
   const container = getChatMessagesTab();
@@ -150,7 +165,7 @@ function appendChatMessage(type, text, senderName = '', timestamp = '') {
     sysDiv.className = 'msg-system';
     sysDiv.innerHTML = `<span>${text}</span>`;
     container.appendChild(sysDiv);
-    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+    scrollChatToBottom(true);
     return;
   }
 
@@ -199,7 +214,7 @@ function appendChatMessage(type, text, senderName = '', timestamp = '') {
   }
 
   container.appendChild(rowDiv);
-  container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+  scrollChatToBottom(true);
 }
 
 async function sendMessageToPythonBot(messageText) {
@@ -374,7 +389,7 @@ document.addEventListener('DOMContentLoaded', () => {
   startChatSyncLoop();
 });
 
-// Exportar funciones globales
+window.scrollChatToBottom = scrollChatToBottom;
 window.openAiAssistantModal = openAiAssistantModal;
 window.closeAiAssistantModal = closeAiAssistantModal;
 window.sendMessageToPythonBot = sendMessageToPythonBot;
