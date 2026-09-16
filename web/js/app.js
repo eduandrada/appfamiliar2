@@ -376,6 +376,18 @@ function initServiceWorker() {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').then((reg) => {
       console.log('[App] Service Worker registrado para notificaciones en segundo plano:', reg.scope);
+      try { reg.update(); } catch(e) {}
+      reg.onupdatefound = () => {
+        const installing = reg.installing;
+        if (installing) {
+          installing.onstatechange = () => {
+            if (installing.state === 'installed' && navigator.serviceWorker.controller) {
+              console.log('[App] Nueva versión instalada. Actualizando caché...');
+              window.location.reload();
+            }
+          };
+        }
+      };
     }).catch((err) => {
       console.warn('[App] Service worker no registrado:', err);
     });
